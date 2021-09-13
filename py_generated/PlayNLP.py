@@ -50,7 +50,12 @@ from matplotlib import animation, rc
 from IPython.display import HTML
 from datetime import timedelta
 import itertools
+import importlib
 import igor_journal
+
+# python won't reload an already imported library
+# since co-editting files in another directory, need to do a reload
+importlib.reload(igor_journal)
 from igor_journal import corpus_path_months
 
 # +
@@ -71,9 +76,9 @@ def get_nlp_model(model: str):
     return nlp
 
 
-# -
-
+# + [markdown] tags=[]
 # # Build corpus from my journal in igor2/750words
+# -
 
 # make the plot wider
 height_in_inches = 8
@@ -242,7 +247,7 @@ def PathToFriendlyTitle(path: str):
 # +
 # corpus_paths = corpus_path_months[2018]+corpus_path_months[2019]
 # corpus_paths = corpus_path_months[2018] + corpus_path_months[2019]
-corpus_paths = igor_journal.corpus_path_months_trailing[-12:]
+corpus_paths = igor_journal.corpus_path_months_trailing[-24:]
 top_words_to_skip, count_words = 0, 20
 print(corpus_paths)
 pdfs = [
@@ -275,7 +280,7 @@ wordByTimespan.iloc[top_words_to_skip : top_words_to_skip + count_words, :].T.pl
 # wordByTimespan.iloc[:13, :].T.plot( kind="bar", subplots=False, legend=True, figsize=(15, 14), sharey=True )
 
 # +
-top_words_to_skip, count_words = 0, 50
+top_words_to_skip, count_words = 5, 40
 top_word_by_year = wordByTimespan.iloc[
     top_words_to_skip : top_words_to_skip + count_words, :
 ][::-1]

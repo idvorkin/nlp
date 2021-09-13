@@ -51,57 +51,41 @@ domain_stop_words = set(
 )
 
 # Load corpus of my daily ramblings
-@dataclass(frozen=True)
+@dataclass
 class Corpus:
+    """
+    A Corpus is the content combination of several journal entries.
+    Journal entries can be  files/day, or data extracts from an XML archive.
+
+    It handles tasks like cleaning up the text content
+        * Fix Typos
+        * Capitalize Proper Nouns
+
+    Journal Entries can have semantic content based on the version
+        * Grateful List
+        * Inline Date
+        * Daily Lists
+
+
+    """
+
     path: str
     all_content: str
     initial_words: List[str]
     words: List[str]
+    journal: str = ""
+    version: int =  0
+    grateful: List[str] = None
 
     def __hash__(self):
         return self.path.__hash__()
 
-    def journal_only(self):
-        return ""
 
-
-@lru_cache(maxsize=100)
-def LoadCorpus(corpus_path: str) -> Corpus:
-
-    # Hym consider memoizing this asweel..
-    english_stop_words = set(stopwords.words("english"))
-    all_stop_words = domain_stop_words | english_stop_words
-
-    corpus_path_expanded = os.path.expanduser(corpus_path)
-    corpus_files = glob.glob(corpus_path_expanded)
-
-    """
-    ######################################################
-    # Performance side-bar.
-    ######################################################
-
-    A] Below code results in all strings Loaded into memory for temporary,  then merged into a second string.
-    aka Memory = O(2*file_conent) and CPU O(2*file_content)
-
-    B] An alternative is to do += on a string results in a new memory allocation and copy.
-    aka Memory = O(file_content) , CPU O(files*file_content)
-
-    However, this stuff needs to be measured, as it's also a funtion of GC. Not in the GC versions there is no change in CPU
-    Eg.
-
-    For A] if GC happens after every "join", then were down to O(file_content).
-    For B] if no GC, then it's still O(2*file_content)
-    """
-
-    # Make single string from all the file contents.
-    list_file_content = [Path(file_name).read_text() for file_name in corpus_files]
-    all_file_content = " ".join(list_file_content)
-
-    # NOTE I can Upper case Magic to make it a proper noun and see how it ranks!
-
-    properNouns = "zach ammon Tori amelia josh Ray javier Neha Amazon John".split()
-
+def clean_string(line):
     def capitalizeProperNouns(s: str):
+        properNouns = "zach ammon Tori amelia josh Ray javier Neha Amazon John".split()
+
+        # NOTE I can Upper case Magic to make it a proper noun and see how it ranks!
         for noun in properNouns:
             noun = noun.lower()
             properNoun = noun[0].upper() + noun[1:]
@@ -136,13 +120,49 @@ def LoadCorpus(corpus_path: str) -> Corpus:
             s = s.replace(" " + typo[0], " " + typo[1])
         return s
 
-    all_file_content = fixTypos(all_file_content)
-    all_file_content = capitalizeProperNouns(all_file_content)
+    return capitalizeProperNouns(fixTypos(line))
+
+
+@lru_cache(maxsize=100)
+def LoadCorpus(corpus_path: str) -> Corpus:
+
+    # TODO: Move this into the corpus class.
+
+    # Hym consider memoizing this asweel..
+    english_stop_words = set(stopwords.words("english"))
+    all_stop_words = domain_stop_words | english_stop_words
+
+    corpus_path_expanded = os.path.expanduser(corpus_path)
+    corpus_files = glob.glob(corpus_path_expanded)
+
+    """
+    ######################################################
+    # Performance side-bar.
+    ######################################################
+
+    A] Below code results in all strings Loaded into memory for temporary,  then merged into a second string.
+    aka Memory = O(2*file_conent) and CPU O(2*file_content)
+
+    B] An alternative is to do += on a string results in a new memory allocation and copy.
+    aka Memory = O(file_content) , CPU O(files*file_content)
+
+    However, this stuff needs to be measured, as it's also a funtion of GC. Not in the GC versions there is no change in CPU
+    Eg.
+
+    For A] if GC happens after every "join", then were down to O(file_content).
+    For B] if no GC, then it's still O(2*file_content)
+    """
+
+    # Make single string from all the file contents.
+    list_file_content = [Path(file_name).read_text() for file_name in corpus_files]
+    list_file_content = [clean_string(line) for line in list_file_content]
+    all_file_content = " ".join(list_file_content)
 
     # Clean out some punctuation (although does that mess up stemming later??)
     initial_words = all_file_content.replace(",", " ").replace(".", " ").split()
 
     words = [word for word in initial_words if word.lower() not in all_stop_words]
+
     return Corpus(
         path=corpus_path,
         all_content=all_file_content,
@@ -151,7 +171,7 @@ def LoadCorpus(corpus_path: str) -> Corpus:
     )
 
 
-@lru_cache(maxsize=100)
+@lru_cache(maxsize=1000)
 def DocForCorpus(nlp, corpus: Corpus):
     print(
         f"initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
@@ -169,12 +189,7 @@ def DocForCorpus(nlp, corpus: Corpus):
     return doc
 
 
-# -
-
-
-# # Build corpus from my journal in igor2/750words
-
-# +
+# Build corpus from my journal in igor2/750words
 # make function path for y/m
 
 
@@ -189,53 +204,67 @@ def DocForCorpus(nlp, corpus: Corpus):
 # B - Generate paths based on actual locations.
 
 
-def glob750_latest(year, month):
-    assert month in range(1, 13)
-    base750 = "~/gits/igor2/750words/"
-    return f"{base750}/{year}-{month:02}-*.md"
+# JournalMonth
+# Get Path
+# Version For Date
 
 
-def glob750_new_archive(year, month):
-    assert month in range(1, 13)
-    base750 = "~/gits/igor2/750words_new_archive/"
-    return f"{base750}/{year}-{month:02}-*.md"
+def build_corpus_paths():
+    def glob750_latest(year, month):
+        assert month in range(1, 13)
+        base750 = "~/gits/igor2/750words/"
+        return f"{base750}/{year}-{month:02}-*.md"
+
+    def glob750_new_archive(year, month):
+        assert month in range(1, 13)
+        base750 = "~/gits/igor2/750words_new_archive/"
+        return f"{base750}/{year}-{month:02}-*.md"
+
+    def glob750_old_archive(year, month):
+        assert month in range(1, 13)
+        base750archive = "~/gits/igor2/750words_archive/"
+        return f"{base750archive}/750 Words-export-{year}-{month:02}-01.txt"
+
+    def corpus_paths_months_for_year(year):
+        return [glob750_old_archive(year, month) for month in range(1, 13)]
+
+    # Corpus in "old archieve"  from 2012-2017.
+    corpus_path_months = {
+        year: corpus_paths_months_for_year(year) for year in range(2012, 2018)
+    }
+
+    # 2018 Changes from old archive to new_archieve.
+    # 2018 Jan/Feb/October don't have enough data for analysis
+    corpus_path_months[2018] = [
+        glob750_old_archive(2018, month) for month in range(3, 8)
+    ] + [glob750_new_archive(2018, month) for month in (9, 11, 12)]
+
+    corpus_path_months[2019] = [
+        glob750_new_archive(2019, month) for month in range(1, 13)
+    ]
+    corpus_path_months[2020] = [
+        glob750_new_archive(2020, month) for month in range(1, 13)
+    ]
+    corpus_path_months[2021] = [
+        glob750_new_archive(2021, month) for month in range(1, 7)
+    ]
+
+    corpus_path_months_trailing = (
+        [glob750_new_archive(2018, month) for month in (9, 11, 12)]
+        + corpus_path_months[2019]
+        + corpus_path_months[2020]
+        + corpus_path_months[2021]
+    )
+    corpus_path_months_trailing
+    return corpus_path_months, corpus_path_months_trailing
 
 
-def glob750_old_archive(year, month):
-    assert month in range(1, 13)
-    base750archive = "~/gits/igor2/750words_archive/"
-    return f"{base750archive}/750 Words-export-{year}-{month:02}-01.txt"
+# Load simple corpus for my journal
 
+corpus_path, corpus_path_months_trailing = build_corpus_paths()
 
-def corpus_paths_months_for_year(year):
-    return [glob750_old_archive(year, month) for month in range(1, 13)]
-
-
-# Corpus in "old archieve"  from 2012-2017.
-corpus_path_months = {
-    year: corpus_paths_months_for_year(year) for year in range(2012, 2018)
-}
-
-# 2018 Changes from old archive to new_archieve.
-# 2018 Jan/Feb/October don't have enough data for analysis
-corpus_path_months[2018] = [
-    glob750_old_archive(2018, month) for month in range(3, 8)
-] + [glob750_new_archive(2018, month) for month in (9, 11, 12)]
-
-corpus_path_months[2019] = [glob750_new_archive(2019, month) for month in range(1, 13)]
-corpus_path_months[2020] = [glob750_new_archive(2020, month) for month in range(1, 13)]
-corpus_path_months[2021] = [glob750_new_archive(2021, month) for month in range(1, 7)]
-
-corpus_path_months_trailing = (
-    [glob750_new_archive(2018, month) for month in (9, 11, 12)]
-    + corpus_path_months[2019]
-    + corpus_path_months[2020]
-    + corpus_path_months[2021]
+latest_corpus_path = corpus_path_months_trailing[-1]
+corpus = LoadCorpus(latest_corpus_path)
+print(
+    f"{latest_corpus_path} initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
 )
-
-corpus_path_months_trailing
-
-# ### Load simple corpus for my journal
-
-corpus = LoadCorpus(corpus_path_months[2020][-1])
-print(f"initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}")
