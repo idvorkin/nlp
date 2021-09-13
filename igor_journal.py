@@ -1,5 +1,5 @@
-from typing import List
-from dataclasses import dataclass
+from typing import List, Dict
+from dataclasses import dataclass, field
 
 import glob
 import os
@@ -11,6 +11,9 @@ from nltk.corpus import stopwords
 
 from functools import lru_cache
 import arrow
+from datetime import date
+from collections import defaultdict
+from icecream import ic
 
 # copied from pandas util (yuk)
 
@@ -50,6 +53,7 @@ domain_stop_words = set(
     """.lower().split()
 )
 
+
 # Load corpus of my daily ramblings
 @dataclass
 class Corpus:
@@ -74,7 +78,7 @@ class Corpus:
     initial_words: List[str]
     words: List[str]
     journal: str = ""
-    version: int =  0
+    version: int = 0
     grateful: List[str] = None
 
     def __hash__(self):
@@ -123,6 +127,74 @@ def clean_string(line):
     return capitalizeProperNouns(fixTypos(line))
 
 
+class JournalEntry:
+    def __init__(self,path):
+        self.original: List[str] = []
+        self.sections: Dict[str, List[str]] = {}
+        self.sections_with_list: Dict[str, List[str]] = {}
+        self.date: date = date(2099,1,1)
+        self.journal: str= "" # Just the cleaned journal entries
+        self.build(path)
+
+    def __str__(self):
+        out =""
+        out += f"Date:{self.date}\n"
+        for _list in self.sections_with_list.items():
+            out += f"List:{_list[0]}\n"
+            for item in _list[1]:
+                out += f"  * {item}\n"
+        for section in self.sections.items():
+            out += f"Section:{section[0]}\n"
+            for line in section[1][:2]:
+                out += f" {line[:80]}\n"
+
+        return out
+
+
+
+    # Consider starting with text so can handle XML entries
+    def build(self, path):
+        output = []
+        current_section = None  # Template contains a series of Markdown H2's
+        sections = defaultdict(list)
+        sections_as_list = defaultdict(list)
+        _file = open(path)  # should use with, but don't want extra indentation.
+        while line := _file.readline():
+            is_blank_line = line.strip() == ""
+            line = clean_string(line).strip("\n")
+
+            if is_blank_line:
+                continue
+
+            is_date_line = line.startswith("750 words for:20")
+            if is_date_line:
+                self.date = date(2099, 1, 1)  # TODO use regexp and parse
+                continue
+
+            is_section_line = line.startswith("##")
+            if is_section_line:
+                current_section = line.replace("## ", "")
+                continue
+
+            output.append(line)
+            sections[current_section].append(line)
+
+            is_list_item = line.startswith("1.")
+            if is_list_item:
+                list_item = line.replace("1. ", "")
+                sections_as_list[current_section].append(list_item)
+                continue
+
+        _file.close()
+        ic (sections.keys())
+        ic (sections_as_list)
+        self.sections, self.sections_with_list = sections, sections_as_list
+
+# Sanity Test
+test_journal_entry = JournalEntry(os.path.expanduser("~/gits/igor2/750words_new_archive/2021-01-08.md"))
+
+
+
 @lru_cache(maxsize=100)
 def LoadCorpus(corpus_path: str) -> Corpus:
 
@@ -146,7 +218,8 @@ def LoadCorpus(corpus_path: str) -> Corpus:
     B] An alternative is to do += on a string results in a new memory allocation and copy.
     aka Memory = O(file_content) , CPU O(files*file_content)
 
-    However, this stuff needs to be measured, as it's also a funtion of GC. Not in the GC versions there is no change in CPU
+    However, this stuff needs to be measured, as it's also a funtion of GC.
+    Not in the GC versions there is no change in CPU
     Eg.
 
     For A] if GC happens after every "join", then were down to O(file_content).

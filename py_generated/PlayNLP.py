@@ -57,6 +57,10 @@ import igor_journal
 # since co-editting files in another directory, need to do a reload
 importlib.reload(igor_journal)
 from igor_journal import corpus_path_months
+from icecream import ic
+# -
+
+print(igor_journal.test_journal_entry)
 
 # +
 # This function is in the first block so you don't
