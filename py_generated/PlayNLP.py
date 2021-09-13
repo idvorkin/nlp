@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: light
