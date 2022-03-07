@@ -12,7 +12,8 @@
   },
   "lint-staged": {
       "*.md": [
-          "prettier --write"
+          "prettier --write",
+          "markdownlint --fix"
       ],
       "*.py": [
           "black"
