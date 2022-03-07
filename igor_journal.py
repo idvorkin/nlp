@@ -139,10 +139,9 @@ class JournalEntry:
         self.original: List[str] = []
         self.sections: Dict[str, List[str]] = {}
         self.sections_with_list: Dict[str, List[str]] = {}
-        self.unamed_sections: List[str] = []
         self.date: date = date(2099,1,1)
         self.journal: str= "" # Just the cleaned journal entries
-        self.build(path)
+        self.from_markdown_file(path)
 
     def __str__(self):
         out =""
@@ -160,7 +159,7 @@ class JournalEntry:
 
 
 
-    def Body(self):
+    def body(self):
 
         # 2019-01 version has Journal section
         if ("Journal" in self.sections):
@@ -172,7 +171,7 @@ class JournalEntry:
 
 
     # Consider starting with text so can handle XML entries
-    def build(self, path):
+    def from_markdown_file(self, path):
         output = []
         current_section = JournalEntry.default_journal_section
         sections = defaultdict(list)
@@ -348,7 +347,7 @@ def build_corpus_paths():
 def body(journal_for:datetime=typer.Argument("2021-01-08")):
 
     entry = JournalEntry(os.path.expanduser(f"~/gits/igor2/750words_new_archive/{journal_for.date()}.md"))
-    for l in entry.Body():
+    for l in entry.body():
         print (l)
 
 @app.command()
@@ -356,7 +355,7 @@ def journal(journal_for:datetime=typer.Argument("2021-01-08")):
 
     test_journal_entry = JournalEntry(os.path.expanduser(f"~/gits/igor2/750words_new_archive/{journal_for.date()}.md"))
     print (test_journal_entry)
-    print ("body\n",test_journal_entry.Body())
+    print ("body\n",test_journal_entry.body())
 
 @app.command()
 def entries(corpus_for:datetime=typer.Argument("2021-01-08")):
