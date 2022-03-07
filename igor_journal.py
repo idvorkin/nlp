@@ -13,11 +13,11 @@ from nltk.corpus import stopwords
 
 from functools import lru_cache
 import arrow
-from datetime import date
 from collections import defaultdict
 from icecream import ic
 import typer
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,date
+
 
 app = typer.Typer()
 
@@ -42,7 +42,7 @@ def time_it(message):
 # This function is in the first block so you don't
 # recreate it willy nilly, as it includes a cache.
 
-nltk.download("stopwords")
+# nltk.download("stopwords")
 
 # Remove domain words that don't help analysis.
 # Should be factored out
@@ -187,7 +187,7 @@ class JournalEntry:
 
             is_date_line = line.startswith("750 words for:20")
             if is_date_line:
-                self.date = date(2099, 1, 1)  # TODO use regexp and parse
+                self.date = date.fromisoformat(line.split(":")[1])
                 continue
 
             is_section_line = line.startswith("##")
@@ -343,6 +343,13 @@ def build_corpus_paths():
     )
     corpus_path_months_trailing
     return corpus_path_months, corpus_path_months_trailing
+
+@app.command()
+def body(journal_for:datetime=typer.Argument("2021-01-08")):
+
+    entry = JournalEntry(os.path.expanduser(f"~/gits/igor2/750words_new_archive/{journal_for.date()}.md"))
+    for l in entry.Body():
+        print (l)
 
 @app.command()
 def journal(journal_for:datetime=typer.Argument("2021-01-08")):
