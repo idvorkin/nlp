@@ -321,7 +321,7 @@ def build_corpus_paths():
     # 2018 Changes from old archive to new_archieve.
     # 2018 Jan/Feb/October don't have enough data for analysis
     corpus_path_months[2018] = [
-        glob750_old_archive(2018, month) for month in range(3, 8)
+        glob750_old_archive(2018, month) for month in range(1, 8)
     ] + [glob750_new_archive(2018, month) for month in (9, 11, 12)]
 
     corpus_path_months[2019] = [
