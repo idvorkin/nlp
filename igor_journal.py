@@ -1,5 +1,7 @@
+#!python3
 from typing import List, Dict
 from dataclasses import dataclass, field
+from loguru import logger
 
 import glob
 import os
@@ -14,6 +16,10 @@ import arrow
 from datetime import date
 from collections import defaultdict
 from icecream import ic
+import typer
+from datetime import datetime, timedelta
+
+app = typer.Typer()
 
 # copied from pandas util (yuk)
 
@@ -128,10 +134,12 @@ def clean_string(line):
 
 
 class JournalEntry:
+    default_journal_section = "default_journal"
     def __init__(self,path):
         self.original: List[str] = []
         self.sections: Dict[str, List[str]] = {}
         self.sections_with_list: Dict[str, List[str]] = {}
+        self.unamed_sections: List[str] = []
         self.date: date = date(2099,1,1)
         self.journal: str= "" # Just the cleaned journal entries
         self.build(path)
@@ -152,10 +160,21 @@ class JournalEntry:
 
 
 
+    def Body(self):
+
+        # 2019-01 version has Journal section
+        if ("Journal" in self.sections):
+            return self.sections["Journal"]
+
+        # Before that, return the body section 
+        return self.sections[JournalEntry.default_journal_section]
+
+
+
     # Consider starting with text so can handle XML entries
     def build(self, path):
         output = []
-        current_section = None  # Template contains a series of Markdown H2's
+        current_section = JournalEntry.default_journal_section
         sections = defaultdict(list)
         sections_as_list = defaultdict(list)
         _file = open(path)  # should use with, but don't want extra indentation.
@@ -186,13 +205,7 @@ class JournalEntry:
                 continue
 
         _file.close()
-        ic (sections.keys())
-        ic (sections_as_list)
         self.sections, self.sections_with_list = sections, sections_as_list
-
-# Sanity Test
-test_journal_entry = JournalEntry(os.path.expanduser("~/gits/igor2/750words_new_archive/2021-01-08.md"))
-
 
 
 @lru_cache(maxsize=100)
@@ -331,13 +344,42 @@ def build_corpus_paths():
     corpus_path_months_trailing
     return corpus_path_months, corpus_path_months_trailing
 
+@app.command()
+def journal(journal_for:datetime=typer.Argument("2021-01-08")):
 
-# Load simple corpus for my journal
+    test_journal_entry = JournalEntry(os.path.expanduser(f"~/gits/igor2/750words_new_archive/{journal_for.date()}.md"))
+    print (test_journal_entry)
+    print ("body\n",test_journal_entry.Body())
 
-corpus_path, corpus_path_months_trailing = build_corpus_paths()
+@app.command()
+def entries(corpus_for:datetime=typer.Argument("2021-01-08")):
+    corpus_path, corpus_path_months_trailing = build_corpus_paths()
+    ic(corpus_for)
+    the_path = corpus_path[corpus_for.year][corpus_for.month-1]
+    print (the_path)
+    corpus_files = glob.glob(os.path.expanduser(the_path))
+    for file_name in corpus_files:
+        print(file_name)
 
-latest_corpus_path = corpus_path_months_trailing[-1]
-corpus = LoadCorpus(latest_corpus_path)
-print(
+
+@app.command()
+def sanity():
+
+    # Load simple corpus for my journal
+
+    corpus_path, corpus_path_months_trailing = build_corpus_paths()
+
+    latest_corpus_path = corpus_path_months_trailing[-1]
+    corpus = LoadCorpus(latest_corpus_path)
+    print(
     f"{latest_corpus_path} initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
-)
+    )
+    test_journal_entry = JournalEntry(os.path.expanduser("~/gits/igor2/750words_new_archive/2021-01-08.md"))
+
+
+@logger.catch
+def app_with_loguru():
+    app()
+
+if __name__ == "__main__":
+    app_with_loguru()
