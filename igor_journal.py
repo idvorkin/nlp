@@ -15,7 +15,7 @@ from functools import lru_cache
 from collections import defaultdict
 from icecream import ic
 import typer
-from datetime import datetime, timedelta, date 
+from datetime import datetime, timedelta, date
 
 
 app = typer.Typer()
@@ -26,7 +26,7 @@ app = typer.Typer()
 @dataclass
 class Measure_Helper:
     message: str
-    start_time:datetime =  datetime.now()
+    start_time: datetime = datetime.now()
 
     def stop(self):
         print(f"-- [{(datetime.now() - self.start_time).seconds}s]: {self.message}")
@@ -84,7 +84,7 @@ class Corpus:
     words: List[str]
     journal: str = ""
     version: int = 0
-    grateful: List[str]  = None
+    grateful: List[str] = None
 
     def __hash__(self):
         return self.path.__hash__()
@@ -132,12 +132,13 @@ def clean_string(line):
     return capitalizeProperNouns(fixTypos(line))
 
 
-class Seven50WordExport:
-    # 750 words exports only has a body. Before I di dthe other stuff.
-    def __init__(self):
-        self.entries = Dict[date,List[str]]() # map date to body.
+class S50Export:
+    # 750 words exports only has a body,  sometimes it has inline stats, consider stripping them.
+    def __init__(self, path: Path):
+        self.entries: Dict[date, List[str]] = dict()
+        self.Load(path)
 
-    def Load(self, path:Path):
+    def Load(self, path: Path):
         # entry starts with
         # Date: \s+ (\d{4}-\d{2}-\d{2})
         # skip meta data like ^Words:\s+\d+$
@@ -145,29 +146,42 @@ class Seven50WordExport:
         # WAKEUP:
         # Read the file
 
-        entry_date:date = date.min
+        entry_date: date = date.min
         entry_body = []
         f = path.open()
         for line in f:
-            is_end_of_entry = line == "------ ENTRY ------"
+            line = clean_string(line).strip("\n")
+            is_end_of_entry = "-- ENTRY --" in line
             if is_end_of_entry and entry_date != date.min:
                 # also do this when exiting the loop
                 self.entries[entry_date] = entry_body
                 entry_date = date.min
                 entry_body = []
                 continue
+            is_date_line = line.startswith("Date:")
+            if is_date_line:
+                entry_date = date.fromisoformat(line.split(":")[1].strip())
+                continue
 
-        #finish the last entry if required
+            # meta data lines
+            if line.startswith("Words:   "):
+                continue
+            if line.startswith("Minutes: "):
+                continue
+
+            entry_body.append(line)
+
+        # finish the last entry if required
         if entry_date != date.min:
             self.entries[entry_date] = entry_body
 
-        return 
+        return
 
 
 class JournalEntry:
     default_journal_section = "default_journal"
 
-    def __init__(self, for_date:date):
+    def __init__(self, for_date: date):
         self.original: List[str] = []
         self.sections: Dict[str, List[str]] = {}
         self.sections_with_list: Dict[str, List[str]] = {}
@@ -175,7 +189,7 @@ class JournalEntry:
         self.journal: str = ""  # Just the cleaned journal entries
         self.init_from_date(for_date)
 
-    def init_from_date(self, for_date:date):
+    def init_from_date(self, for_date: date):
 
         errors = []
 
@@ -187,22 +201,23 @@ class JournalEntry:
             self.from_markdown_file(path)
             return
 
-        errors.append(f"Not found new archive {path}")    
+        errors.append(f"Not found new archive {path}")
 
         path = base_path / "750words/{for_date}.md"
 
         if path.exists():
             self.from_markdown_file(path)
-            return 
+            return
 
-        errors.append(f"Not found latest {path}")    
+        errors.append(f"Not found latest {path}")
 
         success = self.from_750words_export(for_date)
         if success:
-            return 
+            return
+
+        errors.append(f"Not found in 750words export")
 
         raise FileNotFoundError(f"No file for that date {for_date}: {errors}")
-
 
     def __str__(self):
         out = ""
@@ -227,22 +242,24 @@ class JournalEntry:
         # Before that, return the body section
         return self.sections[JournalEntry.default_journal_section]
 
-    def from_750words_export(self, for_date:date):
+    def from_750words_export(self, for_date: date):
         # find year and month file - if not exists, exit
-        path = Path(f"~/gits/igor2/750words_archive/750 Words-export-{for_date.year}-{for_date.month:02d}-01.txt").expanduser()
-        ic (path)
+        path = Path(
+            f"~/gits/igor2/750words_archive/750 Words-export-{for_date.year}-{for_date.month:02d}-01.txt"
+        ).expanduser()
         if path.exists:
-            ic ("Found Archive")
+            archive = S50Export(path)
+            if for_date in archive.entries:
+                self.date = for_date
+                self.sections[JournalEntry.default_journal_section] = archive.entries[
+                    for_date
+                ]
             return True
 
         return False
 
-    def parse_750word_export(self, from_date:date, path:Path):
-        pass
-
-
     # Consider starting with text so can handle XML entries
-    def from_markdown_file(self, path:Path):
+    def from_markdown_file(self, path: Path):
         output = []
         current_section = JournalEntry.default_journal_section
         sections = defaultdict(list)
@@ -427,19 +444,28 @@ def body(journal_for: datetime = typer.Argument("2021-05-24")):
 def journal(journal_for: datetime = typer.Argument("2021-01-08")):
 
     test_journal_entry = JournalEntry(journal_for.date())
-    print(test_journal_entry)
-    print("body\n", test_journal_entry.body())
+    print("\n".join(test_journal_entry.body()))
 
 
 @app.command()
 def entries(corpus_for: datetime = typer.Argument("2021-01-08")):
     corpus_path, corpus_path_months_trailing = build_corpus_paths()
     ic(corpus_for)
-    the_path = corpus_path[corpus_for.year][corpus_for.month - 1]
-    print(the_path)
-    corpus_files = glob.glob(os.path.expanduser(the_path))
+    the_path = os.path.expanduser(corpus_path[corpus_for.year][corpus_for.month - 1])
+    if "export" in the_path:
+        archive = S50Export(Path(the_path))
+        for k, v in archive.entries.items():
+            print(k)
+
+    corpus_files = glob.glob(the_path)
     for file_name in corpus_files:
         print(file_name)
+
+
+@app.command()
+def s50_export():
+    test_journal_entry = JournalEntry(date(2012, 4, 8))
+    print("hi")
 
 
 @app.command()
@@ -454,7 +480,7 @@ def sanity():
     print(
         f"{latest_corpus_path} initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
     )
-    test_journal_entry = JournalEntry( date(2021,1,8))
+    test_journal_entry = JournalEntry(date(2021, 1, 8))
 
 
 @logger.catch
