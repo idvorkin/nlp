@@ -456,10 +456,11 @@ def entries(corpus_for: datetime = typer.Argument("2021-01-08")):
         archive = S50Export(Path(the_path))
         for k, v in archive.entries.items():
             print(k)
+        return
 
     corpus_files = glob.glob(the_path)
-    for file_name in corpus_files:
-        print(file_name)
+    for file_name in sorted(corpus_files):
+        print(file_name.split("/")[-1].replace(".md", ""))
 
 
 @app.command()
@@ -480,7 +481,14 @@ def sanity():
     print(
         f"{latest_corpus_path} initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
     )
-    test_journal_entry = JournalEntry(date(2021, 1, 8))
+    # load using new archive
+    new_archive_date = date(2021, 1, 8)
+    test_journal_entry = JournalEntry(new_archive_date)
+    print(new_archive_date, test_journal_entry.body()[0:2])
+    # load using new archive
+    old_archive_date = date(2012, 4, 8)
+    test_journal_entry = JournalEntry(old_archive_date)
+    print(old_archive_date, test_journal_entry.body()[0:2])
 
 
 @logger.catch
