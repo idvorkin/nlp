@@ -84,7 +84,7 @@ class Corpus:
     words: List[str]
     journal: str = ""
     version: int = 0
-    grateful: List[str] = None
+    grateful: List[str]  = None
 
     def __hash__(self):
         return self.path.__hash__()
@@ -132,6 +132,38 @@ def clean_string(line):
     return capitalizeProperNouns(fixTypos(line))
 
 
+class Seven50WordExport:
+    # 750 words exports only has a body. Before I di dthe other stuff.
+    def __init__(self):
+        self.entries = Dict[date,List[str]]() # map date to body.
+
+    def Load(self, path:Path):
+        # entry starts with
+        # Date: \s+ (\d{4}-\d{2}-\d{2})
+        # skip meta data like ^Words:\s+\d+$
+        # skip meta data like ^Minutes:\s+\d+$
+        # WAKEUP:
+        # Read the file
+
+        entry_date:date = date.min
+        entry_body = []
+        f = path.open()
+        for line in f:
+            is_end_of_entry = line == "------ ENTRY ------"
+            if is_end_of_entry and entry_date != date.min:
+                # also do this when exiting the loop
+                self.entries[entry_date] = entry_body
+                entry_date = date.min
+                entry_body = []
+                continue
+
+        #finish the last entry if required
+        if entry_date != date.min:
+            self.entries[entry_date] = entry_body
+
+        return 
+
+
 class JournalEntry:
     default_journal_section = "default_journal"
 
@@ -145,21 +177,28 @@ class JournalEntry:
 
     def init_from_date(self, for_date:date):
 
+        errors = []
+
         # check in new archive
-        path = os.path.expanduser(f"~/gits/igor2/750words_new_archive/{for_date}.md")
-        if os.path.exists(path):
+        path = Path(f"~/gits/igor2/750words_new_archive/{for_date}.md").expanduser()
+        if path.exists():
             self.from_markdown_file(path)
             return
 
-        path = os.path.expanduser(f"~/gits/igor2/750words/{for_date}.md")
-        if os.path.exists(path):
+        errors.append(f"Not found new archive {path}")    
+
+        path = Path(f"~/gits/igor2/750words/{for_date}.md").expanduser()
+        if path.exists():
             self.from_markdown_file(path)
             return 
 
-        raise FileNotFoundError(f"No file for that date {for_date}: {path}")
+        errors.append(f"Not found latest {path}")    
 
-    def from_file(self, path):
-        pass
+        success = self.from_750words_export(for_date)
+        if success:
+            return 
+
+        raise FileNotFoundError(f"No file for that date {for_date}: {errors}")
 
 
     def __str__(self):
@@ -185,13 +224,27 @@ class JournalEntry:
         # Before that, return the body section
         return self.sections[JournalEntry.default_journal_section]
 
+    def from_750words_export(self, for_date:date):
+        # find year and month file - if not exists, exit
+        path = Path(f"~/gits/igor2/750words_archive/750 Words-export-{for_date.year}-{for_date.month:02d}-01.txt").expanduser()
+        ic (path)
+        if path.exists:
+            ic ("Found Archive")
+            return True
+
+        return False
+
+    def parse_750word_export(self, from_date:date, path:Path):
+        pass
+
+
     # Consider starting with text so can handle XML entries
-    def from_markdown_file(self, path):
+    def from_markdown_file(self, path:Path):
         output = []
         current_section = JournalEntry.default_journal_section
         sections = defaultdict(list)
         sections_as_list = defaultdict(list)
-        _file = open(path)  # should use with, but don't want extra indentation.
+        _file = path.open()
         while line := _file.readline():
             is_blank_line = line.strip() == ""
             line = clean_string(line).strip("\n")
@@ -398,9 +451,7 @@ def sanity():
     print(
         f"{latest_corpus_path} initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
     )
-    test_journal_entry = JournalEntry(
-        os.path.expanduser("~/gits/igor2/750words_new_archive/2021-01-08.md")
-    )
+    test_journal_entry = JournalEntry( date(2021,1,8))
 
 
 @logger.catch
