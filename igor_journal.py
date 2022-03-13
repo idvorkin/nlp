@@ -12,11 +12,10 @@ import nltk
 from nltk.corpus import stopwords
 
 from functools import lru_cache
-import arrow
 from collections import defaultdict
 from icecream import ic
 import typer
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date 
 
 
 app = typer.Typer()
@@ -27,15 +26,15 @@ app = typer.Typer()
 @dataclass
 class Measure_Helper:
     message: str
-    start_time: arrow.Arrow
+    start_time:datetime =  datetime.now()
 
     def stop(self):
-        print(f"-- [{(arrow.now() - self.start_time).seconds}s]: {self.message}")
+        print(f"-- [{(datetime.now() - self.start_time).seconds}s]: {self.message}")
 
 
 def time_it(message):
     print(f"++ {message}")
-    return Measure_Helper(message, arrow.now())
+    return Measure_Helper(message, datetime.now())
 
 
 # +
@@ -136,13 +135,32 @@ def clean_string(line):
 class JournalEntry:
     default_journal_section = "default_journal"
 
-    def __init__(self, path):
+    def __init__(self, for_date:date):
         self.original: List[str] = []
         self.sections: Dict[str, List[str]] = {}
         self.sections_with_list: Dict[str, List[str]] = {}
         self.date: date = date(2099, 1, 1)
         self.journal: str = ""  # Just the cleaned journal entries
-        self.from_markdown_file(path)
+        self.init_from_date(for_date)
+
+    def init_from_date(self, for_date:date):
+
+        # check in new archive
+        path = os.path.expanduser(f"~/gits/igor2/750words_new_archive/{for_date}.md")
+        if os.path.exists(path):
+            self.from_markdown_file(path)
+            return
+
+        path = os.path.expanduser(f"~/gits/igor2/750words/{for_date}.md")
+        if os.path.exists(path):
+            self.from_markdown_file(path)
+            return 
+
+        raise FileNotFoundError(f"No file for that date {for_date}: {path}")
+
+    def from_file(self, path):
+        pass
+
 
     def __str__(self):
         out = ""
@@ -342,11 +360,9 @@ def build_corpus_paths():
 
 
 @app.command()
-def body(journal_for: datetime = typer.Argument("2021-01-08")):
+def body(journal_for: datetime = typer.Argument("2021-05-24")):
 
-    entry = JournalEntry(
-        os.path.expanduser(f"~/gits/igor2/750words_new_archive/{journal_for.date()}.md")
-    )
+    entry = JournalEntry(journal_for.date())
     for l in entry.body():
         print(l)
 
@@ -354,9 +370,7 @@ def body(journal_for: datetime = typer.Argument("2021-01-08")):
 @app.command()
 def journal(journal_for: datetime = typer.Argument("2021-01-08")):
 
-    test_journal_entry = JournalEntry(
-        os.path.expanduser(f"~/gits/igor2/750words_new_archive/{journal_for.date()}.md")
-    )
+    test_journal_entry = JournalEntry(journal_for.date())
     print(test_journal_entry)
     print("body\n", test_journal_entry.body())
 
