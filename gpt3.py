@@ -106,7 +106,7 @@ def tldr(
             # ; is newline
             text = ";**tl,dr:* " + prep_for_fzf(c.text)
         else:
-            text = f"\n**tl,dr:** {text}"
+            text = f"\n**tl,dr:** {c.text}"
         print(text)
 
 
