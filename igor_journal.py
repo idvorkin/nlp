@@ -179,15 +179,18 @@ class JournalEntry:
 
         errors = []
 
+        base_path = Path(f"~/gits/igor2").expanduser()
+
         # check in new archive
-        path = Path(f"~/gits/igor2/750words_new_archive/{for_date}.md").expanduser()
+        path = base_path / f"750words_new_archive/{for_date}.md"
         if path.exists():
             self.from_markdown_file(path)
             return
 
         errors.append(f"Not found new archive {path}")    
 
-        path = Path(f"~/gits/igor2/750words/{for_date}.md").expanduser()
+        path = base_path / "750words/{for_date}.md"
+
         if path.exists():
             self.from_markdown_file(path)
             return 
