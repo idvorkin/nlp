@@ -203,7 +203,7 @@ class JournalEntry:
 
         errors.append(f"Not found new archive {path}")
 
-        path = base_path / "750words/{for_date}.md"
+        path = base_path / f"750words/{for_date}.md"
 
         if path.exists():
             self.from_markdown_file(path)
