@@ -432,20 +432,13 @@ def build_corpus_paths():
     return corpus_path_months, corpus_path_months_trailing
 
 
+# Todo, consider adding shortcut for today...
 @app.command()
 def body(journal_for: datetime = typer.Argument("2021-05-24")):
 
     entry = JournalEntry(journal_for.date())
     for l in entry.body():
         print(l)
-
-
-@app.command()
-def journal(journal_for: datetime = typer.Argument("2021-01-08")):
-
-    test_journal_entry = JournalEntry(journal_for.date())
-    print("\n".join(test_journal_entry.body()))
-
 
 @app.command()
 def entries(corpus_for: datetime = typer.Argument("2021-01-08")):
