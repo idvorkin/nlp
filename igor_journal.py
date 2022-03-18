@@ -419,7 +419,10 @@ def build_corpus_paths():
         glob750_new_archive(2020, month) for month in range(1, 13)
     ]
     corpus_path_months[2021] = [
-        glob750_new_archive(2021, month) for month in range(1, 7)
+        glob750_new_archive(2021, month) for month in range(1, 13)
+    ]
+    corpus_path_months[2022] = [
+        glob750_new_archive(2022, month) for month in range(1, 13)
     ]
 
     corpus_path_months_trailing = (
@@ -427,6 +430,7 @@ def build_corpus_paths():
         + corpus_path_months[2019]
         + corpus_path_months[2020]
         + corpus_path_months[2021]
+        + corpus_path_months[2022]
     )
     corpus_path_months_trailing
     return corpus_path_months, corpus_path_months_trailing
