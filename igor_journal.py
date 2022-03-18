@@ -436,9 +436,12 @@ def build_corpus_paths():
     return corpus_path_months, corpus_path_months_trailing
 
 
-# Todo, consider adding shortcut for today...
+# Make today be the default date.
+
 @app.command()
-def body(journal_for: datetime = typer.Argument("2021-05-24")):
+def body(journal_for: datetime = typer.Argument(datetime.now().date().isoformat())):
+
+    # Use today as the default, this encourages me to write an article to make testing possible too
 
     entry = JournalEntry(journal_for.date())
     for l in entry.body():
