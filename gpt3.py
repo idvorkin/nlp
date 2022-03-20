@@ -315,6 +315,11 @@ def fix(
         top_p=1,
     )
     text = response.choices[0].text
+
+    # remove a trailing newline
+    if text[-1] == "\n":
+        text = text[:-1]
+
     if to_fzf:
         # ; is newline
         print(prep_for_fzf(text))
