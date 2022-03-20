@@ -14,8 +14,8 @@ import re
 original_print = print
 is_from_console = False
 
-text_model_best = "text-davinci-001"
-code_model_best = "code-davinci-001"
+text_model_best = "text-davinci-002"
+code_model_best = "code-davinci-002"
 
 
 def bold_console(s):
@@ -297,6 +297,29 @@ def do_complete(prompt, max_tokens):
 def complete(prompt: str, tokens: int = typer.Option(50)):
     response_text = do_complete(prompt, tokens)
     print(f"[bold]{prompt}[/bold] {response_text}")
+
+
+@app.command()
+def fix(
+    tokens: int = typer.Option(300),
+    responses: int = typer.Option(1),
+    debug: bool = False,
+    to_fzf: bool = typer.Option(False),
+):
+    prompt_input = "\n".join(sys.stdin.readlines())
+    response = openai.Edit.create(
+        engine="text-davinci-edit-001",
+        input=prompt_input,
+        instruction="Fix the spelling and grammer",
+        temperature=0,
+        top_p=1,
+    )
+    text = response.choices[0].text
+    if to_fzf:
+        # ; is newline
+        print(prep_for_fzf("\n" + text))
+    else:
+        print(text)
 
 
 @app.command()
