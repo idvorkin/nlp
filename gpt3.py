@@ -306,7 +306,7 @@ def fix(
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
 ):
-    prompt_input = "\n".join(sys.stdin.readlines())
+    prompt_input = "".join(sys.stdin.readlines())
     response = openai.Edit.create(
         engine="text-davinci-edit-001",
         input=prompt_input,
@@ -317,7 +317,7 @@ def fix(
     text = response.choices[0].text
     if to_fzf:
         # ; is newline
-        print(prep_for_fzf("\n" + text))
+        print(prep_for_fzf(text))
     else:
         print(text)
 
