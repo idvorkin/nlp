@@ -412,7 +412,7 @@ def build_corpus_paths():
     # 2018 Changes from old archive to new_archieve.
     # 2018 Jan/Feb/October don't have enough data for analysis
     corpus_path_months[2018] = [
-        glob750_old_archive(2018, month) for month in range(1, 8)
+        glob750_old_archive(2018, month) for month in range(1, 9)
     ] + [glob750_new_archive(2018, month) for month in (9, 11, 12)]
 
     corpus_path_months[2019] = [
@@ -454,13 +454,19 @@ def body(journal_for: datetime = typer.Argument(datetime.now().date().isoformat(
 def entries_for_month(corpus_for: datetime):
     corpus_path, corpus_path_months_trailing = build_corpus_paths()
     ic(corpus_for)
-    the_path = os.path.expanduser(corpus_path[corpus_for.year][corpus_for.month - 1])
-    if "export" in the_path:
-        archive = S50Export(Path(the_path))
+
+    old_export_path = Path(
+        f"~/gits/igor2/750words_archive/750 Words-export-{corpus_for.year}-{corpus_for.month:02d}-01.txt"
+    ).expanduser()
+
+    if old_export_path.exists():
+        archive = S50Export(old_export_path)
         for k, v in archive.entries.items():
             yield k
         return
 
+    # try new path
+    the_path = os.path.expanduser(corpus_path[corpus_for.year][corpus_for.month - 1])
     corpus_files = glob.glob(the_path)
     for file_name in sorted(corpus_files):
         yield file_name.split("/")[-1].replace(".md", "")
