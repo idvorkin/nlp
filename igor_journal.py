@@ -148,6 +148,9 @@ class S50Export:
 
         entry_date: date = date.min
         entry_body = []
+        if not path.exists():
+            return
+
         f = path.open()
         for line in f:
             line = clean_string(line).strip("\n")
@@ -447,20 +450,26 @@ def body(journal_for: datetime = typer.Argument(datetime.now().date().isoformat(
     for l in entry.body():
         print(l)
 
-@app.command()
-def entries(corpus_for: datetime = typer.Argument("2021-01-08")):
+
+def entries_for_month(corpus_for: datetime):
     corpus_path, corpus_path_months_trailing = build_corpus_paths()
     ic(corpus_for)
     the_path = os.path.expanduser(corpus_path[corpus_for.year][corpus_for.month - 1])
     if "export" in the_path:
         archive = S50Export(Path(the_path))
         for k, v in archive.entries.items():
-            print(k)
+            yield k
         return
 
     corpus_files = glob.glob(the_path)
     for file_name in sorted(corpus_files):
-        print(file_name.split("/")[-1].replace(".md", ""))
+        yield file_name.split("/")[-1].replace(".md", "")
+
+
+@app.command()
+def entries(corpus_for: datetime = typer.Argument("2021-01-08")):
+    for e in entries_for_month(corpus_for):
+        print(e)
 
 
 @app.command()
@@ -468,6 +477,18 @@ def s50_export():
     test_journal_entry = JournalEntry(date(2012, 4, 8))
     print("hi")
 
+
+def all_entries():
+    curr = datetime(2012, 1, 1)
+    date_final = datetime.now()
+    while curr < date_final:
+        curr += timedelta(1*30)
+        yield from entries_for_month(curr)
+
+@app.command()
+def all():
+    for x in all_entries():
+        print (x)
 
 @app.command()
 def sanity():
