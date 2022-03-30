@@ -497,6 +497,12 @@ def all():
         print (x)
 
 @app.command()
+def all_body():
+    # for x in all_entries():
+    #    print (JournalEntry(x).body())
+    print (len(list(all_entries())))
+
+@app.command()
 def sanity():
 
     # Load simple corpus for my journal
