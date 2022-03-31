@@ -498,9 +498,9 @@ def all():
 
 @app.command()
 def all_body():
-    # for x in all_entries():
-    #    print (JournalEntry(x).body())
-    print (len(list(all_entries())))
+    for x in all_entries():
+        print (JournalEntry(x).body())
+    #print (len(list(all_entries())))
 
 @app.command()
 def sanity():
