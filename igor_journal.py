@@ -441,6 +441,7 @@ def build_corpus_paths():
 
 # Make today be the default date.
 
+
 @app.command()
 def body(journal_for: datetime = typer.Argument(datetime.now().date().isoformat())):
 
@@ -488,19 +489,22 @@ def all_entries():
     curr = datetime(2012, 1, 1)
     date_final = datetime.now()
     while curr < date_final:
-        curr += timedelta(1*30)
+        curr += timedelta(1 * 30)
         yield from entries_for_month(curr)
+
 
 @app.command()
 def all():
     for x in all_entries():
-        print (x)
+        print(x)
+
 
 @app.command()
 def all_body():
     for x in all_entries():
-        print (JournalEntry(x).body())
-    #print (len(list(all_entries())))
+        print(JournalEntry(x).body())
+    # print (len(list(all_entries())))
+
 
 @app.command()
 def sanity():
@@ -530,4 +534,5 @@ def app_with_loguru():
 
 
 if __name__ == "__main__":
+
     app_with_loguru()
