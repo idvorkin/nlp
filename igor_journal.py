@@ -354,10 +354,7 @@ def LoadCorpus(
 
 @lru_cache(maxsize=1000)
 def DocForCorpus(nlp, corpus: Corpus):
-    print(
-        f"initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
-    )
-    ti = time_it(f"Building corpus of len:{len(corpus.all_content)} ")
+    ti = time_it(f"Building corpus {corpus.date_range} len:{len(corpus.all_content)} ")
     # We use all_file_content not initial_words because we want to keep punctuation.
     doc_all = nlp(corpus.all_content)
 
@@ -365,7 +362,7 @@ def DocForCorpus(nlp, corpus: Corpus):
     doc = [token for token in doc_all if token.text.lower() not in domain_stop_words]
     ti.stop()
 
-    return doc
+    return doc, doc_all
 
 
 def build_corpus_paths():
