@@ -1,5 +1,5 @@
 #!python3
-from typing import List, Dict
+from typing import Iterable, List, Dict
 from dataclasses import dataclass, field
 from loguru import logger
 
@@ -78,16 +78,15 @@ class Corpus:
 
     """
 
-    path: str
     all_content: str
     initial_words: List[str]
     words: List[str]
     journal: str = ""
     version: int = 0
-    grateful: List[str] = None
+    date_range: str = ""
 
     def __hash__(self):
-        return self.path.__hash__()
+        return hash(self.date_range)
 
 
 def clean_string(line):
@@ -299,16 +298,14 @@ class JournalEntry:
 
 
 @lru_cache(maxsize=100)
-def LoadCorpus(corpus_path: str) -> Corpus:
-
+def LoadCorpus(
+    before=datetime.now().date() + timedelta(days=1), after=date(2011, 1, 1)
+) -> Corpus:
     # TODO: Move this into the corpus class.
 
     # Hym consider memoizing this asweel..
     english_stop_words = set(stopwords.words("english"))
     all_stop_words = domain_stop_words | english_stop_words
-
-    corpus_path_expanded = os.path.expanduser(corpus_path)
-    corpus_files = glob.glob(corpus_path_expanded)
 
     """
     ######################################################
@@ -330,20 +327,28 @@ def LoadCorpus(corpus_path: str) -> Corpus:
     """
 
     # Make single string from all the file contents.
-    list_file_content = [Path(file_name).read_text() for file_name in corpus_files]
-    list_file_content = [clean_string(line) for line in list_file_content]
-    all_file_content = " ".join(list_file_content)
+    bodies = [
+        JournalEntry(entry).body()
+        for entry in all_entries()
+        if entry > after and entry < before
+    ]
+
+    # Flatten List of Lists
+    all_lines = sum(bodies, [])
+
+    cleaned_lines = [clean_string(line) for line in all_lines]
+    single_clean_string = " ".join(cleaned_lines)
 
     # Clean out some punctuation (although does that mess up stemming later??)
-    initial_words = all_file_content.replace(",", " ").replace(".", " ").split()
+    initial_words = single_clean_string.replace(",", " ").replace(".", " ").split()
 
     words = [word for word in initial_words if word.lower() not in all_stop_words]
 
     return Corpus(
-        path=corpus_path,
-        all_content=all_file_content,
+        all_content=single_clean_string,
         initial_words=initial_words,
         words=words,
+        date_range=f"Between {before} and {after}",
     )
 
 
@@ -352,9 +357,7 @@ def DocForCorpus(nlp, corpus: Corpus):
     print(
         f"initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
     )
-    ti = time_it(
-        f"Building corpus from {corpus.path} of len:{len(corpus.all_content)} "
-    )
+    ti = time_it(f"Building corpus of len:{len(corpus.all_content)} ")
     # We use all_file_content not initial_words because we want to keep punctuation.
     doc_all = nlp(corpus.all_content)
 
@@ -363,26 +366,6 @@ def DocForCorpus(nlp, corpus: Corpus):
     ti.stop()
 
     return doc
-
-
-# Build corpus from my journal in igor2/750words
-# make function path for y/m
-
-
-# Build up corpus reader.
-# Current design, hard code knowledge of where everything is stored in forwards direction.
-# Hard code insufficient data for analysis.
-# Better model, read all files in paths and then do lookup.
-
-
-# Hymn better model:
-# A - lookup all files.
-# B - Generate paths based on actual locations.
-
-
-# JournalMonth
-# Get Path
-# Version For Date
 
 
 def build_corpus_paths():
@@ -452,9 +435,8 @@ def body(journal_for: datetime = typer.Argument(datetime.now().date().isoformat(
         print(l)
 
 
-def entries_for_month(corpus_for: datetime):
+def entries_for_month(corpus_for: datetime) -> Iterable[date]:
     corpus_path, corpus_path_months_trailing = build_corpus_paths()
-    ic(corpus_for)
 
     old_export_path = Path(
         f"~/gits/igor2/750words_archive/750 Words-export-{corpus_for.year}-{corpus_for.month:02d}-01.txt"
@@ -470,7 +452,7 @@ def entries_for_month(corpus_for: datetime):
     the_path = os.path.expanduser(corpus_path[corpus_for.year][corpus_for.month - 1])
     corpus_files = glob.glob(the_path)
     for file_name in sorted(corpus_files):
-        yield file_name.split("/")[-1].replace(".md", "")
+        yield date.fromisoformat(file_name.split("/")[-1].replace(".md", ""))
 
 
 @app.command()
@@ -485,7 +467,7 @@ def s50_export():
     print("hi")
 
 
-def all_entries():
+def all_entries() -> Iterable[date]:
     curr = datetime(2012, 1, 1)
     date_final = datetime.now()
     while curr < date_final:
@@ -512,11 +494,9 @@ def sanity():
     # Load simple corpus for my journal
 
     corpus_path, corpus_path_months_trailing = build_corpus_paths()
-
-    latest_corpus_path = corpus_path_months_trailing[-1]
-    corpus = LoadCorpus(latest_corpus_path)
+    corpus = LoadCorpus(datetime.now().date() - timedelta(days=180))
     print(
-        f"{latest_corpus_path} initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
+        "Initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
     )
     # load using new archive
     new_archive_date = date(2021, 1, 8)
