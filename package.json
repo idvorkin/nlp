@@ -15,7 +15,7 @@
           "prettier --write",
           "markdownlint --fix"
       ],
-      "*.py": [
+      "*.{py,ipynb}": [
           "black"
           ]
   }
