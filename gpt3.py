@@ -152,8 +152,8 @@ def mood(
     to_fzf: bool = typer.Option(False),
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
-    gpt_start_with = "The patient is feeling"
-    prompt_to_gpt = f"A psychologist reads the following journal entry and then enumerates the top emotions and their causes:\n {user_text}\n {gpt_start_with} "
+    gpt_start_with = "\nFrom this I conclude the following 10 sentances about how the patient feels\n"
+    prompt_to_gpt = f"I am a psychologst and read the following journal entry:\n {user_text}\n {gpt_start_with} "
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
 
