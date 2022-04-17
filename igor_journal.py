@@ -510,4 +510,4 @@ def app_with_loguru():
 
 
 if __name__ == "__main__":
-    kpp_with_loguru()
+    app_with_loguru()
