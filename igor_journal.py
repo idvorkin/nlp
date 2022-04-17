@@ -17,7 +17,6 @@ from icecream import ic
 import typer
 from datetime import datetime, timedelta, date
 
-
 app = typer.Typer()
 
 # copied from pandas util (yuk)
@@ -511,5 +510,4 @@ def app_with_loguru():
 
 
 if __name__ == "__main__":
-
-    app_with_loguru()
+    kpp_with_loguru()
