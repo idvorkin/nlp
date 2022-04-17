@@ -169,6 +169,7 @@ def summary(
     prompt_to_gpt = f"Summarize the following text:\n {user_text}\n {gpt_start_with} "
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
+
 @app.command()
 def protagonist(
     tokens: int = typer.Option(300),
@@ -180,6 +181,7 @@ def protagonist(
     gpt_start_with = "The protagonist"
     prompt_to_gpt = f"Summarize the following text:\n {user_text}\n {gpt_start_with} "
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+
 
 @app.command()
 def answer(tokens: int = typer.Option(50), responses: int = typer.Option(4)):
@@ -347,7 +349,7 @@ def debug():
     ic(c.width)
     ic(is_from_console)
     print(
-        "long line -aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "long line -brb:w aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     )
 
 
