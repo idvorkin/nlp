@@ -32,7 +32,7 @@ class Measure_Helper:
 
 
 def time_it(message):
-    print(f"++ {message}")
+    print(f"++ {message} ")
     return Measure_Helper(message, datetime.now())
 
 
