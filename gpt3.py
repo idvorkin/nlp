@@ -83,6 +83,20 @@ def stdin(
 
 
 @app.command()
+def joke(
+    tokens: int = typer.Option(400),
+    responses: int = typer.Option(1),
+    to_fzf: bool = typer.Option(False),
+    debug: bool = False,
+):
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    gpt_start_with = ""
+    prompt_to_gpt = f"I am a very funny comedian and after I read the following text:\n---\n {user_text}\n---\n After that I wrote these 5 jokes about it:\n 1."
+
+    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+
+
+@app.command()
 def tldr(
     tokens: int = typer.Option(300),
     responses: int = typer.Option(1),
