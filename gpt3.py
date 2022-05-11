@@ -137,6 +137,7 @@ def base_query(
         n=responses,
         prompt=prompt_to_gpt,
         max_tokens=tokens,
+        temperature=1,
     )
     if debug:
         ic(prompt_to_gpt)
