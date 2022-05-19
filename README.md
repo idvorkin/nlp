@@ -24,3 +24,7 @@ Directly source the completors:
 
     source ~/.zfunc/_gpt
     source ~/.zfunc/_ij
+
+Notes on zsh completors:
+
+<https://github.com/zsh-users/zsh-completions/blob/master/zsh-completions-howto.org>
