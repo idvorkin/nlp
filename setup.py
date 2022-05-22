@@ -8,6 +8,7 @@ setup(
     entry_points="""
             [console_scripts]
             gpt=gpt3:app_with_loguru
+            gpt3=gpt3:app_with_loguru
             ij=igor_journal:app_with_loguru
         """,
 )
