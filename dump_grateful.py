@@ -5,6 +5,8 @@ import glob
 import os
 import typer
 from datetime import datetime, timedelta
+from loguru import logger
+from icecream import ic
 
 app = typer.Typer()
 
@@ -174,15 +176,25 @@ def dumpGlob(glob, thelist):
 
 
 @app.command()
-def grateful(days: int = typer.Argument(7)):
-    """What made me grateful"""
-    return dumpSectionDefaultDirectory("Grateful", days)
+def grateful(
+    days: int = typer.Argument(7),
+    markdown: bool = typer.Option(False),
+    text_only: bool = typer.Option(False),
+):
+    return dumpSectionDefaultDirectory(
+        "Grateful", days=days, markdown=markdown, text_only=text_only
+    )
 
 
 @app.command()
-def awesome(days: int = typer.Argument(7)):
-    """What made yesterday awesome"""
-    return dumpSectionDefaultDirectory("Yesterday", days)
+def awesome(
+    days: int = typer.Argument(7),
+    markdown: bool = typer.Option(False),
+    text_only: bool = typer.Option(False),
+):
+    return dumpSectionDefaultDirectory(
+        "Yesterday", days=days, markdown=markdown, text_only=text_only
+    )
 
 
 @app.command()
@@ -246,5 +258,10 @@ def dumpSectionDefaultDirectory(
     printCategory(grouped, markdown, text_only)
 
 
-if __name__ == "__main__":
+@logger.catch
+def app_with_loguru():
     app()
+
+
+if __name__ == "__main__":
+    app_with_loguru()
