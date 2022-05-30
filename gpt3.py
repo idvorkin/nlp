@@ -74,10 +74,11 @@ def stdin(
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
     debug: bool = False,
+    prompt: str = typer.Option("*"),
 ):
-    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    user_text = remove_trailing_spaces(f"".join(sys.stdin.readlines()))
     gpt_start_with = ""
-    prompt_to_gpt = user_text
+    prompt_to_gpt = prompt.replace("*", user_text)
 
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
