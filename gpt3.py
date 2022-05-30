@@ -98,6 +98,20 @@ def joke(
 
 
 @app.command()
+def group(
+    tokens: int = typer.Option(400),
+    responses: int = typer.Option(1),
+    to_fzf: bool = typer.Option(False),
+    debug: bool = False,
+):
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    gpt_start_with = "1."
+    prompt_to_gpt = f"Group the following:\n---\n {user_text}\n---"
+
+    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+
+
+@app.command()
 def tldr(
     tokens: int = typer.Option(300),
     responses: int = typer.Option(1),
