@@ -422,7 +422,14 @@ def build_corpus_paths():
 
 
 @app.command()
-def body(journal_for: datetime = typer.Argument(datetime.now().date().isoformat())):
+def body(
+    journal_for: datetime = typer.Argument(datetime.now().date().isoformat()),
+    days_ago: int = 0,
+):
+
+    if days_ago != 0:
+        # use days_ago to go back in time.
+        journal_for -= timedelta(days=days_ago)
 
     # Use today as the default, this encourages me to write an article to make testing possible too
 
