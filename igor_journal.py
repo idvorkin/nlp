@@ -425,6 +425,7 @@ def build_corpus_paths():
 def body(
     journal_for: datetime = typer.Argument(datetime.now().date().isoformat()),
     days_ago: int = 0,
+    find_closest: bool = typer.Option(False),
 ):
 
     if days_ago != 0:
