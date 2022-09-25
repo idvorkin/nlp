@@ -190,6 +190,12 @@ class JournalEntry:
         self.journal: str = ""  # Just the cleaned journal entries
         self.init_from_date(for_date)
 
+    def is_valid(self):
+        return (
+            JournalEntry.default_journal_section in self.sections
+            or "Journal" in self.sections
+        )
+
     def init_from_date(self, for_date: date):
 
         errors = []
@@ -427,14 +433,26 @@ def body(
     days_ago: int = 0,
     find_closest: bool = typer.Option(False),
 ):
+    # Use today as the default, this encourages me to write an article to make testing possible too
 
     if days_ago != 0:
         # use days_ago to go back in time.
         journal_for -= timedelta(days=days_ago)
 
-    # Use today as the default, this encourages me to write an article to make testing possible too
+    if find_closest:
+        for i in range(1000):
+            journal_for -= timedelta(days=i)
+            entry = JournalEntry(journal_for.date())
+            if not entry.is_valid():
+                continue
+            for l in entry.body():
+                print(l)
+            return
 
     entry = JournalEntry(journal_for.date())
+    if not entry.is_valid():
+        raise Exception(f"No Entry for {journal_for.date()} ")
+
     for l in entry.body():
         print(l)
 
