@@ -17,6 +17,9 @@ from icecream import ic
 import typer
 from datetime import datetime, timedelta, date
 
+from rich.console import Console
+
+console = Console()
 app = typer.Typer()
 
 # copied from pandas util (yuk)
@@ -429,29 +432,34 @@ def build_corpus_paths():
 
 @app.command()
 def body(
-    journal_for: datetime = typer.Argument(datetime.now().date().isoformat()),
-    days_ago: int = 0,
-    find_closest: bool = typer.Option(False),
+    journal_for: str = typer.Argument(
+        datetime.now().date(), help="Pass a date or int for days ago"
+    ),
+    close: bool = typer.Option(
+        False, help="Keep going back in days till you find the closest valid one"
+    ),
 ):
-    # Use today as the default, this encourages me to write an article to make testing possible too
+    # Make first parameter
+    # If is a date == parse it
+    # If an int, take that.
+    if journal_for.isdigit():
+        days_ago = int(journal_for)
+        journal_for = datetime.now().date() - timedelta(days=days_ago)
+    else:
+        journal_for = date.fromisoformat(journal_for)
 
-    if days_ago != 0:
-        # use days_ago to go back in time.
-        journal_for -= timedelta(days=days_ago)
-
-    if find_closest:
+    if close:
         for i in range(1000):
             journal_for -= timedelta(days=i)
-            entry = JournalEntry(journal_for.date())
+            entry = JournalEntry(journal_for)
             if not entry.is_valid():
                 continue
-            for l in entry.body():
-                print(l)
-            return
+            console.print(f"[blue]Using Date:{journal_for}")
+            break
 
-    entry = JournalEntry(journal_for.date())
+    entry = JournalEntry(journal_for)
     if not entry.is_valid():
-        raise Exception(f"No Entry for {journal_for.date()} ")
+        raise Exception(f"No Entry for {journal_for} ")
 
     for l in entry.body():
         print(l)
