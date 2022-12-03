@@ -14,8 +14,8 @@ import re
 original_print = print
 is_from_console = False
 
-text_model_best = "text-davinci-002"
-code_model_best = "code-davinci-002"
+text_model_best = "text-davinci-003"
+code_model_best = "code-davinci-003"
 
 
 def bold_console(s):
