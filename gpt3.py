@@ -214,6 +214,19 @@ def protagonist(
 
 
 @app.command()
+def poem(
+    tokens: int = typer.Option(600),
+    responses: int = typer.Option(1),
+    debug: bool = False,
+    to_fzf: bool = typer.Option(False),
+):
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    gpt_start_with = ""
+    prompt_to_gpt = f"Rewrite the following text in the form as a rhyming couplet poem by Dr. Seuss :\n {user_text}\n {gpt_start_with} "
+    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+
+
+@app.command()
 def answer(tokens: int = typer.Option(50), responses: int = typer.Option(4)):
     prompt = "".join(sys.stdin.readlines())
     # clean input
