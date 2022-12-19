@@ -441,6 +441,9 @@ def body(
     close: bool = typer.Option(
         False, help="Keep going back in days till you find the closest valid one"
     ),
+    date_header: bool = typer.Option(
+        False, help="Always include the date header"
+    ),
 ):
     # Make first parameter
     # If is a date == parse it
@@ -457,12 +460,14 @@ def body(
             entry = JournalEntry(journal_for)
             if not entry.is_valid():
                 continue
-            console.print(f"[blue]Using Date:{journal_for}")
             break
 
     entry = JournalEntry(journal_for)
     if not entry.is_valid():
         raise Exception(f"No Entry for {journal_for} ")
+
+    if close or date_header:
+        console.print(f"[blue]Using Date:{journal_for}")
 
     for l in entry.body():
         print(l)
