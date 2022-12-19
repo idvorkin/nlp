@@ -176,28 +176,32 @@ def base_query(
 
 @app.command()
 def mood(
-    tokens: int = typer.Option(600),
+    tokens: int = typer.Option(900),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = """"""
-    prompt_to_gpt = f""" I am a psychologst and read the following journal entry and create the following report which is in point form:
+    prompt_to_gpt = f""" I am a psychologist who writes reports after reading patient's journal entries
+
+The reports include the entry date in the summary. After the summary the remaining sections are in point form only
+
+# Journal entry
         {user_text}
 
+# Report
 <!-- prettier-ignore-start -->
 <!-- vim-markdown-toc GFM -->
 
 - [Summary](#summary)
-- [People and Relationships - (5 point form)]
-- [Patient experience - (5 point form)]
-- [Patient recommendations - (5 point form )]
-- [Recommended Cognative Reframes - (5 point form)]
+- [Relationships and People mentioned - 10 point form](#relationships-and-people-mentioned---10-point-form)
+- [Patient Experience - 10 point form](#patient-experience---10-point-form)
+- [Patient Recommendations - 5 point form](#patient-recommendations---5-point-form)
+- [Recommended Cognitive Reframes - 5 point form](#recommended-cognitive-reframes---5-point-form)
 
-<!-- prettier-ignore-start -->
+<!-- prettier-ignore-end -->
 <!-- vim-markdown-toc GFM -->
-
 """
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
