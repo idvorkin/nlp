@@ -70,13 +70,13 @@ def prep_for_fzf(s):
 
 @app.command()
 def stdin(
-    tokens: int = typer.Option(50),
+    tokens: int = typer.Option(900),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
     debug: bool = False,
     prompt: str = typer.Option("*"),
 ):
-    user_text = remove_trailing_spaces(f"".join(sys.stdin.readlines()))
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = prompt.replace("*", user_text)
 
