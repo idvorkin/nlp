@@ -1,7 +1,6 @@
 #!python3
 from typing import Iterable, List, Dict
-from dataclasses import dataclass, field
-from loguru import logger
+from dataclasses import dataclass
 import json
 import openai
 
@@ -10,7 +9,7 @@ import os
 from pathlib import Path
 
 # get nltk and corpus
-import nltk
+
 from nltk.corpus import stopwords
 
 from functools import lru_cache
@@ -206,7 +205,7 @@ class JournalEntry:
 
         errors = []
 
-        base_path = Path(f"~/gits/igor2").expanduser()
+        base_path = Path("~/gits/igor2").expanduser()
 
         # check in new archive
         path = base_path / f"750words_new_archive/{for_date}.md"
@@ -228,7 +227,7 @@ class JournalEntry:
         if success:
             return
 
-        errors.append(f"Not found in 750words export")
+        errors.append("Not found in 750words export")
 
         raise FileNotFoundError(f"No file for that date {for_date}: {errors}")
 
@@ -499,7 +498,7 @@ def entries(corpus_for: datetime = typer.Argument("2021-01-08")):
 
 @app.command()
 def s50_export():
-    test_journal_entry = JournalEntry(date(2012, 4, 8))
+    # test_journal_entry = JournalEntry(date(2012, 4, 8))
     print("hi")
 
 
@@ -530,9 +529,11 @@ def sanity():
     # Load simple corpus for my journal
 
     corpus_path, corpus_path_months_trailing = build_corpus_paths()
-    corpus = LoadCorpus(datetime.now().date() - timedelta(days=180))
+    corpus = LoadCorpus(
+        datetime.now().date() - timedelta(days=180)
+    )  # NOQA  - see if it loads
     print(
-        "Initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
+        f"Initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
     )
     # load using new archive
     new_archive_date = date(2021, 1, 8)
