@@ -221,8 +221,6 @@ class JournalEntry:
             self.from_markdown_file(path)
             return
 
-        errors.append(f"Not found latest {path}")
-
         success = self.from_750words_export(for_date)
         if success:
             return
