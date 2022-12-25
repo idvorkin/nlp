@@ -8,7 +8,6 @@ import typer
 import sys
 from rich import print as rich_print
 import rich
-from loguru import logger
 import re
 
 original_print = print
@@ -279,7 +278,7 @@ def answer(tokens: int = typer.Option(50), responses: int = typer.Option(4)):
     prompt = prompt.removeprefix("Q:")
     prompt = prompt.removeprefix("**Q:**")
     prompt = prompt.strip()
-    prompt_in = f"""I am a highly intelligent question answering bot. If you ask me a question that is rooted in truth, I will give you the answer. If you ask me a question that is nonsense, trickery, or has no clear answer, I will respond with "Unknown".
+    prompt_in = """I am a highly intelligent question answering bot. If you ask me a question that is rooted in truth, I will give you the answer. If you ask me a question that is nonsense, trickery, or has no clear answer, I will respond with "Unknown".
 Q: What is human life expectancy in the United States?
 A: Human life expectancy in the United States is 78 years.
 
@@ -459,9 +458,9 @@ def configure_width_for_rich():
     c = rich.get_console()
     is_from_console = c.width != 80
     if is_from_console:
-        print = rich_print
+        print = rich_print  # NOQA
     else:
-        print = original_print
+        print = original_print  # NOQA
 
 
 if __name__ == "__main__":
