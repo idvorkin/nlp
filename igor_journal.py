@@ -441,9 +441,7 @@ def body(
     close: bool = typer.Option(
         False, help="Keep going back in days till you find the closest valid one"
     ),
-    date_header: bool = typer.Option(
-        False, help="Always include the date header"
-    ),
+    date_header: bool = typer.Option(False, help="Always include the date header"),
 ):
     # Make first parameter
     # If is a date == parse it
@@ -589,10 +587,5 @@ def build_embed():
     print(z)
 
 
-@logger.catch
-def app_with_loguru():
-    app()
-
-
 if __name__ == "__main__":
-    app_with_loguru()
+    app()

@@ -233,6 +233,19 @@ def summary(
 
 
 @app.command()
+def headline(
+    tokens: int = typer.Option(300),
+    responses: int = typer.Option(1),
+    debug: bool = False,
+    to_fzf: bool = typer.Option(False),
+):
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    gpt_start_with = ""
+    prompt_to_gpt = f"Create an attention grabbing headline and then a reason why you should care of the following post:\n {user_text}\n {gpt_start_with} "
+    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+
+
+@app.command()
 def protagonist(
     tokens: int = typer.Option(300),
     responses: int = typer.Option(1),
@@ -254,7 +267,7 @@ def poem(
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
-    prompt_to_gpt = f"Rewrite the following text in the form as a rhyming couplet poem by Dr. Seuss :\n {user_text}\n {gpt_start_with} "
+    prompt_to_gpt = f"Rewrite the following text in the form as a rhyming couplet poem by Dr. Seuss with at least 5 couplets:\n {user_text}\n {gpt_start_with} "
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
 
@@ -451,12 +464,6 @@ def configure_width_for_rich():
         print = original_print
 
 
-@logger.catch
-def app_with_loguru():
+if __name__ == "__main__":
     configure_width_for_rich()
     app()
-
-
-if __name__ == "__main__":
-
-    app_with_loguru()
