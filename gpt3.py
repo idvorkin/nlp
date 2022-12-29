@@ -194,10 +194,10 @@ The reports include the entry date in the summary. After the summary the remaini
 <!-- vim-markdown-toc GFM -->
 
 - [Summary](#summary)
-- [Relationships and People mentioned - 10 point form](#relationships-and-people-mentioned---10-point-form)
-- [Patient Experience - 10 point form](#patient-experience---10-point-form)
 - [Patient Recommendations - 5 point form](#patient-recommendations---5-point-form)
 - [Recommended Cognitive Reframes - 5 point form](#recommended-cognitive-reframes---5-point-form)
+- [Relationships and People mentioned - 10 point form](#relationships-and-people-mentioned---10-point-form)
+- [Patient Experience - 10 point form](#patient-experience---10-point-form)
 
 <!-- prettier-ignore-end -->
 <!-- vim-markdown-toc GFM -->
