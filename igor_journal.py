@@ -8,9 +8,6 @@ import glob
 import os
 from pathlib import Path
 
-# get nltk and corpus
-
-from nltk.corpus import stopwords
 
 from functools import lru_cache
 from collections import defaultdict
@@ -19,7 +16,6 @@ import typer
 from datetime import datetime, timedelta, date
 
 from rich.console import Console
-import pandas as pd
 
 console = Console()
 app = typer.Typer()
@@ -311,6 +307,9 @@ def LoadCorpus(
 ) -> Corpus:
     # TODO: Move this into the corpus class.
 
+    # get nltk and corpus
+    from nltk.corpus import stopwords
+
     # Hym consider memoizing this asweel..
     english_stop_words = set(stopwords.words("english"))
     all_stop_words = domain_stop_words | english_stop_words
@@ -561,6 +560,7 @@ def get_embedding(text, model="text-embedding-ada-002"):
 @app.command()
 def build_embed():
     import openai
+    import pandas as pd
 
     setup_gpt()
 
