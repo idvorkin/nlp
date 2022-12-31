@@ -435,7 +435,7 @@ def fix(
     response = openai.Edit.create(
         engine="text-davinci-edit-001",
         input=prompt_input,
-        instruction="Fix the spelling and grammer",
+        instruction="Fix all the spelling and grammer mistakes in this text ",
         temperature=0,
         top_p=1,
     )
