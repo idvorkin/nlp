@@ -451,9 +451,9 @@ def body(
 
     if close:
         for i in range(1000):
-            journal_for -= timedelta(days=1)
             entry = JournalEntry(journal_for)
             if not entry.is_valid():
+                journal_for -= timedelta(days=1)
                 continue
             break
 
