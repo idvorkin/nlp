@@ -64,13 +64,13 @@ def makeCategoryMap():
         "sleep": "up early;wake;woke;sleep;morning;bed",
         "magic": "magic;card;palm",
         "diet": "diet;eating;juice;juicing;weight",
-        "exercise": "gym;exercise;ring;trainer;training;cardio",
+        "exercise": "gym;exercise;ring;trainer;training;cardio;tristen;tristan;lynelle",
         "meditate": "meditate;meditation",
+        "stress": "stress;anxiety;depression",
+        "family": "family;zach;amelia;tori",
     }
     # todo figure out how to stem
-    categories_flat = "anxiety;essential;appreciate;daily;zach;amelia;tori;offer;bike;meditate;interview".split(
-        ";"
-    )
+    categories_flat = "psc;essential;appreciate;daily;offer;bike;interview".split(";")
 
     for (category, words) in category_map_data.items():
         category_map_i[category] = words.split(";")
