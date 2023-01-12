@@ -184,7 +184,8 @@ def mood(
     gpt_start_with = """"""
     prompt_to_gpt = f""" I am a psychologist who writes reports after reading patient's journal entries
 
-The reports include the entry date in the summary. After the summary the remaining sections are in point form only
+The reports include the entry date in the summary, and a 1-10 scale rating of depression to mania where 0 is depressed and 10 is hypo manic with my reasoning for the rating and
+my assessment of their level of anxiety and my reasoning for that rating. After the summary the remaining sections are in point form only
 
 # Journal entry
         {user_text}
