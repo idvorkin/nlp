@@ -241,7 +241,11 @@ def commit_message(
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
-    prompt_to_gpt = f"Write a high quality git commit message (first line is less then 120 charactors, followed by a paragraph or 2 of details) for the following diff:\n {user_text}\n {gpt_start_with} "
+    prompt_to_gpt = """I want you to act as a commit message generator.
+I would like you to generate an appropriate commit message using the conventional commit format.
+Do not write any explanations or other words, just reply with the commit message.
+The diff is below:
+{user_text}"""
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
 
