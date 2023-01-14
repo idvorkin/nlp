@@ -184,8 +184,8 @@ def mood(
     gpt_start_with = """"""
     prompt_to_gpt = f""" I am a psychologist who writes reports after reading patient's journal entries
 
-The reports include the entry date in the summary, and a 1-10 scale rating of depression to mania where 0 is depressed and 10 is hypo manic with my reasoning for the rating and
-my assessment of their level of anxiety and my reasoning for that rating. After the summary the remaining sections are in point form only
+The reports include the entry date in the summary, and a 1-10 scale rating of depression to mania where 0 is mild depression and 10 is hypo manic with my justification  for the rating and
+my assessment of their level of anxiety and my justification for that rating (where 10 is high). After the summary the remaining sections are in point form only
 
 # Journal entry
         {user_text}
@@ -241,7 +241,7 @@ def commit_message(
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
-    prompt_to_gpt = f"Write a commit message for the following diff, with a headline and then a paragraph of more details:\n {user_text}\n {gpt_start_with} "
+    prompt_to_gpt = f"Write a high quality git commit message for the following diff:\n {user_text}\n {gpt_start_with} "
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
 
@@ -436,8 +436,8 @@ def fix(
     response = openai.Edit.create(
         engine="text-davinci-edit-001",
         input=prompt_input,
-        instruction="Fix all the spelling and grammer mistakes in this text ",
-        temperature=0,
+        instruction="Fix all the spelling and grammer mistakes in this text, and simplify complex concepts if the meaning remains the same",
+        temperature=0.2,
         top_p=1,
     )
     text = response.choices[0].text
