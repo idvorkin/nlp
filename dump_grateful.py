@@ -17,8 +17,11 @@ app = typer.Typer()
 
 
 def extractListItem(l):
+    # find numbered lists
     matches = re.findall("\\d\\.\\s*(.*)", l)
-    matches += re.findall("-\\s*(.*)", l)
+
+    # only find the first - item
+    matches += re.findall("^\\s*-\\s*(.*)", l)
     return matches
 
 
