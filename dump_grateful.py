@@ -138,19 +138,11 @@ def printCategory(grouped, markdown=False, text_only=False):
         return s.replace("1.", "").replace("☑", "").replace("☐", "").strip()
 
     for l in grouped:
-        empty_group = l[0] == None
-        if empty_group:
-            for m in l[1]:
-                m = strip_if_text_only(m, text_only)
-                if markdown:
-                    print(f"1. {m}")
-                else:
-                    print(f"{m}")
-
-            continue
+        is_category = l[0] != None
+        category = l[0] if is_category else "general"
 
         if not markdown and not text_only:
-            print(f"{l[0]}")
+            print(f"#### {category.capitalize()}")
 
         for m in l[1]:
             m = strip_if_text_only(m, text_only)
@@ -159,7 +151,7 @@ def printCategory(grouped, markdown=False, text_only=False):
             elif text_only:
                 print(f"{m}")
             else:
-                print(f"   {m}")
+                print(f"   - {m}")
 
 
 # extractGratefulReason("a. hello world")
