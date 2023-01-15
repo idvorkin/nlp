@@ -9,6 +9,7 @@ import sys
 from rich import print as rich_print
 import rich
 import re
+from typeguard import typechecked
 
 original_print = print
 is_from_console = False
@@ -50,7 +51,7 @@ def py(tokens: int = typer.Option(50)):
     prompt = "\n".join(sys.stdin.readlines())
     response = gpt3.Completion.create(
         engine=code_model_best,
-        temperature=0.5,
+        temperature=0.7,
         prompt=remove_trailing_spaces(prompt),
         max_tokens=tokens,
     )
@@ -440,7 +441,8 @@ def fix(
     response = openai.Edit.create(
         engine="text-davinci-edit-001",
         input=prompt_input,
-        instruction="Fix every spelling and grammer mistake in this text.",
+        instruction="Fix every spelling and grammer mistake in this text. But do not add trailing periods",
+        temperature=0.75,
     )
     text = response.choices[0].text
 
