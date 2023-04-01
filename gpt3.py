@@ -386,7 +386,10 @@ def book(
     debug: bool = False,
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
+    u4: bool = typer.Option(False),
 ):
+    if u4:
+        text_model_best = "gpt-4"
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt = f"""
@@ -394,8 +397,11 @@ def book(
     Write a book on the following topic {user_text}.
     Write it in the style of the heath brothers, with an acronym
     Use markdown
-    Write as many tokens as you can
+    Write as many tokens as you can.
+    After the book, include a workbook which for each chapter shows
 
+    The top 5 things to know
+    5 exercise to try yourself
     """
     prompt_to_gpt = remove_trailing_spaces(prompt)
     print("calling model")
