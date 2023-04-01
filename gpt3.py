@@ -14,7 +14,8 @@ from typeguard import typechecked
 original_print = print
 is_from_console = False
 
-text_model_best = "text-davinci-003"
+text_model_best = "gpt-4"
+# text_model_best = "gpt-3.5-turbo"
 code_model_best = "code-davinci-003"
 
 
@@ -147,12 +148,18 @@ def base_query(
     prompt_to_gpt="replace_prompt",
     gpt_response_start="gpt_response_start",
 ):
-    response = openai.Completion.create(
-        engine=text_model_best,
-        n=responses,
-        prompt=prompt_to_gpt,
+
+    # Define the messages for the chat
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": prompt_to_gpt},
+    ]
+
+    response = openai.ChatCompletion.create(
+        model=text_model_best,
+        messages=messages,
         max_tokens=tokens,
-        temperature=1,
+        temperature=0.7,
     )
     if debug:
         ic(prompt_to_gpt)
@@ -162,13 +169,13 @@ def base_query(
         if to_fzf:
             # ; is newline
             base = f"**{gpt_response_start}**" if len(gpt_response_start) > 0 else ""
-            text = f"{base} {prep_for_fzf(c.text)}"
+            text = f"{base} {prep_for_fzf(c['message']['content'])}"
             print(text)
         else:
             base = gpt_response_start
             if len(gpt_response_start) > 0:
                 base += " "
-            text = f"{gpt_response_start} {c.text}"
+            text = f"{gpt_response_start} {c['message']['content']}"
             print(text)
             if len(response.choices) > 1:
                 print("----")
