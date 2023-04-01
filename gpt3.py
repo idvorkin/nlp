@@ -14,8 +14,8 @@ from typeguard import typechecked
 original_print = print
 is_from_console = False
 
-text_model_best = "gpt-4"
-# text_model_best = "gpt-3.5-turbo"
+# text_model_best = "gpt-4"
+text_model_best = "gpt-3.5-turbo"
 code_model_best = "code-davinci-003"
 
 
@@ -154,6 +154,10 @@ def base_query(
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": prompt_to_gpt},
     ]
+
+    if debug:
+        ic(messages)
+        ic(text_model_best)
 
     response = openai.ChatCompletion.create(
         model=text_model_best,
@@ -373,6 +377,28 @@ def eli5(
     gpt_start_with = ""
     prompt = f"""Summarize this for a second-grade sudent: {user_text}"""
     prompt_to_gpt = remove_trailing_spaces(prompt)
+    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+
+
+@app.command()
+def book(
+    tokens: int = typer.Option(2000),
+    debug: bool = False,
+    responses: int = typer.Option(1),
+    to_fzf: bool = typer.Option(False),
+):
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    gpt_start_with = ""
+    prompt = f"""
+
+    Write a book on the following topic {user_text}.
+    Write it in the style of the heath brothers, with an acronym
+    Use markdown
+    Write as many tokens as you can
+
+    """
+    prompt_to_gpt = remove_trailing_spaces(prompt)
+    print("calling model")
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
 
