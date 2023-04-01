@@ -399,10 +399,10 @@ def book(
     Write a book on the following topic {user_text}.
     Write it in the style of the heath brothers, with an acronym
     Use markdown and Aim to use {tokens} tokens in your response
-    After the book, include a workbook which for each chapter shows
-
+    For each chapter, focus on
     The top 5 theories, with a few sentances about them, and how they are relevant.
     The top 5 take aways, with a few setances about them
+    Then include
     5 exercise to try yourself
     5 journalling prompts to self reflect on how you're doing
     """
