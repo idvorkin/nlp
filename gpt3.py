@@ -390,7 +390,8 @@ def book(
 ):
     if u4:
         text_model_best = "gpt-4"
-        tokens = 8000
+        # Note, the model should take 8K tokens, but it's only allwoing me to use
+        # use 4K
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt = f"""
@@ -400,12 +401,12 @@ def book(
     Use markdown and Aim to use {tokens} tokens in your response
     After the book, include a workbook which for each chapter shows
 
-    The top 5 theories
-    The top 5 take aways
+    The top 5 theories, with a few sentances about them, and how they are relevant.
+    The top 5 take aways, with a few setances about them
     5 exercise to try yourself
+    5 journalling prompts to self reflect on how you're doing
     """
     prompt_to_gpt = remove_trailing_spaces(prompt)
-    print("calling model")
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
 
