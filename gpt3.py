@@ -382,7 +382,7 @@ def eli5(
 
 @app.command()
 def book(
-    tokens: int = typer.Option(2000),
+    tokens: int = typer.Option(3800),
     debug: bool = False,
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
@@ -390,17 +390,18 @@ def book(
 ):
     if u4:
         text_model_best = "gpt-4"
+        tokens = 8000
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt = f"""
 
     Write a book on the following topic {user_text}.
     Write it in the style of the heath brothers, with an acronym
-    Use markdown
-    Write as many tokens as you can.
+    Use markdown and Aim to use {tokens} tokens in your response
     After the book, include a workbook which for each chapter shows
 
-    The top 5 things to know
+    The top 5 theories
+    The top 5 take aways
     5 exercise to try yourself
     """
     prompt_to_gpt = remove_trailing_spaces(prompt)
