@@ -202,7 +202,9 @@ def mood(
     prompt_to_gpt = f""" I am a psychologist who writes reports after reading patient's journal entries
 
 The reports include the entry date in the summary, and a 1-10 scale rating of depression to mania where 0 is mild depression and 10 is hypo manic with my justification  for the rating and
-my assessment of their level of anxiety and my justification for that rating (where 10 is high). After the summary the remaining sections are in point form only
+my assessment of their level of anxiety and my justification for that rating (where 10 is high).
+
+After the summary the remaining sections are in point form only, with a minimum of 5 bullet points and a maximum of 10 bullet points per section as required for completeness
 
 # Journal entry
         {user_text}
@@ -212,10 +214,10 @@ my assessment of their level of anxiety and my justification for that rating (wh
 <!-- vim-markdown-toc GFM -->
 
 - [Summary](#summary)
-- [Patient Recommendations - 5 point form](#patient-recommendations---5-point-form)
-- [Recommended Cognitive Reframes - 5 point form](#recommended-cognitive-reframes---5-point-form)
-- [Relationships and People mentioned - 10 point form](#relationships-and-people-mentioned---10-point-form)
-- [Patient Experience - 10 point form](#patient-experience---10-point-form)
+- [Patient Recommendations]
+- [Recommended journal prompts to support cognitive Reframes]
+- [Summary of relationships and People mentioned]
+- [Summary of patient experience]
 
 <!-- prettier-ignore-end -->
 <!-- vim-markdown-toc GFM -->
