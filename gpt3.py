@@ -396,7 +396,7 @@ def book(
     prompt = f"""
 
     Write a book on the following topic {user_text}.
-    Write it in the style of the heath brothers, with an acronym
+    Write it in the style of the heath brothers, with an acronym, and chapter for each letter
     Use markdown and Aim to use {tokens} tokens in your response
     For each chapter, focus on
     The top 5 theories, with a few sentances about them, and how they are relevant.
