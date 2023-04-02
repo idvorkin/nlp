@@ -158,6 +158,7 @@ def base_query(
     if debug:
         ic(messages)
         ic(text_model_best)
+        ic(tokens)
 
     response = openai.ChatCompletion.create(
         model=text_model_best,
@@ -168,7 +169,6 @@ def base_query(
     )
     if debug:
         ic(prompt_to_gpt)
-        print(prompt_to_gpt)
 
     for c in response.choices:
         if to_fzf:
@@ -388,9 +388,13 @@ def book(
     u4: bool = typer.Option(False),
 ):
     if u4:
+        global text_model_best
         text_model_best = "gpt-4"
-        # Note, the model should take 8K tokens, but it's only allwoing me to use
-        # use 4K
+        is_token_count_the_default = (
+            tokens == 3800
+        )  # TBD if we can do it without hardcoding.
+        if is_token_count_the_default:
+            tokens = 7800
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt = f"""
