@@ -163,6 +163,7 @@ def base_query(
         model=text_model_best,
         messages=messages,
         max_tokens=tokens,
+        n=responses,
         temperature=0.7,
     )
     if debug:
@@ -253,10 +254,8 @@ def commit_message(
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
-    prompt_to_gpt = """I want you to act as a commit message generator.
-I would like you to generate an appropriate commit message using the conventional commit format.
-Do not write any explanations or other words, just reply with the commit message.
-The diff is below:
+    prompt_to_gpt = f"""Write the commit message for the diff below
+---
 {user_text}"""
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
