@@ -192,7 +192,11 @@ def mood(
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
+    u4: bool = typer.Option(False),
 ):
+    global text_model_best
+    text_model_best, tokens = process_u4(u4, tokens)
+
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = """"""
     prompt_to_gpt = f""" I am a psychologist who writes reports after reading patient's journal entries
@@ -379,6 +383,18 @@ def eli5(
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
 
+def process_u4(u4, tokens):
+    if u4:
+        is_token_count_the_default = (
+            tokens == 3800
+        )  # TBD if we can do it without hardcoding.
+        if is_token_count_the_default:
+            tokens = 7800
+        return "gpt-4", tokens
+    else:
+        return text_model_best, tokens
+
+
 @app.command()
 def book(
     tokens: int = typer.Option(3800),
@@ -387,14 +403,9 @@ def book(
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
-    if u4:
-        global text_model_best
-        text_model_best = "gpt-4"
-        is_token_count_the_default = (
-            tokens == 3800
-        )  # TBD if we can do it without hardcoding.
-        if is_token_count_the_default:
-            tokens = 7800
+    global text_model_best
+    text_model_best, tokens = process_u4(u4, tokens)
+
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt = f"""
@@ -407,8 +418,9 @@ def book(
     target {tokens} tokens for your response
 
     Before the book starts write a paragraph summarzing the key take aways from the book
+    Then write a detailed outline
 
-    For each chapter, focus on
+    Then as you write each chapter, focus on
     The top 5 theories, with a few sentances about them, and how they are relevant.
     The top 5 take aways, with a few setances about them
     Then include
