@@ -257,7 +257,10 @@ def commit_message(
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
+    u4: bool = typer.Option(False),
 ):
+    global text_model_best
+    text_model_best, tokens = process_u4(u4, tokens)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = f"""Write the commit message for the diff below
