@@ -399,15 +399,23 @@ def book(
     gpt_start_with = ""
     prompt = f"""
 
-    Write a book on the following topic {user_text}.
+    Write a book on the following topic: {user_text}.
+
     Write it in the style of the heath brothers, with an acronym, and chapter for each letter
-    Use markdown and Aim to use {tokens} tokens in your response
+
+    Use markdown in writing the books. And have chapter titles be an h2 in markdown.
+    target {tokens} tokens for your response
+
+    Before the book starts write a paragraph summarzing the key take aways from the book
+
     For each chapter, focus on
     The top 5 theories, with a few sentances about them, and how they are relevant.
     The top 5 take aways, with a few setances about them
     Then include
     5 exercise to try yourself
     5 journalling prompts to self reflect on how you're doing
+    End with a conclusion
+
     """
     prompt_to_gpt = remove_trailing_spaces(prompt)
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
