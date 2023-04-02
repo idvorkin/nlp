@@ -204,7 +204,7 @@ def mood(
 The reports include the entry date in the summary, and a 1-10 scale rating of depression to mania where 0 is mild depression and 10 is hypo manic with my justification  for the rating and
 my assessment of their level of anxiety and my justification for that rating (where 10 is high).
 
-After the summary the remaining sections are in point form only, with a minimum of 5 bullet points and a maximum of 10 bullet points per section as required for completeness
+The summary section can be a paragraph, the other sections should not be a paragarph. Instea dthey should be 5 to 10 bullet points each.
 
 # Journal entry
         {user_text}
@@ -214,10 +214,10 @@ After the summary the remaining sections are in point form only, with a minimum 
 <!-- vim-markdown-toc GFM -->
 
 - [Summary](#summary)
-- [Patient Recommendations]
-- [Recommended journal prompts to support cognitive Reframes]
-- [Summary of relationships and People mentioned]
 - [Summary of patient experience]
+- [Patient Recommendations]
+- [Journal prompts to support cognitive reframes, with concrete examples]
+- [People and relationships, using names when possible]
 
 <!-- prettier-ignore-end -->
 <!-- vim-markdown-toc GFM -->
