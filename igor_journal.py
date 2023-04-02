@@ -16,6 +16,7 @@ import typer
 from datetime import datetime, timedelta, date
 
 from rich.console import Console
+import re
 
 console = Console()
 app = typer.Typer()
@@ -555,6 +556,34 @@ def get_embedding(text, model="text-embedding-ada-002"):
     text = text.replace("\n", " ")
     return openai.Embedding.create(input=[text], model=model)["data"][0]["embedding"]
     # return "hello"
+
+
+@app.command()
+def files_with_word(word):
+    # I need to put this in a DB so it's fast.
+    directory = os.path.expanduser("~/gits/igor2/750words_new_archive")
+    if not os.path.isdir(directory):
+        print(f"Error: Directory '{directory}' not found.")
+        sys.exit(1)
+
+    word_count = []
+
+    for root, _, files in os.walk(directory):
+        for file in files:
+            file_path = Path(root) / file
+            with open(file_path, "r") as f:
+                content = f.read()
+                count = len(
+                    re.findall(rf"\b{re.escape(word)}\b", content, re.IGNORECASE)
+                )
+            word_count.append((count, file_path))
+
+    word_count.sort()
+
+    for count, file_path in word_count:
+        if count == 0:
+            continue
+        print(f"{count} {file_path}")
 
 
 @app.command()
