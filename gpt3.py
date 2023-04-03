@@ -157,33 +157,47 @@ def base_query(
     ]
 
     if debug:
-        ic(messages)
+        ic(prompt_to_gpt)
         ic(text_model_best)
         ic(tokens)
+        ic(stream_output)
 
-    response = openai.ChatCompletion.create(
+    response_contents = ["" for x in range(responses)]
+    for chunk in openai.ChatCompletion.create(
         model=text_model_best,
         messages=messages,
         max_tokens=tokens,
         n=responses,
         temperature=0.7,
-    )
-    if debug:
-        ic(prompt_to_gpt)
+        stream=True,
+    ):
+        if not "choices" in chunk:
+            continue
 
-    for c in response.choices:
+        for elem in chunk["choices"]:
+            delta = elem["delta"]
+            delta_content = delta.get("content", "")
+            response_contents[elem["index"]] += delta_content
+            if stream_output:
+                sys.stdout.write(delta_content)
+                sys.stdout.flush()
+
+    if stream_output:
+        return
+
+    for content in response_contents:
         if to_fzf:
             # ; is newline
             base = f"**{gpt_response_start}**" if len(gpt_response_start) > 0 else ""
-            text = f"{base} {prep_for_fzf(c['message']['content'])}"
+            text = f"{base} {prep_for_fzf(content)}"
             print(text)
         else:
             base = gpt_response_start
             if len(gpt_response_start) > 0:
                 base += " "
-            text = f"{gpt_response_start} {c['message']['content']}"
+            text = f"{gpt_response_start} {content}"
             print(text)
-            if len(response.choices) > 1:
+            if responses > 1:
                 print("----")
 
 
