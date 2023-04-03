@@ -517,29 +517,22 @@ def embed():
 
 @app.command()
 def fix(
-    tokens: int = typer.Option(300),
-    responses: int = typer.Option(1),
+    tokens: int = typer.Option(3800),
     debug: bool = False,
+    responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
+    u4: bool = typer.Option(False),
 ):
-    prompt_input = "".join(sys.stdin.readlines())
-    response = openai.Edit.create(
-        engine="text-davinci-edit-001",
-        input=prompt_input,
-        instruction="Fix every spelling and grammer mistake in this text. But do not add trailing periods",
-        temperature=0.75,
-    )
-    text = response.choices[0].text
+    global text_model_best
+    text_model_best, tokens = process_u4(u4, tokens)
 
-    # remove a trailing newline
-    if text[-1] == "\n":
-        text = text[:-1]
-
-    if to_fzf:
-        # ; is newline
-        print(prep_for_fzf(text))
-    else:
-        print(text)
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    gpt_start_with = ""
+    prompt = f"""You are a superb editor. Fix all the spelling and grammer mistakes in the following text, and output it as is:
+{user_text}"""
+    prompt_to_gpt = remove_trailing_spaces(prompt)
+    # Last Param is stream output
+    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with, u4)
 
 
 @app.command()
