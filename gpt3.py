@@ -10,6 +10,7 @@ from rich import print as rich_print
 import rich
 import re
 from typeguard import typechecked
+import tiktoken
 
 original_print = print
 is_from_console = False
@@ -140,6 +141,13 @@ def tldr(
         print(text)
 
 
+def num_tokens_from_string(string: str, encoding_name: str = "") -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
+
+
 def base_query(
     tokens: int = 300,
     responses: int = 1,
@@ -150,23 +158,33 @@ def base_query(
     stream_output=False,
 ):
 
+    encoding = tiktoken.get_encoding("cl100k_base")
+    encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
     # Define the messages for the chat
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": prompt_to_gpt},
     ]
 
+    input_tokens = (
+        num_tokens_from_string(prompt_to_gpt, "cl100k_base") + 100
+    )  # too lazy to count the messages stuf
+    output_tokens = tokens - input_tokens
+
     if debug:
-        ic(prompt_to_gpt)
+        # ic(prompt_to_gpt)
         ic(text_model_best)
         ic(tokens)
+        ic(input_tokens)
+        ic(output_tokens)
         ic(stream_output)
 
     response_contents = ["" for x in range(responses)]
     for chunk in openai.ChatCompletion.create(
         model=text_model_best,
         messages=messages,
-        max_tokens=tokens,
+        max_tokens=output_tokens,
         n=responses,
         temperature=0.7,
         stream=True,
@@ -525,14 +543,13 @@ def fix(
 ):
     global text_model_best
     text_model_best, tokens = process_u4(u4, tokens)
-
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt = f"""You are a superb editor. Fix all the spelling and grammer mistakes in the following text, and output it as is:
 {user_text}"""
     prompt_to_gpt = remove_trailing_spaces(prompt)
     # Last Param is stream output
-    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with, u4)
+    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with, True)
 
 
 @app.command()
