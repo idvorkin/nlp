@@ -141,12 +141,13 @@ def tldr(
 
 
 def base_query(
-    tokens: int = typer.Option(300),
-    responses: int = typer.Option(1),
+    tokens: int = 300,
+    responses: int = 1,
     debug: bool = False,
-    to_fzf: bool = typer.Option(False),
+    to_fzf: bool = False,
     prompt_to_gpt="replace_prompt",
     gpt_response_start="gpt_response_start",
+    stream_output=False,
 ):
 
     # Define the messages for the chat
@@ -435,7 +436,8 @@ def book(
 
     """
     prompt_to_gpt = remove_trailing_spaces(prompt)
-    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+    # Last Param is stream output
+    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with, True)
 
 
 @app.command()
