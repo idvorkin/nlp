@@ -157,7 +157,7 @@ def base_query_from_dict(kwargs):
         to_fzf=a["to_fzf"],
         prompt_to_gpt=a["prompt_to_gpt"],
         gpt_response_start=a.get("gpt_response_start", ""),
-        stream_output=a.get("stream_output", a["responses"] == 1),
+        stream_output=a.get("stream_output", a["responses"] == 1 or not a["to_fzf"]),
         u4=a.get("u4", False),
     )
 
@@ -213,7 +213,9 @@ def base_query(
             delta = elem["delta"]
             delta_content = delta.get("content", "")
             response_contents[elem["index"]] += delta_content
-            if stream_output:
+
+            if stream_output and elem["index"] == 0:
+                # when streaming output, since it's interleaved, only output the first stream
                 sys.stdout.write(delta_content)
                 sys.stdout.flush()
 
