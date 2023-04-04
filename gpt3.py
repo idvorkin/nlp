@@ -75,14 +75,14 @@ def stdin(
     tokens: int = typer.Option(900),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
-    debug: bool = False,
+    debug: bool = typer.Option(False),
     prompt: str = typer.Option("*"),
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = prompt.replace("*", user_text)
 
-    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+    base_query_from_dict(locals())
 
 
 @app.command()
@@ -110,7 +110,7 @@ def group(
     gpt_start_with = "1."
     prompt_to_gpt = f"Group the following:\n---\n {user_text}\n---"
 
-    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+    base_query_from_dict(locals())
 
 
 @app.command()
@@ -148,6 +148,20 @@ def num_tokens_from_string(string: str, encoding_name: str = "") -> int:
     return num_tokens
 
 
+def base_query_from_dict(kwargs):
+    a = kwargs
+    return base_query(
+        tokens=a["tokens"],
+        responses=a["responses"],
+        debug=a["debug"],
+        to_fzf=a["to_fzf"],
+        prompt_to_gpt=a["prompt_to_gpt"],
+        gpt_response_start=a.get("gpt_response_start", ""),
+        stream_output=a.get("stream_output", True),
+        u4=a.get("u4", False),
+    )
+
+
 def base_query(
     tokens: int = 300,
     responses: int = 1,
@@ -156,7 +170,10 @@ def base_query(
     prompt_to_gpt="replace_prompt",
     gpt_response_start="gpt_response_start",
     stream_output=False,
+    u4=False,
 ):
+    global text_model_best
+    text_model_best, tokens = process_u4(u4, tokens)
 
     encoding = tiktoken.get_encoding("cl100k_base")
     encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
