@@ -11,6 +11,7 @@ import rich
 import re
 from typeguard import typechecked
 import tiktoken
+import time
 
 original_print = print
 is_from_console = False
@@ -197,7 +198,9 @@ def base_query(
         ic(output_tokens)
         ic(stream_output)
 
+    start = time.time()
     response_contents = ["" for x in range(responses)]
+    first_chunk = True
     for chunk in openai.ChatCompletion.create(
         model=text_model_best,
         messages=messages,
@@ -210,16 +213,26 @@ def base_query(
             continue
 
         for elem in chunk["choices"]:
+
+            if first_chunk:
+                if debug:
+                    out = f"First Chunk took: {int((time.time() - start)*1000)} ms"
+                    ic(out)
+                first_chunk = False
             delta = elem["delta"]
             delta_content = delta.get("content", "")
             response_contents[elem["index"]] += delta_content
 
-            if stream_output and elem["index"] == 0:
+            if stream_output:
                 # when streaming output, since it's interleaved, only output the first stream
                 sys.stdout.write(delta_content)
                 sys.stdout.flush()
 
     if stream_output:
+        if debug:
+            print()
+            out = f"All chunks took: {int((time.time() - start)*1000)} ms"
+            ic(out)
         return
 
     for content in response_contents:
@@ -236,6 +249,10 @@ def base_query(
             print(text)
             if responses > 1:
                 print("----")
+
+    if debug:
+        out = f"All chunks took: {int((time.time() - start)*1000)} ms"
+        ic(out)
 
 
 @app.command()
@@ -274,7 +291,7 @@ The summary section can be a paragraph, the other sections should not be a parag
 <!-- prettier-ignore-end -->
 <!-- vim-markdown-toc GFM -->
 """
-    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+    base_query_from_dict(locals())
 
 
 @app.command()
