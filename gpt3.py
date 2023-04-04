@@ -157,7 +157,7 @@ def base_query_from_dict(kwargs):
         to_fzf=a["to_fzf"],
         prompt_to_gpt=a["prompt_to_gpt"],
         gpt_response_start=a.get("gpt_response_start", ""),
-        stream_output=a.get("stream_output", True),
+        stream_output=a.get("stream_output", a["responses"] == 1),
         u4=a.get("u4", False),
     )
 
