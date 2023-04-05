@@ -73,7 +73,7 @@ def prep_for_fzf(s):
 
 @app.command()
 def stdin(
-    tokens: int = typer.Option(3800),
+    tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
     debug: bool = typer.Option(False),
@@ -89,7 +89,7 @@ def stdin(
 
 @app.command()
 def joke(
-    tokens: int = typer.Option(400),
+    tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
     debug: bool = False,
@@ -117,7 +117,7 @@ def group(
 
 @app.command()
 def tldr(
-    tokens: int = typer.Option(300),
+    tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
@@ -267,7 +267,7 @@ def base_query(
 
 @app.command()
 def mood(
-    tokens: int = typer.Option(900),
+    tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
@@ -306,7 +306,7 @@ The summary section can be a paragraph, the other sections should not be a parag
 
 @app.command()
 def anygram(
-    tokens: int = typer.Option(300),
+    tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
@@ -319,7 +319,7 @@ def anygram(
 
 @app.command()
 def summary(
-    tokens: int = typer.Option(300),
+    tokens: int = typer.Option(3),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
@@ -332,7 +332,7 @@ def summary(
 
 @app.command()
 def commit_message(
-    tokens: int = typer.Option(300),
+    tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
@@ -350,7 +350,7 @@ def commit_message(
 
 @app.command()
 def headline(
-    tokens: int = typer.Option(300),
+    tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
@@ -363,7 +363,7 @@ def headline(
 
 @app.command()
 def protagonist(
-    tokens: int = typer.Option(300),
+    tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
@@ -376,7 +376,7 @@ def protagonist(
 
 @app.command()
 def poem(
-    tokens: int = typer.Option(600),
+    tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
@@ -388,7 +388,7 @@ def poem(
 
 
 @app.command()
-def answer(tokens: int = typer.Option(50), responses: int = typer.Option(4)):
+def answer(tokens: int = typer.Option(0), responses: int = typer.Option(4)):
     prompt = "".join(sys.stdin.readlines())
     # clean input
     is_markdown = prompt.startswith("**")
@@ -439,7 +439,7 @@ Q:
 @app.command()
 def study(
     points: int = typer.Option(5),
-    tokens: int = typer.Option(200),
+    tokens: int = typer.Option(0),
     debug: bool = False,
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
@@ -455,7 +455,7 @@ def study(
 
 @app.command()
 def eli5(
-    tokens: int = typer.Option(200),
+    tokens: int = typer.Option(0),
     debug: bool = False,
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
@@ -470,18 +470,23 @@ def eli5(
 def process_u4(u4, tokens):
     if u4:
         is_token_count_the_default = (
-            tokens == 3800
+            tokens == 0
         )  # TBD if we can do it without hardcoding.
         if is_token_count_the_default:
             tokens = 7800
         return "gpt-4", tokens
     else:
+        is_token_count_the_default = (
+            tokens == 0
+        )  # TBD if we can do it without hardcoding.
+        if is_token_count_the_default:
+            tokens = 3800
         return text_model_best, tokens
 
 
 @app.command()
 def book(
-    tokens: int = typer.Option(3800),
+    tokens: int = typer.Option(0),
     debug: bool = False,
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
@@ -581,7 +586,7 @@ def embed():
 
 @app.command()
 def fix(
-    tokens: int = typer.Option(3800),
+    tokens: int = typer.Option(0),
     debug: bool = False,
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
