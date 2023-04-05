@@ -73,7 +73,7 @@ def prep_for_fzf(s):
 
 @app.command()
 def stdin(
-    tokens: int = typer.Option(900),
+    tokens: int = typer.Option(3800),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
     debug: bool = typer.Option(False),
