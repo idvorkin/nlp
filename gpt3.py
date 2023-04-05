@@ -78,6 +78,7 @@ def stdin(
     to_fzf: bool = typer.Option(False),
     debug: bool = typer.Option(False),
     prompt: str = typer.Option("*"),
+    stream: bool = typer.Option(True),
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
@@ -158,7 +159,7 @@ def base_query_from_dict(kwargs):
         to_fzf=a["to_fzf"],
         prompt_to_gpt=a["prompt_to_gpt"],
         gpt_response_start=a.get("gpt_response_start", ""),
-        stream_output=a.get("stream_output", a["responses"] == 1 or not a["to_fzf"]),
+        stream=a.get("stream", a["responses"] == 1 or not a["to_fzf"]),
         u4=a.get("u4", False),
     )
 
@@ -170,14 +171,14 @@ def base_query(
     to_fzf: bool = False,
     prompt_to_gpt="replace_prompt",
     gpt_response_start="gpt_response_start",
-    stream_output=False,
+    stream=False,
     u4=False,
 ):
     global text_model_best
     text_model_best, tokens = process_u4(u4, tokens)
 
-    encoding = tiktoken.get_encoding("cl100k_base")
-    encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+    # encoding = tiktoken.get_encoding("cl100k_base")
+    # encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
 
     # Define the messages for the chat
     messages = [
@@ -196,7 +197,7 @@ def base_query(
         ic(tokens)
         ic(input_tokens)
         ic(output_tokens)
-        ic(stream_output)
+        ic(stream)
 
     start = time.time()
     response_contents = ["" for x in range(responses)]
@@ -223,32 +224,41 @@ def base_query(
             delta_content = delta.get("content", "")
             response_contents[elem["index"]] += delta_content
 
-            if stream_output:
+            if stream:
                 # when streaming output, since it's interleaved, only output the first stream
                 sys.stdout.write(delta_content)
                 sys.stdout.flush()
 
-    if stream_output:
+    if stream:
         if debug:
             print()
             out = f"All chunks took: {int((time.time() - start)*1000)} ms"
             ic(out)
         return
 
-    for content in response_contents:
+    for i, content in enumerate(response_contents):
         if to_fzf:
             # ; is newline
             base = f"**{gpt_response_start}**" if len(gpt_response_start) > 0 else ""
             text = f"{base} {prep_for_fzf(content)}"
             print(text)
         else:
+            text = ""
             base = gpt_response_start
             if len(gpt_response_start) > 0:
                 base += " "
-            text = f"{gpt_response_start} {content}"
-            print(text)
+                text = f"{gpt_response_start} {content}"
+            else:
+                text = content
+
             if responses > 1:
-                print("----")
+                print(f"--- **{i}** ---")
+
+            print(text)
+
+    # Add a trailing output to make vim's life easier.
+    if responses > 1:
+        print(f"--- **{9}** ---")
 
     if debug:
         out = f"All chunks took: {int((time.time() - start)*1000)} ms"
