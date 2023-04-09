@@ -292,7 +292,7 @@ The summary section can be a paragraph, the other sections should not be a parag
 <!-- prettier-ignore-start -->
 <!-- vim-markdown-toc GFM -->
 
-- [Summary](#summary)
+- [Summary, assessing mania, depression, and anxiety]
 - [Summary of patient experience]
 - [Patient Recommendations]
 - [Journal prompts to support cognitive reframes, with concrete examples]
