@@ -79,6 +79,7 @@ def stdin(
     debug: bool = typer.Option(False),
     prompt: str = typer.Option("*"),
     stream: bool = typer.Option(True),
+    u4: bool = typer.Option(False),
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
