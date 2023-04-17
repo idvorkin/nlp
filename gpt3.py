@@ -89,6 +89,29 @@ def stdin(
 
 
 @app.command()
+def compress(
+    tokens: int = typer.Option(0),
+    responses: int = typer.Option(1),
+    to_fzf: bool = typer.Option(False),
+    debug: bool = typer.Option(False),
+    prompt: str = typer.Option("*"),
+    stream: bool = typer.Option(True),
+    u4: bool = typer.Option(True),
+):
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    # Find this prompt from the web
+    gpt_start_with = """Compress the following text as short as possible and such that you (GPT-4) can reconstruct the intention of the human
+    who wrote text as close as possible to the original intention.
+    This is for yourself. It does not need to be human readable or understandable.
+    Abuse of language mixing, abbreviations, symbols (unicode and emoji), or any other encodings or internal representations is all permissible, as long as it, if pasted in a new inference cycle, will yield near-identical results as the original text:
+
+    """
+    prompt_to_gpt = prompt.replace("*", user_text)
+
+    base_query_from_dict(locals())
+
+
+@app.command()
 def joke(
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
