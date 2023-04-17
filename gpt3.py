@@ -412,55 +412,6 @@ def poem(
 
 
 @app.command()
-def answer(tokens: int = typer.Option(0), responses: int = typer.Option(4)):
-    prompt = "".join(sys.stdin.readlines())
-    # clean input
-    is_markdown = prompt.startswith("**")
-    prompt = prompt.removeprefix("Q:")
-    prompt = prompt.removeprefix("**Q:**")
-    prompt = prompt.strip()
-    prompt_in = """I am a highly intelligent question answering bot. If you ask me a question that is rooted in truth, I will give you the answer. If you ask me a question that is nonsense, trickery, or has no clear answer, I will respond with "Unknown".
-Q: What is human life expectancy in the United States?
-A: Human life expectancy in the United States is 78 years.
-
-Q: Who was president of the United States in 1955?
-A: Dwight D. Eisenhower was president of the United States in 1955.
-
-Q: Which party did he belong to?
-A: He belonged to the Republican Party.
-
-Q: What is the square root of banana?
-A: Unknown
-
-Q: How does a telescope work?
-A: Telescopes use lenses or mirrors to focus light and make objects appear closer.
-
-Q: Where were the 1992 Olympics held?
-A: The 1992 Olympics were held in Barcelona, Spain.
-
-Q: How many squigs are in a bonk?
-A: Unknown
-
-Q:
-    """
-    response = openai.Completion.create(
-        temperature=0.3,
-        engine=text_model_best,
-        n=responses,
-        prompt=remove_trailing_spaces(prompt_in),
-        max_tokens=tokens,
-        stop=["\n\n"],
-    )
-    if is_markdown:
-        print(f"**Q:** {prompt}")
-    else:
-        print(f"Q: {prompt}")
-
-    for c in response.choices:
-        print(f"**A:**{c.text}")
-
-
-@app.command()
 def study(
     points: int = typer.Option(5),
     tokens: int = typer.Option(0),
@@ -545,55 +496,6 @@ def book(
     prompt_to_gpt = remove_trailing_spaces(prompt)
     # Last Param is stream output
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with, True)
-
-
-@app.command()
-def complex(tokens: int = typer.Option(200), debug: bool = False):
-    prompt_input = "".join(sys.stdin.readlines())
-    prompt = f"""The human asks the AI to make a simple description more complicated. The AI responds by writing a verbose response full of jargon to explain a simple concept.
-
-Human: explain how to use a drinking fountain.
-
-AI: To activate the mechanized dihydrogen monoxide dispensary service station, use the flanges to provide a downward force to the simple circular activation console and continue to apply force until the pneumatic system begins operating as intended, which can be surmised at a time when the dihydrogen monoxide travels in a parabolic arc which at is greatest exceeds three inches from the rounded excess liquid receptacle. Once hydration is completed, cease applying force to the console and regard whether or not the dispensary has ceased expelling contents as expected.
-
-Human: explain how to play with a dog
-
-AI: Being a typical domesticated animal, having been genetically selected for controllability, trainability, and general anthropomorphic features and functions, the typical dog possesses highly specialized and developed feeding behavior. The typical feeding behavior involves routine sustenance intake which can be observed by monitoring changes in animal size. Routine sustenance intake involves active and passive feeding habits, and one can gauge animal health by observing the relative levels of hydration. During training, reward conditioned reinforcement is applied. This involves the practice of rewarding targeted behaviors through the application of reinforcers, with the provision that the targeted behavior is observed. Relevant to the discussion at hand is the typical active and passive behavior exhibited by a typical dog.
-
-Human: {prompt_input}
-AI:"""
-    response = gpt3.Completion.create(
-        engine=text_model_best,
-        temperature=0.7,
-        prompt=remove_trailing_spaces(prompt),
-        max_tokens=tokens,
-        top_p=1,
-        frequency_penalty=0.2,
-        presence_penalty=0,
-        stop=["\n\n\n"],
-    )
-    response_text = response.choices[0].text
-    if debug:
-        print(prompt)
-    print(response_text)
-
-
-def do_complete(prompt, max_tokens):
-    response = openai.Completion.create(
-        engine=text_model_best,
-        prompt=remove_trailing_spaces(prompt),
-        max_tokens=max_tokens,
-    )
-
-    # ic(response)
-    # ic(response.choices[0].text)
-    return response.choices[0].text
-
-
-@app.command()
-def complete(prompt: str, tokens: int = typer.Option(50)):
-    response_text = do_complete(prompt, tokens)
-    print(f"[bold]{prompt}[/bold] {response_text}")
 
 
 def get_embedding(text, model="text-embedding-ada-002"):
