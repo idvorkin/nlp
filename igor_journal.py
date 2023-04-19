@@ -240,6 +240,11 @@ class JournalEntry:
 
         return out
 
+    def todo(self):
+
+        # 2019-01 version has Journal section
+        return self.sections_with_list["Day awesome if:"]
+
     def body(self):
 
         # 2019-01 version has Journal section
@@ -428,6 +433,50 @@ def build_corpus_paths():
 
 
 # Make today be the default date.
+
+
+# Yuk, this is a lot of complexity, refactor it with the todo command
+
+
+@app.command()
+def todo(
+    journal_for: str = typer.Argument(
+        datetime.now().date(), help="Pass a date or int for days ago"
+    ),
+    close: bool = typer.Option(
+        False, help="Keep going back in days till you find the closest valid one"
+    ),
+):
+    # Make first parameter
+    # If is a date == parse it
+    # If an int, take that.
+    if journal_for.isdigit():
+        days_ago = int(journal_for)
+        journal_for = datetime.now().date() - timedelta(days=days_ago)
+    else:
+        journal_for = date.fromisoformat(journal_for)
+
+    if close:
+        for i in range(1000):
+            entry = JournalEntry(journal_for)
+            if not entry.is_valid():
+                journal_for -= timedelta(days=1)
+                continue
+            break
+
+    entry = JournalEntry(journal_for)
+    if not entry.is_valid():
+        raise Exception(f"No Entry for {journal_for} ")
+
+    if close:
+        console.print(f"[blue]Using Date:{journal_for}")
+
+    for l in entry.todo():
+        # Safely remove these symbols
+        l = l.replace("☑ ", "")
+        l = l.replace("☐ ", "")
+        print(l)
+    return
 
 
 @app.command()
