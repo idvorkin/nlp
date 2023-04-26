@@ -534,20 +534,17 @@ def embed():
 @app.command()
 def fix(
     tokens: int = typer.Option(0),
-    debug: bool = False,
+    debug: bool = typer.Option(1),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
-    u4: bool = typer.Option(False),
+    u4: bool = typer.Option(True),
 ):
-    global text_model_best
-    text_model_best, tokens = process_u4(u4, tokens)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt = f"""You are a superb editor. Fix all the spelling and grammer mistakes in the following text, and output it as is:
 {user_text}"""
     prompt_to_gpt = remove_trailing_spaces(prompt)
-    # Last Param is stream output
-    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with, True)
+    base_query_from_dict(locals())
 
 
 @app.command()
