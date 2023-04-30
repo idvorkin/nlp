@@ -157,12 +157,30 @@ def group(
     u4: bool = typer.Option(True),
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    prompt_to_gpt = f"""Group the following:
+-----
+{user_text}
+
+"""
+    base_query_from_dict(locals())
+
+
+@app.command()
+def life_group(
+    tokens: int = typer.Option(0),
+    responses: int = typer.Option(1),
+    to_fzf: bool = typer.Option(False),
+    debug: bool = typer.Option(False),
+    prompt: str = typer.Option("*"),
+    stream: bool = typer.Option(True),
+    u4: bool = typer.Option(True),
+):
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     prompt_to_gpt = f"""Here are several categories items can be grouped into:
 ---
 - [Work]
-    - [Career - Tech](#career---tech)
-    - [Career - Manager](#career---manager)
-    - [Day Job](#day-job)
+    - [Individual Contributor/Tech]
+    - [Manager]
 - [Friends]
 - [Family]
     - [Tori](#tori)
@@ -173,42 +191,42 @@ def group(
     - [Practice](#practice)
     - [General Magic](#general-magic)
 - [Tech Guru]
-    - [Enabling Environment](#enabling-environment)
     - [Blogging](#blogging)
     - [Programming](#programming)
 - [Identity Health]
     - [Biking](#biking)
     - [Ballooning](#ballooning)
     - [Joy Activities](#joy-activities)
-- [Physical Energy]
 - [Motivation]
-- [Emotional Habits]
-    - [Meditation](#meditation)
-    - [750 words](#750-words)
-    - [Avoid Procrastion](#avoid-procrastion)
-- [Physical Habits]
-    - [Statistics](#statistics)
-    - [Verbose](#verbose)
-    - [Diet](#diet)
-    - [Sleep](#sleep)
+- [Emotional Health]
+    - [Meditation]
+    - [750 words]
+    - [Avoid Procrastion]
+- [Physical Health]
+    - [Exercise]
+    - [Diet]
+    - [Sleep]
 - [Inner Peace]
-    - [General Inner Peace](#general-inner-peace)
-    - [Work](#work)
-    - [Family](#family)
-- [Other stuff](#other-stuff)
+    - [General]
+    - [Work]
+    - [Family]
+- [Things not mentioned above]
 
 ---
-
-Here are some extra facts to use as you compute this
-
+Here are some extra facts to use when you are deciding how to group the list of items into categories
 ---
 
 Kiro is a co-worker
-Turkish Getups (TGU) is about physical help
+Physical Habits is the same as physical health and exercisies
+Bubbles are a joy activity
+Turkish Getups (TGU) is about physical habits
 Treadmills are about physical health
+750words is journalling
+I work as an engineering manager (EM) in a tech company
+A refresher is a synonym for going to the gym
 
 ---
-Take the next list of items and group them into the above, things should not go into multiple categories:
+Take the next list of items and group them into the above, try not to put things into multiple categories
 
 {user_text}
 """
