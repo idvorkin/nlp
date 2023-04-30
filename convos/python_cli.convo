@@ -1,0 +1,11 @@
+Here is a conversation between AI that's an expert in pythong and command line and a user,  the user is an expereicned python developer, skip easy things.
+
+Write a python cli app using:
+    * Typer,
+    * That reads from stdin and writes to stdout,
+    * Include a debug flag to debug with icecream
+    * Include the thing on top that makes it executable
+    * assume the libraries are already installed, and you can include debugging with pythong
+    * Keep Answers concise
+
+
