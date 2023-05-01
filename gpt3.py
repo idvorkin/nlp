@@ -165,6 +165,20 @@ def group(
     base_query_from_dict(locals())
 
 
+def patient_facts():
+    return """
+* Kiro is a co-worker
+* Physical Habits is the same as physical health and exercisies
+* Bubbles are a joy activity
+* Turkish Getups (TGU) is about physical habits
+* Swings refers to Kettle Bell Swings
+* Treadmills are about physical health
+* 750words is journalling
+* I work as an engineering manager (EM) in a tech company
+* A refresher is a synonym for going to the gym
+"""
+
+
 @app.command()
 def life_group(
     tokens: int = typer.Option(0),
@@ -177,7 +191,11 @@ def life_group(
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     prompt_to_gpt = f"""Here are several categories items can be grouped into:
+
 ---
+<!-- prettier-ignore-start -->
+<!-- vim-markdown-toc GFM -->
+
 - [Work]
     - [Individual Contributor/Tech]
     - [Manager]
@@ -211,22 +229,17 @@ def life_group(
     - [Work]
     - [Family]
 - [Things not mentioned above]
+<!-- prettier-ignore-end -->
+<!-- vim-markdown-toc GFM -->
 
----
+# Facts to use
 Here are some extra facts to use when you are deciding how to group the list of items into categories
----
 
-Kiro is a co-worker
-Physical Habits is the same as physical health and exercisies
-Bubbles are a joy activity
-Turkish Getups (TGU) is about physical habits
-Treadmills are about physical health
-750words is journalling
-I work as an engineering manager (EM) in a tech company
-A refresher is a synonym for going to the gym
+{patient_facts()}
 
----
-Take the next list of items and group them into the above, try not to put things into multiple categories
+# Item List
+
+Take the next list of items and group them into the above, try not to put things into multiple categories, use markdown for category titles
 
 {user_text}
 """
@@ -399,13 +412,28 @@ def mood(
     gpt_start_with = """"""
     prompt_to_gpt = f""" I am a psychologist who writes reports after reading patient's journal entries
 
-The reports include the entry date in the summary, and a 1-10 scale rating of depression to mania where 0 is mild depression and 10 is hypo manic with my justification  for the rating and
-my assessment of their level of anxiety and my justification for that rating (where 10 is high).
+The reports include the entry date in the summary, and a 1-10 scale rating of depression to mania, where 0 represents mild depression and 10 represents hypomania. I provide a justification for the rating, as well as an assessment of their level of anxiety, with a rating from 1 to 10, where 10 signifies high anxiety.
 
-The summary section can be a paragraph, the other sections should not be a paragarph. Instea dthey should be 5 to 10 bullet points each.
+Summary:
+- Includes entry date
+- Provides rating of depression and mania
+
+Depression Rating:
+- Uses a 1-10 scale
+- 0 represents mild depression
+- 10 represents hypomania
+- Provides justification for rating
+
+Anxiety Rating:
+- Uses a 1-10 scale
+- 10 signifies high anxiety
+- Provides justification for rating
+
+# Here are some facts to help you assess
+{patient_facts()}
 
 # Journal entry
-        {user_text}
+{user_text}
 
 # Report
 <!-- prettier-ignore-start -->
