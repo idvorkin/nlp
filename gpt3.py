@@ -168,6 +168,9 @@ def group(
 def patient_facts():
     return """
 * Kiro is a co-worker
+* Zach, born in 2010 is son
+* Amelia, born in 2014 is daughter
+* Tori is wife
 * Physical Habits is the same as physical health and exercisies
 * Bubbles are a joy activity
 * Turkish Getups (TGU) is about physical habits
@@ -190,9 +193,17 @@ def life_group(
     u4: bool = typer.Option(True),
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
-    prompt_to_gpt = f"""Here are several categories items can be grouped into:
+    prompt_to_gpt = f"""
 
----
+You will be grouping elements. I'll provide group categories, facts, and then group the items.
+
+
+* Try not to put items into multiple categories;
+* Use markdown for category titles.
+* Use facts to help you understand the grouping, not to be included into the output
+
+# Group categories
+
 <!-- prettier-ignore-start -->
 <!-- vim-markdown-toc GFM -->
 
@@ -217,29 +228,27 @@ def life_group(
     - [Joy Activities](#joy-activities)
 - [Motivation]
 - [Emotional Health]
-    - [Meditation]
-    - [750 words]
-    - [Avoid Procrastion]
+    - [Meditation](#meditation)
+    - [750 words](#750-words)
+    - [Avoid Procrastination](#avoid-procrastination)
 - [Physical Health]
-    - [Exercise]
-    - [Diet]
-    - [Sleep]
+    - [Exercise](#exercise)
+    - [Diet](#diet)
+    - [Sleep](#sleep)
 - [Inner Peace]
-    - [General]
-    - [Work]
-    - [Family]
+    - [General](#general)
+    - [Work](#work)
+    - [Family](#family)
 - [Things not mentioned above]
-<!-- prettier-ignore-end -->
-<!-- vim-markdown-toc GFM -->
 
-# Facts to use
-Here are some extra facts to use when you are deciding how to group the list of items into categories
+<!-- vim-markdown-toc GFM -->
+<!-- prettier-ignore-end -->
+
+# Facts
 
 {patient_facts()}
 
-# Item List
-
-Take the next list of items and group them into the above, try not to put things into multiple categories, use markdown for category titles
+# Items
 
 {user_text}
 """
