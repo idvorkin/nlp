@@ -71,6 +71,13 @@ def prep_for_fzf(s):
     return s
 
 
+@app.command(help="Count the tokens passed via stdin")
+def tokens():
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    tokens = num_tokens_from_string(user_text, "cl100k_base")
+    print(tokens)
+
+
 @app.command()
 def stdin(
     tokens: int = typer.Option(0),
@@ -582,6 +589,7 @@ def process_u4(u4, tokens):
         if is_token_count_the_default:
             tokens = 7800
         return "gpt-4", tokens
+        # return "gpt-4-32k", tokens
     else:
         is_token_count_the_default = (
             tokens == 0
