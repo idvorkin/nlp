@@ -13,6 +13,20 @@ from typeguard import typechecked
 import tiktoken
 import time
 
+import signal
+
+# By default, when you hit C-C in a pipe, the pipe is stopped
+# with this, pipe continues
+def keep_pipe_alive_on_control_c(sig, frame):
+    sys.stdout.write(
+        "\nInterrupted with Control+C, but I'm still writing to stdout...\n"
+    )
+    sys.exit(0)
+
+
+# Register the signal handler for SIGINT
+signal.signal(signal.SIGINT, keep_pipe_alive_on_control_c)
+
 original_print = print
 is_from_console = False
 
