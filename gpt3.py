@@ -7,6 +7,7 @@ from icecream import ic
 import typer
 import sys
 from rich import print as rich_print
+from rich.console import Console
 import rich
 import re
 from typeguard import typechecked
@@ -14,6 +15,8 @@ import tiktoken
 import time
 
 import signal
+
+console = Console()
 
 # By default, when you hit C-C in a pipe, the pipe is stopped
 # with this, pipe continues
@@ -654,9 +657,40 @@ def process_u4(u4, tokens=0):
         return text_model_best, tokens
 
 
+def print_story(story):
+    # Split on '.', but only if there isn't a list
+    coach_color = "blue"
+    user_color = "yellow"
+
+    def wrap_color(s, color):
+        return f"[{color}]{s}[/{color}]"
+
+    console.print("")
+    for (isCoach, s) in story:
+        split_line = len(s.split(".")) == 2
+        # assume it only contains 1, todo handle that
+        if split_line:
+            end_sentance, new_sentance = s.split(".")
+            console.print(
+                wrap_color(f" {end_sentance}.", coach_color if isCoach else user_color)
+            )
+            console.print(
+                wrap_color(f"{new_sentance}", coach_color if isCoach else user_color),
+                end="",
+            )
+            continue
+
+        console.print(
+            wrap_color(f" {s}", coach_color if isCoach else user_color), end=""
+        )
+
+        # if (s.endswith(".")):
+        #    rich_print(s)
+
+
 @app.command()
 def improv(
-    debug: bool = False,
+    debug: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
     global text_model_best
@@ -665,19 +699,31 @@ def improv(
     prompt = """
 You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
 Walk me through playing games, and practice sessions that are interactive. Lets write a story interactively.
-I'll write 1-10 words, and then you do the same, and we'll go back and forth writing the story. 50% of the time the coach will start the story, 50% of the time they'll ask the user to start by saying "You start"
+I'll write 1-10 words, and then you do the same, and we'll go back and forth writing the story. 10% of the time the coach will start the story, 50% of the time they'll ask the user to start by saying "You start"
 
-Coach:
     """
-    # Last Param is stream output
+
+    story = []  # (isCoach, word)
 
     while True:
-        coach_says = query_no_print(prompt, debug=False)[0]
-        print(coach_says)
+        if debug:
+            ic(prompt)
+        coach_says = query_no_print(prompt, debug)[0]
+        coach_wants_user_to_start = coach_says.lower().startswith("you start")
+
+        if coach_wants_user_to_start:
+            user_says = input(f"{coach_says}\n>")
+            prompt += f" {user_says} "
+            story += [(False, user_says)]
+            continue
+
+        story += [(True, coach_says)]
         prompt += coach_says
-        user_says = input(">")
+        print_story(story)
+        console.print("[yellow] >>[/yellow]", end="")
+        user_says = input()
         prompt += f" {user_says} "
-        print(user_says)
+        story += [(False, user_says)]
 
 
 @app.command()
