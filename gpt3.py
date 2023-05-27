@@ -326,6 +326,53 @@ def base_query_from_dict(kwargs):
     )
 
 
+def query_no_print(
+    prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
+    tokens: int = 300,
+    u4=True,
+    debug=False,
+):
+    global text_model_best
+    text_model_best, tokens = process_u4(u4, tokens)
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": prompt_to_gpt},
+    ]
+
+    input_tokens = num_tokens_from_string(prompt_to_gpt, "cl100k_base") + 100
+    output_tokens = tokens - input_tokens
+
+    if debug:
+        ic(text_model_best)
+        ic(tokens)
+        ic(input_tokens)
+        ic(output_tokens)
+
+    start = time.time()
+    responses = 1
+    response_contents = ["" for x in range(responses)]
+    for chunk in openai.ChatCompletion.create(
+        model=text_model_best,
+        messages=messages,
+        max_tokens=output_tokens,
+        n=responses,
+        temperature=0.7,
+        stream=True,
+    ):
+        if not "choices" in chunk:
+            continue
+
+        for elem in chunk["choices"]:
+
+            delta = elem["delta"]
+            delta_content = delta.get("content", "")
+            response_contents[elem["index"]] += delta_content
+    if debug:
+        out = f"All chunks took: {int((time.time() - start)*1000)} ms"
+        ic(out)
+    return response_contents
+
+
 def base_query(
     tokens: int = 300,
     responses: int = 1,
@@ -516,7 +563,7 @@ def commit_message(
     u4: bool = typer.Option(False),
 ):
     global text_model_best
-    text_model_best, tokens = process_u4(u4, tokens)
+    text_model_best, tokens = process_u4(u4)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = f"""Write the commit message for the diff below
@@ -595,22 +642,42 @@ def eli5(
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
 
-def process_u4(u4, tokens):
+def process_u4(u4, tokens=0):
+    is_token_count_the_default = tokens == 0  # TBD if we can do it without hardcoding.
     if u4:
-        is_token_count_the_default = (
-            tokens == 0
-        )  # TBD if we can do it without hardcoding.
         if is_token_count_the_default:
             tokens = 7800
         return "gpt-4", tokens
-        # return "gpt-4-32k", tokens
     else:
-        is_token_count_the_default = (
-            tokens == 0
-        )  # TBD if we can do it without hardcoding.
         if is_token_count_the_default:
             tokens = 3800
         return text_model_best, tokens
+
+
+@app.command()
+def improv(
+    debug: bool = False,
+    u4: bool = typer.Option(False),
+):
+    global text_model_best
+    text_model_best, tokens = process_u4(u4)
+
+    prompt = """
+You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
+Walk me through playing games, and practice sessions that are interactive. Lets write a story interactively.
+I'll write 1-10 words, and then you do the same, and we'll go back and forth writing the story. 50% of the time the coach will start the story, 50% of the time they'll ask the user to start by saying "You start"
+
+Coach:
+    """
+    # Last Param is stream output
+
+    while True:
+        coach_says = query_no_print(prompt, debug=False)[0]
+        print(coach_says)
+        prompt += coach_says
+        user_says = input(">")
+        prompt += f" {user_says} "
+        print(user_says)
 
 
 @app.command()
