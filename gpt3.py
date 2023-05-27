@@ -665,7 +665,8 @@ def print_story(story):
     def wrap_color(s, color):
         return f"[{color}]{s}[/{color}]"
 
-    console.print("")
+    # console.print(rich.rule.Rule())
+    console.clear()
     for (isCoach, s) in story:
         split_line = len(s.split(".")) == 2
         # assume it only contains 1, todo handle that
@@ -698,10 +699,17 @@ def improv(
 
     prompt = """
 You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
+
 Walk me through playing games, and practice sessions that are interactive. Lets write a story interactively.
-I'll write 1-10 words, and then you do the same, and we'll go back and forth writing the story. 10% of the time the coach will start the story, 50% of the time they'll ask the user to start by saying "You start"
+
+I'll write 1-10 words, and then you do the same, and we'll go back and forth writing the story.
+You can finish a sentance and dstart a new one, but never add a full sentance by yourself
+
+You start:
+
 
     """
+    # 10% of the time the coach will start the story, 50% of the time they'll ask the user to start by saying "You start"
 
     story = []  # (isCoach, word)
 
