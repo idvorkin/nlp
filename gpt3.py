@@ -8,6 +8,7 @@ import typer
 import sys
 from rich import print as rich_print
 from rich.console import Console
+from rich.text import Text
 import rich
 import re
 from typeguard import typechecked
@@ -318,12 +319,11 @@ def base_query_from_dict(kwargs):
 
 def query_no_print(
     prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
-    tokens: int = 300,
+    tokens: int = 0,
     u4=True,
     debug=False,
 ):
-    global text_model_best
-    text_model_best, tokens = process_u4(u4, tokens)
+    text_model_best, tokens = process_u4(u4)
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": prompt_to_gpt},
@@ -646,13 +646,17 @@ def process_u4(u4, tokens=0):
 
 def print_story(story):
     # Split on '.', but only if there isn't a list
-    coach_color = "blue"
-    user_color = "yellow"
+    coach_color = "bold blue"
+    user_color = "bold yellow"
 
     def wrap_color(s, color):
-        return f"[{color}]{s}[/{color}]"
+        text = Text(s)
+        text.stylize(color)
+        return text
 
-    # console.print(rich.rule.Rule())
+    def get_color_for(isCoach):
+        return coach_color if isCoach else user_color
+
     console.clear()
     for (isCoach, s) in story:
         split_line = len(s.split(".")) == 2
@@ -660,12 +664,9 @@ def print_story(story):
         if split_line:
             end_sentance, new_sentance = s.split(".")
             console.print(
-                wrap_color(f" {end_sentance}.", coach_color if isCoach else user_color)
+                wrap_color(f" {end_sentance}.", get_color_for(isCoach)), end=""
             )
-            console.print(
-                wrap_color(f"{new_sentance}", coach_color if isCoach else user_color),
-                end="",
-            )
+            console.print(wrap_color(f"{new_sentance}", get_color_for(isCoach)), end="")
             continue
 
         console.print(
@@ -703,7 +704,7 @@ You start:
     while True:
         if debug:
             ic(prompt)
-        coach_says = query_no_print(prompt, debug)[0]
+        coach_says = query_no_print(prompt_to_gpt=prompt, debug=debug, u4=u4)[0]
         coach_wants_user_to_start = coach_says.lower().startswith("you start")
 
         if coach_wants_user_to_start:
