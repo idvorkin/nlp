@@ -66,19 +66,6 @@ def remove_trailing_spaces(str):
     return re.sub(r"\s+$", "", str)
 
 
-@app.command()
-def py(tokens: int = typer.Option(50)):
-    prompt = "\n".join(sys.stdin.readlines())
-    response = gpt3.Completion.create(
-        engine=code_model_best,
-        temperature=0.7,
-        prompt=remove_trailing_spaces(prompt),
-        max_tokens=tokens,
-    )
-    response_text = response.choices[0].text
-    print(f"{prompt}\n{response_text}")
-
-
 def prep_for_fzf(s):
     # remove starting new lines
     while s.startswith("\n"):
@@ -299,7 +286,7 @@ def tldr(
         ic(prompt_to_gpt)
         print(prompt_to_gpt)
 
-    for c in response.choices:
+    for c in response.choices:  # type: ignore
         if to_fzf:
             # ; is newline
             text = ";**tl,dr:* " + prep_for_fzf(c.text)
@@ -365,7 +352,7 @@ def query_no_print(
         if not "choices" in chunk:
             continue
 
-        for elem in chunk["choices"]:
+        for elem in chunk["choices"]:  # type: ignore
 
             delta = elem["delta"]
             delta_content = delta.get("content", "")
@@ -425,7 +412,7 @@ def base_query(
         if not "choices" in chunk:
             continue
 
-        for elem in chunk["choices"]:
+        for elem in chunk["choices"]:  # type: ignore
 
             if first_chunk:
                 if debug:
@@ -775,7 +762,8 @@ def book(
 
 def get_embedding(text, model="text-embedding-ada-002"):
     text = text.replace("\n", " ")
-    return openai.Embedding.create(input=[text], model=model)["data"][0]["embedding"]
+    embedding_response = openai.Embedding.create(input=[text], model=model)
+    return embedding_response["data"][0]["embedding"]  # type: ignore
 
 
 @app.command()
