@@ -680,7 +680,7 @@ def print_story(story):
 @app.command()
 def improv(
     debug: bool = typer.Option(False),
-    u4: bool = typer.Option(False),
+    u4: bool = typer.Option(True),
 ):
     global text_model_best
     text_model_best, tokens = process_u4(u4)
@@ -688,12 +688,25 @@ def improv(
     prompt = """
 You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
 
-Walk me through playing games, and practice sessions that are interactive. Lets write a story interactively.
+We're playing a game where we write a story together.
 
-I'll write 1-10 words, and then you do the same, and we'll go back and forth writing the story.
-You can finish a sentance and dstart a new one, but never add a full sentance by yourself
+The story should have the following format
+    - Once upon a time
+    - Every day 
+    - But one day
+    - Because of that
+    - Because of that
+    - Until finally
+    - And ever since then
 
-You start:
+The story should be creative and funny
+
+I'll write 1-5 words, and then you do the same, and we'll go back and forth writing the story.
+When you add words to the story, don't add more then 5 words, and stop in the middle of the sentance (that makes me be more creative)
+
+The story we've written together so far is below and I wrote the last 1 to 5 words, 
+now add your words to the story (NEVER ADD MORE THEN 5 WORDS):
+--
 
 
     """
