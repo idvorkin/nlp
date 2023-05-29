@@ -142,7 +142,7 @@ class Fragment:
 
 def print_story(story: List[Fragment], show_story: bool):
     # Split on '.', but only if there isn't a list
-    coach_color = "bold blue"
+    coach_color = "bold bright_cyan"
     user_color = "bold yellow"
 
     def wrap_color(s, color):
@@ -161,7 +161,7 @@ def print_story(story: List[Fragment], show_story: bool):
     console.clear()
     if show_story:
         console.print(story)
-        console.line()
+        console.rule()
 
     for fragment in story:
         s = fragment.text
