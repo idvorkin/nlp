@@ -14,6 +14,7 @@ import re
 from typeguard import typechecked
 import tiktoken
 import time
+from typing import List
 
 import signal
 
@@ -644,55 +645,80 @@ def process_u4(u4, tokens=0):
         return text_model_best, tokens
 
 
-def print_story(story):
+class Fragment:
+    def __init__(self, player, text, reasoning=""):
+        self.player = player
+        self.text = text
+        self.reasoning = reasoning
+
+    def __str__(self):
+        if self.reasoning:
+            return f"Fragment('{self.player}', '{self.text}', '{self.reasoning}')"
+        else:
+            return f"Fragment('{self.player}', '{self.text}')"
+
+    def __repr__(self):
+        if self.reasoning:
+            return f"Fragment('{self.player}', '{self.text}', '{self.reasoning}')"
+        else:
+            return f"Fragment('{self.player}', '{self.text}')"
+
+
+def print_story(story: List[Fragment]):
     # Split on '.', but only if there isn't a list
     coach_color = "bold blue"
     user_color = "bold yellow"
+    ic(story)
 
     def wrap_color(s, color):
         text = Text(s)
         text.stylize(color)
         return text
 
-    def get_color_for(isCoach):
-        return coach_color if isCoach else user_color
+    def get_color_for(fragment):
+        if fragment.player == "coach":
+            return coach_color
+        elif fragment.player == "student":
+            return user_color
+        else:
+            return "white"
 
     console.clear()
-    for (isCoach, s) in story:
+    for fragment in story:
+        s = fragment.text
         split_line = len(s.split(".")) == 2
         # assume it only contains 1, todo handle that
         if split_line:
             end_sentance, new_sentance = s.split(".")
             console.print(
-                wrap_color(f" {end_sentance}.", get_color_for(isCoach)), end=""
+                wrap_color(f" {end_sentance}.", get_color_for(fragment)), end=""
             )
-            console.print(wrap_color(f"{new_sentance}", get_color_for(isCoach)), end="")
+            console.print(
+                wrap_color(f"{new_sentance}", get_color_for(fragment)), end=""
+            )
             continue
 
-        console.print(
-            wrap_color(f" {s}", coach_color if isCoach else user_color), end=""
-        )
+        console.print(wrap_color(f" {s}", get_color_for(fragment)), end="")
 
         # if (s.endswith(".")):
         #    rich_print(s)
 
 
-class Fragment:
-    def __init__(self, player, text, reasoning=""):
-        self.player = player
-        self.text = text
-        self.reasoning = ""
+example_1_in = [
+    Fragment("coach", "Once Upon a Time", "A normal story start"),
+    Fragment("student", "there lived "),
+    Fragment("coach", "a shrew named", "using shrew to make it intereting"),
+    Fragment("student", "Sarah. Every day the shrew"),
+]
+
+default_story_start = [
+    Fragment("coach", "Once Upon a Time", "A normal story start"),
+    Fragment("student", "there lived "),
+]
 
 
-@app.command()
-def json_improv(
-    debug: bool = typer.Option(False),
-    u4: bool = typer.Option(False),
-):
-    global text_model_best
-    text_model_best, tokens = process_u4(u4)
-
-    prompt = """
+def prompt_json_improv(story_so_far: List[Fragment]):
+    return f"""
 You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
 We're playing a game where we write a story together.
 The story should have the following format
@@ -724,40 +750,34 @@ Example 1 Input:
 
 Example 1 Output:
 
-{
-    [
-     Fragment("coach", "Once Upon a Time", "A normal story start"),
-     Fragment("student", "there lived "),
-     Fragment("coach", "a shrew named", "using shrew to make it intereting"),
-     Fragment("student", "Sarah. Every day the shrew"),
-     Fragment("coach", "smelled something that reminded her ", "give user a good offer"),
-    ]
-}
+[
+    Fragment("coach", "Once Upon a Time", "A normal story start"),
+    Fragment("student", "there lived "),
+    Fragment("coach", "a shrew named", "using shrew to make it intereting"),
+    Fragment("student", "Sarah. Every day the shrew"),
+    Fragment("coach", "smelled something that reminded her ", "give user a good offer"),
+]
 
 --
 
 Example 2 Input:
 
-{
-    [
-     Fragment("coach", "Once Upon a Time within ", "A normal story start, with a narrowing"),
-     Fragment("student", "there lived a donkey"),
-     Fragment("coach", "who liked to eat", "add some color"),
-     Fragment("student", "Brocolli. Every" ),
-    ]
-}
+[
+    Fragment("coach", "Once Upon a Time within ", "A normal story start, with a narrowing"),
+    Fragment("student", "there lived a donkey"),
+    Fragment("coach", "who liked to eat", "add some color"),
+    Fragment("student", "Brocolli. Every" ),
+]
 
 Example 2 Output:
 
-{
-    [
-     Fragment("coach", "Once Upon a Time within ", "A normal story start, with a narrowing"),
-     Fragment("student", "there lived a donkey"),
-     Fragment("coach", "who liked to eat", "add some color"),
-     Fragment("student", "Brocolli. Every" ),
-     Fragment("coach", "day the donkey", "continue in the format"),
-    ]
-}
+[
+    Fragment("coach", "Once Upon a Time within ", "A normal story start, with a narrowing"),
+    Fragment("student", "there lived a donkey"),
+    Fragment("coach", "who liked to eat", "add some color"),
+    Fragment("student", "Brocolli. Every" ),
+    Fragment("coach", "day the donkey", "continue in the format"),
+]
 --
 
 Now, here is the story we're doing together. Add the next coach fragment to the story
@@ -765,40 +785,32 @@ Now, here is the story we're doing together. Add the next coach fragment to the 
 --
 Actual Input:
 
-{
-    [
-     Fragment("coach", "Once ", "A normal story start"),
-     Fragment("student", "upon a ")
-    ]
-}
+{story_so_far}
 
 Ouptut:
+"""
 
 
-    """
-    # 10% of the time the coach will start the story, 50% of the time they'll ask the user to start by saying "You start"
+@app.command()
+def json_improv(
+    debug: bool = typer.Option(False),
+    u4: bool = typer.Option(False),
+):
 
-    story = []  # (isCoach, word)
+    story = default_story_start
 
     while True:
-        if debug:
-            ic(prompt)
-        coach_says = query_no_print(prompt_to_gpt=prompt, debug=debug, u4=u4)[0]
-        coach_wants_user_to_start = coach_says.lower().startswith("you start")
+        the_story_as_text = query_no_print(
+            prompt_to_gpt=prompt_json_improv(story), debug=debug, u4=u4
+        )[0]
+        ic(the_story_as_text)
 
-        if coach_wants_user_to_start:
-            user_says = input(f"{coach_says}\n>")
-            prompt += f" {user_says} "
-            story += [(False, user_says)]
-            continue
-
-        story += [(True, coach_says)]
-        prompt += coach_says
+        # Super risky, passing output of gpt directly to eval
+        story = eval(the_story_as_text)
         print_story(story)
         console.print("[yellow] >>[/yellow]", end="")
         user_says = input()
-        prompt += f" {user_says} "
-        story += [(False, user_says)]
+        story += [Fragment("student", user_says)]
 
 
 @app.command()
@@ -806,9 +818,6 @@ def improv(
     debug: bool = typer.Option(False),
     u4: bool = typer.Option(True),
 ):
-    global text_model_best
-    text_model_best, tokens = process_u4(u4)
-
     prompt = """
 You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
 
@@ -842,21 +851,13 @@ now add your words to the story (NEVER ADD MORE THEN 5 WORDS):
         if debug:
             ic(prompt)
         coach_says = query_no_print(prompt_to_gpt=prompt, debug=debug, u4=u4)[0]
-        coach_wants_user_to_start = coach_says.lower().startswith("you start")
-
-        if coach_wants_user_to_start:
-            user_says = input(f"{coach_says}\n>")
-            prompt += f" {user_says} "
-            story += [(False, user_says)]
-            continue
-
-        story += [(True, coach_says)]
+        story += [Fragment("coach", coach_says)]
         prompt += coach_says
         print_story(story)
         console.print("[yellow] >>[/yellow]", end="")
         user_says = input()
         prompt += f" {user_says} "
-        story += [(False, user_says)]
+        story += [Fragment("user", user_says)]
 
 
 @app.command()
