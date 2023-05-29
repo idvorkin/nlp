@@ -106,7 +106,10 @@ def ask_gpt(
     if debug:
         out = f"All chunks took: {int((time.time() - start)*1000)} ms"
         ic(out)
-    return response_contents
+
+    # hard code to only return first response
+    assert len(response_contents) == 1
+    return response_contents[0]
 
 
 def process_u4(u4, tokens=0):
@@ -204,7 +207,7 @@ example_2_out = example_2_in + [
 ]
 
 
-def ask_gpt_to_append_fragment_written_by_coach(story_so_far: List[Fragment]):
+def prompt_gpt_to_append_fragment_written_by_coach(story_so_far: List[Fragment]):
     return f"""
 You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
 We're playing a game where we write a story together.
@@ -270,11 +273,19 @@ def safe_eval_of_fragment_list(fragment_list_as_text: str) -> List[Fragment]:
     return fragments
 
 
+def get_user_input():
+    console.print("[yellow] >>[/yellow]", end="")
+    return input()
+
+
 @app.command()
-def with_code(
+def code(
     debug: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
+    """
+    Play improv with GPT, prompt it to extend the story, but story is passed as List[Fragment]; Fragment=[Player,Text,Reasoning]
+    """
 
     default_story_start = [
         Fragment("coach", "Once upon a time", "A normal story start"),
@@ -283,25 +294,29 @@ def with_code(
 
     while True:
         print_story(story, show_story=True)
-        console.print("[yellow] >>[/yellow]", end="")
-        user_says = input()
+
+        user_says = get_user_input()
         story += [Fragment("student", user_says)]
+
+        prompt = prompt_gpt_to_append_fragment_written_by_coach(story)
+
         valid_python_code_for_list_of_fragments = ask_gpt(
-            prompt_to_gpt=ask_gpt_to_append_fragment_written_by_coach(story),
+            prompt_to_gpt=prompt,
             debug=debug,
             u4=u4,
-        )[0]
-        ic(valid_python_code_for_list_of_fragments)
-
-        #
+        )
         story = safe_eval_of_fragment_list(valid_python_code_for_list_of_fragments)
+        ic(valid_python_code_for_list_of_fragments)
 
 
 @app.command()
-def normal(
+def text(
     debug: bool = typer.Option(False),
     u4: bool = typer.Option(True),
 ):
+    """
+    Play improv with GPT, prompt it to extend the story, where story is the text of the story so far.
+    """
     prompt = """
 You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
 
@@ -333,12 +348,13 @@ now add your words to the story (NEVER ADD MORE THEN 5 WORDS):
     while True:
         if debug:
             ic(prompt)
-        coach_says = ask_gpt(prompt_to_gpt=prompt, debug=debug, u4=u4)[0]
+
+        coach_says = ask_gpt(prompt_to_gpt=prompt, debug=debug, u4=u4)
         story += [Fragment("coach", coach_says)]
         prompt += coach_says
         print_story(story, show_story=False)
-        console.print("[yellow] >>[/yellow]", end="")
-        user_says = input()
+
+        user_says = get_user_input()
         prompt += f" {user_says} "
         story += [Fragment("student", user_says)]
 
