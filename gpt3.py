@@ -677,6 +677,130 @@ def print_story(story):
         #    rich_print(s)
 
 
+class Fragment:
+    def __init__(self, player, text, reasoning=""):
+        self.player = player
+        self.text = text
+        self.reasoning = ""
+
+
+@app.command()
+def json_improv(
+    debug: bool = typer.Option(False),
+    u4: bool = typer.Option(False),
+):
+    global text_model_best
+    text_model_best, tokens = process_u4(u4)
+
+    prompt = """
+You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
+We're playing a game where we write a story together.
+The story should have the following format
+    - Once upon a time
+    - Every day
+    - But one day
+    - Because of that
+    - Because of that
+    - Until finally
+    - And ever since then
+
+The story should be creative and funny
+
+I'll write 1-5 words, and then you do the same, and we'll go back and forth writing the story.
+The story is expressed as a json, I will pass in json, and you add the coach line to the json.
+You will add a third field as to why you added those words in the line
+Only add a single coach field to the output
+
+Example 1 Input:
+
+{
+    [
+     Fragment("coach", "Once Upon a Time", "A normal story start"),
+     Fragment("student", "there lived "),
+     Fragment("coach", "a shrew named", "using shrew to make it intereting"),
+     Fragment("student", "Sarah. Every day the shrew"),
+    ]
+}
+
+Example 1 Output:
+
+{
+    [
+     Fragment("coach", "Once Upon a Time", "A normal story start"),
+     Fragment("student", "there lived "),
+     Fragment("coach", "a shrew named", "using shrew to make it intereting"),
+     Fragment("student", "Sarah. Every day the shrew"),
+     Fragment("coach", "smelled something that reminded her ", "give user a good offer"),
+    ]
+}
+
+--
+
+Example 2 Input:
+
+{
+    [
+     Fragment("coach", "Once Upon a Time within ", "A normal story start, with a narrowing"),
+     Fragment("student", "there lived a donkey"),
+     Fragment("coach", "who liked to eat", "add some color"),
+     Fragment("student", "Brocolli. Every" ),
+    ]
+}
+
+Example 2 Output:
+
+{
+    [
+     Fragment("coach", "Once Upon a Time within ", "A normal story start, with a narrowing"),
+     Fragment("student", "there lived a donkey"),
+     Fragment("coach", "who liked to eat", "add some color"),
+     Fragment("student", "Brocolli. Every" ),
+     Fragment("coach", "day the donkey", "continue in the format"),
+    ]
+}
+--
+
+Now, here is the story we're doing together. Add the next coach fragment to the story
+
+--
+Actual Input:
+
+{
+    [
+     Fragment("coach", "Once ", "A normal story start"),
+     Fragment("student", "upon a ")
+    ]
+}
+
+Ouptut:
+
+
+    """
+    # 10% of the time the coach will start the story, 50% of the time they'll ask the user to start by saying "You start"
+
+    story = []  # (isCoach, word)
+
+    while True:
+        if debug:
+            ic(prompt)
+        coach_says = query_no_print(prompt_to_gpt=prompt, debug=debug, u4=u4)[0]
+        coach_wants_user_to_start = coach_says.lower().startswith("you start")
+
+        if coach_wants_user_to_start:
+            user_says = input(f"{coach_says}\n>")
+            prompt += f" {user_says} "
+            story += [(False, user_says)]
+            continue
+
+        story += [(True, coach_says)]
+        prompt += coach_says
+        print_story(story)
+        console.print("[yellow] >>[/yellow]", end="")
+        user_says = input()
+        prompt += f" {user_says} "
+        story += [(False, user_says)]
+
+
 @app.command()
 def improv(
     debug: bool = typer.Option(False),
@@ -692,7 +816,7 @@ We're playing a game where we write a story together.
 
 The story should have the following format
     - Once upon a time
-    - Every day 
+    - Every day
     - But one day
     - Because of that
     - Because of that
@@ -704,7 +828,7 @@ The story should be creative and funny
 I'll write 1-5 words, and then you do the same, and we'll go back and forth writing the story.
 When you add words to the story, don't add more then 5 words, and stop in the middle of the sentance (that makes me be more creative)
 
-The story we've written together so far is below and I wrote the last 1 to 5 words, 
+The story we've written together so far is below and I wrote the last 1 to 5 words,
 now add your words to the story (NEVER ADD MORE THEN 5 WORDS):
 --
 
