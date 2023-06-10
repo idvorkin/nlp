@@ -60,6 +60,7 @@ def num_tokens_from_string(string: str, encoding_name: str = "") -> int:
     """Returns the number of tokens in a text string."""
     encoding = tiktoken.get_encoding(encoding_name)
     num_tokens = len(encoding.encode(string))
+    num_tokens = num_tokens + 1  # for newline
     return num_tokens
 
 
@@ -207,7 +208,11 @@ example_2_out = example_2_in + [
 ]
 
 
-def prompt_gpt_to_append_fragment_written_by_coach(story_so_far: List[Fragment]):
+def prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
+    story_so_far: List[Fragment],
+):
+    # convert story to json
+    story_so_far = json.dumps(story_so_far, default=lambda x: x.__dict__)
     return f"""
 You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
 We're playing a game where we write a story together.
@@ -259,32 +264,18 @@ Ouptut:
 """
 
 
-def safe_eval_of_fragment_list(fragment_list_as_text: str) -> List[Fragment]:
-
-    # input is valid python to construct fragments from text...
-    # [ Fragment(..),Fragment(..)]
-    # we don't want to run eval on that as it can run arbitrary stuff
-    # we cna remove the word fragment to make it a list of tuples
-    # then rebuild the tuples into fragments
-
-    fragment_list_as_text = fragment_list_as_text.replace("Fragment", "")
-    fragment_list = ast.literal_eval(fragment_list_as_text)
-    fragments = [Fragment(*tuple) for tuple in fragment_list]
-    return fragments
-
-
 def get_user_input():
     console.print("[yellow] >>[/yellow]", end="")
     return input()
 
 
 @app.command()
-def code(
+def json_objects(
     debug: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
     """
-    Play improv with GPT, prompt it to extend the story, but story is passed as List[Fragment]; Fragment=[Player,Text,Reasoning]
+    Play improv with GPT, prompt it to extend the story, but story is passed back and forth as json
     """
 
     default_story_start = [
@@ -298,15 +289,25 @@ def code(
         user_says = get_user_input()
         story += [Fragment("student", user_says)]
 
-        prompt = prompt_gpt_to_append_fragment_written_by_coach(story)
+        prompt = (
+            prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
+                story
+            )
+        )
 
-        valid_python_code_for_list_of_fragments = ask_gpt(
+        json_version_of_a_story = ask_gpt(
             prompt_to_gpt=prompt,
             debug=debug,
             u4=u4,
         )
-        story = safe_eval_of_fragment_list(valid_python_code_for_list_of_fragments)
-        ic(valid_python_code_for_list_of_fragments)
+
+        # convert json_version_of_a_story to a list of fragments
+        # Damn - Copilot wrote this code, and it's right (or so I think)
+        story = json.loads(json_version_of_a_story, object_hook=lambda d: Fragment(**d))
+        if debug:
+            ic(json_version_of_a_story)
+            ic(story)
+            input("You can inspect, and then press enter to continue")
 
 
 @app.command()
