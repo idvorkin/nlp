@@ -17,6 +17,12 @@ import time
 from typing import List
 import signal
 import ast
+import fastapi
+import uvicorn
+from pydantic import BaseModel
+
+# make a fastapi app called server
+service = fastapi.FastAPI()
 
 console = Console()
 
@@ -125,11 +131,10 @@ def process_u4(u4, tokens=0):
         return text_model_best, tokens
 
 
-class Fragment:
-    def __init__(self, player, text, reasoning=""):
-        self.player = player
-        self.text = text
-        self.reasoning = reasoning
+class Fragment(BaseModel):
+    player: str
+    text: str
+    reasoning: str = ""
 
     def __str__(self):
         if self.reasoning:
@@ -139,6 +144,11 @@ class Fragment:
 
     def __repr__(self):
         return str(self)
+
+    # a static constructor that takes positional arguments
+    @staticmethod
+    def Pos(player, text, reasoning=""):
+        return Fragment(player=player, text=text, reasoning=reasoning)
 
 
 def print_story(story: List[Fragment], show_story: bool):
@@ -185,26 +195,28 @@ def print_story(story: List[Fragment], show_story: bool):
 
 
 example_1_in = [
-    Fragment("coach", "Once upon a time", "A normal story start"),
-    Fragment("student", "there lived "),
-    Fragment("coach", "a shrew named", "using shrew to make it intereting"),
-    Fragment("student", "Sarah. Every day the shrew"),
+    Fragment.Pos("coach", "Once upon a time", "A normal story start"),
+    Fragment.Pos("student", "there lived "),
+    Fragment.Pos("coach", "a shrew named", "using shrew to make it intereting"),
+    Fragment.Pos("student", "Sarah. Every day the shrew"),
 ]
 example_1_out = example_1_in + [
-    Fragment("coach", "smelled something that reminded her ", "give user a good offer")
+    Fragment.Pos(
+        "coach", "smelled something that reminded her ", "give user a good offer"
+    )
 ]
 
 example_2_in = [
-    Fragment(
+    Fragment.Pos(
         "coach", "Once Upon a Time within ", "A normal story start, with a narrowing"
     ),
-    Fragment("student", "there lived a donkey"),
-    Fragment("coach", "who liked to eat", "add some color"),
-    Fragment("student", "Brocolli. Every"),
+    Fragment.Pos("student", "there lived a donkey"),
+    Fragment.Pos("coach", "who liked to eat", "add some color"),
+    Fragment.Pos("student", "Brocolli. Every"),
 ]
 
 example_2_out = example_2_in + [
-    Fragment("coach", "day the donkey", "continue in the format"),
+    Fragment.Pos("coach", "day the donkey", "continue in the format"),
 ]
 
 
@@ -279,7 +291,7 @@ def json_objects(
     """
 
     default_story_start = [
-        Fragment("coach", "Once upon a time", "A normal story start"),
+        Fragment.Pos("coach", "Once upon a time", "A normal story start"),
     ]
     story = default_story_start
 
@@ -287,7 +299,7 @@ def json_objects(
         print_story(story, show_story=True)
 
         user_says = get_user_input()
-        story += [Fragment("student", user_says)]
+        story += [Fragment(player="student", text=user_says)]
 
         prompt = (
             prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
@@ -308,6 +320,37 @@ def json_objects(
             ic(json_version_of_a_story)
             ic(story)
             input("You can inspect, and then press enter to continue")
+
+
+@app.command()
+def server():
+    # uvicorn.run("improv:server")
+    import subprocess
+
+    subprocess.run("uvicorn improv:service --reload")
+
+
+# add a fastapi endpoint that takes the story so far as json, and returns the story with the coach fragment added
+# you load the server on the command line by running uvicorn improv:server --reload
+@service.get("/improv")
+async def extend_story(story_so_far: List[Fragment]) -> List[Fragment]:
+    # create the prompt
+    prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
+        story_so_far
+    )
+
+    # call gpt
+    json_version_of_a_story = ask_gpt(
+        prompt_to_gpt=prompt,
+        debug=False,
+        u4=False,
+    )
+
+    # convert json_version_of_a_story to a list of fragments
+    # Damn - Copilot wrote this code, and it's right (or so I think)
+    story = json.loads(json_version_of_a_story, object_hook=lambda d: Fragment(**d))
+
+    return story
 
 
 @app.command()
