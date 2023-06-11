@@ -24,6 +24,7 @@ import discord
 import aiohttp
 from io import BytesIO
 from asyncer import asyncify
+from discord.ext import commands
 
 # import OpenAI exceptiions
 from openai.error import APIError, InvalidRequestError, AuthenticationError
@@ -334,20 +335,24 @@ def json_objects(
 ic(discord)
 bot = discord.Bot()
 
-bot_help_text = """```ansi
-Commands:
-    /new - start a new story
-    /story  - print or continue the story
-    /continue  - continue the story
-    /help - show this help
-    /debug - show debug info
-    /visualize - show a visualization of the story so far
-```"""
+bot_help_text = "Replaced on_ready"
 
 
 @bot.event
 async def on_ready():
     print(f"{bot.user} is ready and online!")
+    global bot_help_text
+    bot_help_text = f"""```ansi Commands:
+ /once-upon-a-time - start a new story
+ /continue  - continue the story
+ /story  - print or continue the story
+ /help - show this help
+ /debug - show debug info
+ /visualize - show a visualization of the story so far
+With direct messages:
+ @{bot.user.display_name} - See the story so far
+ @{bot.user.display_name} more words - extend the story
+    ```"""
 
 
 context_to_story = dict()
@@ -446,7 +451,7 @@ def color_story_for_discord(story: List[Fragment]):
 
 
 @bot.command(description="Start a new story with the bot")
-async def new(ctx):
+async def once_upon_a_time(ctx):
     reset_story_for_channel(ctx)
     active_story = get_story_for_channel(ctx)
     story_text = " ".join([f.text for f in active_story])
@@ -459,7 +464,7 @@ async def new(ctx):
     await ctx.respond(response)
 
 
-async def story_code(ctx, extend: str = ""):
+async def extend_story_for_bot(ctx, extend: str = ""):
     # if story is empty, then start with the default story
     ic(extend)
     await ctx.defer()
@@ -478,6 +483,9 @@ async def story_code(ctx, extend: str = ""):
     active_story += [user_said]
     ic(active_story)
     ic("calling gpt")
+    progress_message = await ctx.send(
+        f"Asking improv gods to continue with *{extend}* ..."
+    )
 
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
         active_story
@@ -505,6 +513,8 @@ async def story_code(ctx, extend: str = ""):
     ic(story_text)
     colored = color_story_for_discord(active_story)
     ic(colored)
+    await progress_message.delete()
+
     await ctx.followup.send(colored)
 
 
@@ -515,14 +525,14 @@ async def story(
         str, name="continue_with", description="continue story with", required="False"
     ),
 ):
-    await story_code(ctx, extend)
+    await extend_story_for_bot(ctx, extend)
 
 
 @bot.command(name="continue", description="Continue the story")
 async def extend(
     ctx, with_: discord.Option(str, name="with", description="continue story with")
 ):
-    await story_code(ctx, with_)
+    await extend_story_for_bot(ctx, with_)
 
 
 @bot.command(description="Show help")
@@ -554,6 +564,7 @@ def run_bot():
     # throw if token not found
     if not token:
         raise ValueError("DISCORD_BOT_TOKEN environment variable not set")
+    bot.add_cog(MentionListener(bot))
     bot.run(token)
 
 
@@ -568,16 +579,20 @@ async def visualize(ctx, count: int = 2):
     count = min(count, 8)
     active_story = get_story_for_channel(ctx)
     story_as_text = " ".join([f.text for f in active_story])
+    await ctx.defer()
     prompt = f"""Make a good prompt for DALL-E2 (A Stable diffusion model) to make a picture of this story. Only return the prompt that will be passed in directly: \n\n {story_as_text}"""
+    progress_message = await ctx.send("Asking improv gods what to visualize...")
 
-    prompt = ask_gpt(
+    prompt = await asyncify(ask_gpt)(
         prompt_to_gpt=prompt,
         debug=False,
         u4=False,
     )
     ic(prompt)
+    progress_message = await progress_message.edit(
+        content=f"Asking improv gods to visualize - *{prompt}* "
+    )
 
-    await ctx.defer()
     # await ctx.followup.send(
     # f"Asking improv gods to visualize  {color_story_for_discord(global_bot_story)}to the improv gods, hold your breath..."
     # )
@@ -600,9 +615,82 @@ async def visualize(ctx, count: int = 2):
             images.append(image_file)
 
         await ctx.followup.send(files=images)
-    # Catch an invalid request due to inapropriate content
+        await progress_message.edit(content=f"**{prompt}** ")
     except InvalidRequestError as e:
         await ctx.followup.send(f"Error: {e}")
+
+
+class MentionListener(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot:
+            return
+
+        # Check if the bot is mentioned
+        if self.bot.user in message.mentions:
+            # Your custom callback function here
+            await self.on_mention(message)
+
+    # TODO: Refactor to be with extend_story_for_bot
+    async def on_mention(self, message):
+        message_content = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
+        active_story = get_story_for_channel(message)
+        ic(active_story)
+        colored = color_story_for_discord(active_story)
+        # await message.channel.send(f"Hello, {message.author.mention}! You mentioned me saying - {message_content}!")
+        if message_content == "":
+            response = (
+                f"You're writing a story with a bot! \nSo far the story is:  {colored}Interact with the bot via"
+                + bot_help_text
+            )
+            await message.channel.send(response)
+            return
+
+        # extend with the current story
+        # await ctx.followup.send(
+        # f"Wispering *'{extend}'* to the improv gods, hold your breath..."
+        # )
+        user_said = Fragment(player=message.author.name, text=message_content)
+        active_story += [user_said]
+        ic(active_story)
+        ic("calling gpt")
+
+        prompt = (
+            prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
+                active_story
+            )
+        )
+
+        sent_message = await message.channel.send(
+            f"Summoning the improv gods with *{message_content}*..."
+        )
+
+        json_version_of_a_story = await asyncify(ask_gpt)(
+            prompt_to_gpt=prompt,
+            debug=False,
+            u4=False,
+        )
+
+        ic(json_version_of_a_story)
+
+        # convert json_version_of_a_story to a list of fragments
+        # Damn - Copilot wrote this code, and it's right (or so I think)
+        active_story = json.loads(
+            json_version_of_a_story, object_hook=lambda d: Fragment(**d)
+        )
+
+        set_story_for_channel(message, active_story)
+
+        # convert story to text
+        print_story(active_story, show_story=True)
+        story_text = " ".join([f.text for f in active_story])
+        ic(story_text)
+        colored = color_story_for_discord(active_story)
+        ic(colored)
+        await sent_message.edit(content=f"{colored}")
 
 
 @app.command()
