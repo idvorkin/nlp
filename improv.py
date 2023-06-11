@@ -79,7 +79,7 @@ def ask_gpt(
 ):
     text_model_best, tokens = process_u4(u4)
     messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "system", "content": "You are a really good improv coach."},
         {"role": "user", "content": prompt_to_gpt},
     ]
 
@@ -342,12 +342,12 @@ global_bot_story = default_story_start
 def color_story_for_discord(story: List[Fragment]):
 
     color_to_ansi_map = {
-        "bold cyan": "36;1",
-        "bold red": "31;1",
-        "green": "32;1",
-        "blue": "34",
-        "yellow": "33",
-        "purple": "35",
+        "bold cyan": "36;4",
+        "bold red": "31;4",
+        "green": "32;4",
+        "blue": "34;4",
+        "yellow": "33;4",
+        "purple": "35;4",
         "grey": "37",
     }
 
@@ -372,7 +372,7 @@ def color_story_for_discord(story: List[Fragment]):
         return color_for_user
 
     def wrap_color(text, color):
-        return f"[{color}m{text}[0m"
+        return f" [{color}m{text}[0m"
 
     ansi_text = ""
     for fragment in story:
@@ -382,12 +382,12 @@ def color_story_for_discord(story: List[Fragment]):
         if split_line:
             end_sentance, new_sentance = s.split(".")
             ansi_text += wrap_color(
-                f" {end_sentance}.\n", get_color_for(story, fragment)
+                f"{end_sentance}.\n", get_color_for(story, fragment)
             )
-            ansi_text += wrap_color(f" {new_sentance}", get_color_for(story, fragment))
+            ansi_text += wrap_color(f"{new_sentance}", get_color_for(story, fragment))
             continue
 
-        ansi_text += wrap_color(f" {s}", get_color_for(story, fragment))
+        ansi_text += wrap_color(f"{s}", get_color_for(story, fragment))
 
     output = f"""```ansi
 {ansi_text}
@@ -422,6 +422,9 @@ async def story_code(ctx, extend: str = ""):
 
     # extend with the current story
     await ctx.defer()
+    await ctx.followup.send(
+        f"Wispering '{extend}' to the improv gods, hold your breath..."
+    )
     user_said = Fragment(player=ctx.author.name, text=extend)
     global_bot_story += [user_said]
     ic(global_bot_story)
@@ -454,14 +457,34 @@ async def story_code(ctx, extend: str = ""):
     await ctx.followup.send(colored)
 
 
-@bot.command(description="Write a story with the bot")
+@bot.command(description="Write a story with the bot, or show the story so far")
 async def story(ctx, extend: str = ""):
     await story_code(ctx, extend)
 
 
-@bot.command(description="Write a story with the bot")
-async def extend(ctx, by: str = ""):
+@bot.command(description="Extend the story with the bot")
+async def extend(ctx, by: str):
     await story_code(ctx, by)
+
+
+@bot.command(description="Show help")
+async def help(ctx):
+    await ctx.respond(
+        """```ansi
+Commands:
+    /new - start a new story
+    /story  - print or continue the story
+    /extend  - continue the story
+    /help - show this help
+    /debug - show debug info
+    /visualize - show a visualization of the story so far
+```"""
+    )
+
+
+@bot.command(description="See debug stuf")
+async def debug(ctx):
+    await ctx.respond(global_bot_story)
 
 
 @app.command()
@@ -472,6 +495,25 @@ def run_bot():
     if not token:
         raise ValueError("DISCORD_BOT_TOKEN environment variable not set")
     bot.run(token)
+
+
+@bot.command(description="Visualize the story so far")
+async def visualize(ctx, count: int = 1):
+    await ctx.defer()
+    count = min(count, 4)
+    story_as_text = " ".join([f.text for f in global_bot_story])
+    prompt = f"""{story_as_text}"""
+    await ctx.followup.send(
+        f"Wispering '{story_as_text}' to the improv gods, hold your breath..."
+    )
+    response = openai.Image.create(
+        prompt=prompt,
+        n=count,
+    )
+    ic(response)
+    for i in range(count):
+        url = response["data"][i]["url"]
+        await ctx.respond(url)
 
 
 @app.command()
