@@ -21,6 +21,8 @@ import fastapi
 import uvicorn
 from pydantic import BaseModel
 import discord
+import aiohttp
+from io import BytesIO
 
 # make a fastapi app called server
 service = fastapi.FastAPI()
@@ -387,15 +389,6 @@ def color_story_for_discord(story: List[Fragment]):
     ansi_text = ""
     for fragment in story:
         s = fragment.text
-        split_line = len(s.split(".")) == 2
-        # assume it only contains 1 period , todo handle when it does not
-        if split_line:
-            end_sentance, new_sentance = s.split(".")
-            ansi_text += wrap_color(f"{end_sentance}.", get_color_for(story, fragment))
-            ansi_text += "\n"
-            ansi_text += wrap_color(f"{new_sentance}", get_color_for(story, fragment))
-            continue
-
         ansi_text += wrap_color(f"{s}", get_color_for(story, fragment))
 
     output = f"""```ansi
@@ -434,9 +427,9 @@ async def story_code(ctx, extend: str = ""):
 
     # extend with the current story
     await ctx.defer()
-    await ctx.followup.send(
-        f"Wispering *'{extend}'* to the improv gods, hold your breath..."
-    )
+    # await ctx.followup.send(
+    # f"Wispering *'{extend}'* to the improv gods, hold your breath..."
+    # )
     user_said = Fragment(player=ctx.author.name, text=extend)
     global_bot_story += [user_said]
     ic(global_bot_story)
@@ -469,11 +462,11 @@ async def story_code(ctx, extend: str = ""):
     await ctx.followup.send(colored)
 
 
-@bot.command(description="Write a story with the bot, or show the story so far")
+@bot.command(description="Show the story so far, or extend it")
 async def story(
     ctx,
     extend: discord.Option(
-        str, name="continue_with", description="continue story with"
+        str, name="continue_with", description="continue story with", required="False"
     ),
 ):
     await story_code(ctx, extend)
@@ -506,23 +499,37 @@ def run_bot():
     bot.run(token)
 
 
+async def download_image(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.read()
+
+
 @bot.command(description="Visualize the story so far")
-async def visualize(ctx, count: int = 1):
-    count = min(count, 4)
+async def visualize(ctx, count: int = 2):
+    count = min(count, 8)
     story_as_text = " ".join([f.text for f in global_bot_story])
-    prompt = f"""{story_as_text}"""
+    prompt = f"""Make a good prompt for DALL-E2 (A Stable diffusion model) to make a picture of this story: \n\n {story_as_text}"""
     await ctx.defer()
-    await ctx.followup.send(
-        f"Asking improv gods to visualize  {color_story_for_discord(global_bot_story)}to the improv gods, hold your breath..."
-    )
+    # await ctx.followup.send(
+    # f"Asking improv gods to visualize  {color_story_for_discord(global_bot_story)}to the improv gods, hold your breath..."
+    # )
     response = openai.Image.create(
         prompt=prompt,
         n=count,
     )
     ic(response)
-    for i in range(count):
-        url = response["data"][i]["url"]
-        await ctx.respond(url)
+    image_urls = [response["data"][i]["url"] for i in range(count)]
+    ic(image_urls)
+
+    images = []
+
+    for url in image_urls:
+        image_data = await download_image(url)
+        image_file = discord.File(BytesIO(image_data), filename="image.png")
+        images.append(image_file)
+
+    await ctx.followup.send(files=images)
 
 
 @app.command()
