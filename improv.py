@@ -346,7 +346,29 @@ async def on_ready():
     print(f"{bot.user} is ready and online!")
 
 
-global_bot_story = default_story_start
+context_to_story = dict()
+
+
+def key_for_ctx(ctx):
+    return f"{ctx.guild.name}-{ctx.channel.name}"
+
+
+def get_story_for_channel(ctx):
+    key = key_for_ctx(ctx)
+    if key not in context_to_story:
+        reset_story_for_channel(ctx)
+
+    # return a copy of the story
+    return context_to_story[key][:]
+
+
+def set_story_for_channel(ctx, story):
+    key = key_for_ctx(ctx)
+    context_to_story[key] = story
+
+
+def reset_story_for_channel(ctx):
+    set_story_for_channel(ctx, default_story_start)
 
 
 # https://rebane2001.com/discord-colored-text-generator/
@@ -400,13 +422,11 @@ def color_story_for_discord(story: List[Fragment]):
 
 @bot.command(description="Start a new story with the bot")
 async def new(ctx):
-    global global_bot_story, default_story_start
-    global_bot_story = default_story_start
-
-    print_story(global_bot_story, show_story=True)
-    story_text = " ".join([f.text for f in global_bot_story])
+    reset_story_for_channel(ctx)
+    active_story = get_story_for_channel(ctx)
+    story_text = " ".join([f.text for f in active_story])
     ic(story_text)
-    colored_story = color_story_for_discord(global_bot_story)
+    colored_story = color_story_for_discord(active_story)
     response = (
         f"You're writing a story with a bot! So far the story is:  {colored_story} You can interact with the bot via "
         + bot_help_text
@@ -415,28 +435,27 @@ async def new(ctx):
 
 
 async def story_code(ctx, extend: str = ""):
-    global global_bot_story
     # if story is empty, then start with the default story
     ic(extend)
+    await ctx.defer()
+    active_story = get_story_for_channel(ctx)
     if not extend:
-        ic(global_bot_story)
-        story_text = " ".join([f.text for f in global_bot_story])
-        ic(story_text)
-        await ctx.respond(story_text)
+        colored = color_story_for_discord(active_story)
+        ic(colored)
+        await ctx.followup.send(colored)
         return
 
     # extend with the current story
-    await ctx.defer()
     # await ctx.followup.send(
     # f"Wispering *'{extend}'* to the improv gods, hold your breath..."
     # )
     user_said = Fragment(player=ctx.author.name, text=extend)
-    global_bot_story += [user_said]
-    ic(global_bot_story)
+    active_story += [user_said]
+    ic(active_story)
     ic("calling gpt")
 
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
-        global_bot_story
+        active_story
     )
 
     json_version_of_a_story = ask_gpt(
@@ -449,15 +468,17 @@ async def story_code(ctx, extend: str = ""):
 
     # convert json_version_of_a_story to a list of fragments
     # Damn - Copilot wrote this code, and it's right (or so I think)
-    global_bot_story = json.loads(
+    active_story = json.loads(
         json_version_of_a_story, object_hook=lambda d: Fragment(**d)
     )
 
+    set_story_for_channel(ctx, active_story)
+
     # convert story to text
-    print_story(global_bot_story, show_story=True)
-    story_text = " ".join([f.text for f in global_bot_story])
+    print_story(active_story, show_story=True)
+    story_text = " ".join([f.text for f in active_story])
     ic(story_text)
-    colored = color_story_for_discord(global_bot_story)
+    colored = color_story_for_discord(active_story)
     ic(colored)
     await ctx.followup.send(colored)
 
@@ -486,7 +507,14 @@ async def help(ctx):
 
 @bot.command(description="See debug stuf")
 async def debug(ctx):
-    await ctx.respond(global_bot_story)
+    active_story = get_story_for_channel(ctx)
+    debug_out = f"""```ansi
+        {repr(active_story)}
+        Active Channels:
+        {context_to_story.keys()}
+    ```
+    """
+    await ctx.respond(debug_out)
 
 
 @app.command()
@@ -508,7 +536,8 @@ async def download_image(url):
 @bot.command(description="Visualize the story so far")
 async def visualize(ctx, count: int = 2):
     count = min(count, 8)
-    story_as_text = " ".join([f.text for f in global_bot_story])
+    active_story = get_story_for_channel(ctx)
+    story_as_text = " ".join([f.text for f in active_story])
     prompt = f"""Make a good prompt for DALL-E2 (A Stable diffusion model) to make a picture of this story: \n\n {story_as_text}"""
     await ctx.defer()
     # await ctx.followup.send(
