@@ -328,6 +328,16 @@ def json_objects(
 ic(discord)
 bot = discord.Bot()
 
+bot_help_text = """```ansi
+Commands:
+    /new - start a new story
+    /story  - print or continue the story
+    /continue  - continue the story
+    /help - show this help
+    /debug - show debug info
+    /visualize - show a visualization of the story so far
+```"""
+
 
 @bot.event
 async def on_ready():
@@ -342,12 +352,12 @@ global_bot_story = default_story_start
 def color_story_for_discord(story: List[Fragment]):
 
     color_to_ansi_map = {
-        "bold cyan": "36;4",
-        "bold red": "31;4",
-        "green": "32;4",
-        "blue": "34;4",
         "yellow": "33;4",
+        "bold red": "31",
+        "green": "32;4",
         "purple": "35;4",
+        "bold cyan": "36;4",
+        "blue": "34;4",
         "grey": "37",
     }
 
@@ -381,9 +391,8 @@ def color_story_for_discord(story: List[Fragment]):
         # assume it only contains 1 period , todo handle when it does not
         if split_line:
             end_sentance, new_sentance = s.split(".")
-            ansi_text += wrap_color(
-                f"{end_sentance}.\n", get_color_for(story, fragment)
-            )
+            ansi_text += wrap_color(f"{end_sentance}.", get_color_for(story, fragment))
+            ansi_text += "\n"
             ansi_text += wrap_color(f"{new_sentance}", get_color_for(story, fragment))
             continue
 
@@ -404,9 +413,12 @@ async def new(ctx):
     print_story(global_bot_story, show_story=True)
     story_text = " ".join([f.text for f in global_bot_story])
     ic(story_text)
-    colored = color_story_for_discord(global_bot_story)
-    ic(colored)
-    await ctx.respond(colored)
+    colored_story = color_story_for_discord(global_bot_story)
+    response = (
+        f"You're writing a story with a bot! So far the story is:  {colored_story} You can interact with the bot via "
+        + bot_help_text
+    )
+    await ctx.respond(response)
 
 
 async def story_code(ctx, extend: str = ""):
@@ -423,7 +435,7 @@ async def story_code(ctx, extend: str = ""):
     # extend with the current story
     await ctx.defer()
     await ctx.followup.send(
-        f"Wispering '{extend}' to the improv gods, hold your breath..."
+        f"Wispering *'{extend}'* to the improv gods, hold your breath..."
     )
     user_said = Fragment(player=ctx.author.name, text=extend)
     global_bot_story += [user_said]
@@ -458,28 +470,25 @@ async def story_code(ctx, extend: str = ""):
 
 
 @bot.command(description="Write a story with the bot, or show the story so far")
-async def story(ctx, extend: str = ""):
+async def story(
+    ctx,
+    extend: discord.Option(
+        str, name="continue with", description="continue story with"
+    ),
+):
     await story_code(ctx, extend)
 
 
-@bot.command(description="Extend the story with the bot")
-async def extend(ctx, by: str):
-    await story_code(ctx, by)
+@bot.command(name="continue", description="Continue the story")
+async def extend(
+    ctx, with_: discord.Option(str, name="with", description="continue story with")
+):
+    await story_code(ctx, with_)
 
 
 @bot.command(description="Show help")
 async def help(ctx):
-    await ctx.respond(
-        """```ansi
-Commands:
-    /new - start a new story
-    /story  - print or continue the story
-    /extend  - continue the story
-    /help - show this help
-    /debug - show debug info
-    /visualize - show a visualization of the story so far
-```"""
-    )
+    await ctx.respond(bot_help_text)
 
 
 @bot.command(description="See debug stuf")
@@ -499,12 +508,12 @@ def run_bot():
 
 @bot.command(description="Visualize the story so far")
 async def visualize(ctx, count: int = 1):
-    await ctx.defer()
     count = min(count, 4)
     story_as_text = " ".join([f.text for f in global_bot_story])
     prompt = f"""{story_as_text}"""
+    await ctx.defer()
     await ctx.followup.send(
-        f"Wispering '{story_as_text}' to the improv gods, hold your breath..."
+        f"Asking improv gods to visualize  {color_story_for_discord(global_bot_story)}to the improv gods, hold your breath..."
     )
     response = openai.Image.create(
         prompt=prompt,
