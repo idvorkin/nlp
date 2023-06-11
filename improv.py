@@ -20,6 +20,7 @@ import ast
 import fastapi
 import uvicorn
 from pydantic import BaseModel
+import discord
 
 # make a fastapi app called server
 service = fastapi.FastAPI()
@@ -149,6 +150,21 @@ class Fragment(BaseModel):
     @staticmethod
     def Pos(player, text, reasoning=""):
         return Fragment(player=player, text=text, reasoning=reasoning)
+
+
+default_story_start = [
+    Fragment.Pos("coach", "Once upon a time", "A normal story start"),
+]
+
+# https://rebane2001.com/discord-colored-text-generator/
+# We can colorize story for discord
+def write_story_for_discord(story: List[Fragment]):
+
+    output = """
+    ```ansi Welcome to [2;33mRebane[0m's [2;45m[2;37mDiscord[0m[2;45m[0m [2;31mC[0m[2;32mo[0m[2;33ml[0m[2;34mo[0m[2;35mr[0m[2;36me[0m[2;37md[0m Text Generator!
+    ```
+    """
+    return output
 
 
 def print_story(story: List[Fragment], show_story: bool):
@@ -290,9 +306,6 @@ def json_objects(
     Play improv with GPT, prompt it to extend the story, but story is passed back and forth as json
     """
 
-    default_story_start = [
-        Fragment.Pos("coach", "Once upon a time", "A normal story start"),
-    ]
     story = default_story_start
 
     while True:
@@ -320,6 +333,80 @@ def json_objects(
             ic(json_version_of_a_story)
             ic(story)
             input("You can inspect, and then press enter to continue")
+
+
+ic(discord)
+bot = discord.Bot()
+
+
+@bot.event
+async def on_ready():
+    print(f"{bot.user} is ready and online!")
+
+
+global_bot_story = default_story_start
+
+
+@bot.command(description="Start a new story with the bot")
+async def new(ctx):
+    global global_bot_story, default_story_start
+    global_bot_story = default_story_start
+
+    print_story(global_bot_story, show_story=True)
+    story_text = " ".join([f.text for f in global_bot_story])
+    ic(story_text)
+    await ctx.send(story_text)
+
+
+@bot.command(description="Write a story with the bot")
+async def story(ctx, extend: str = ""):
+    global global_bot_story
+    # if story is empty, then start with the default story
+    ic(extend)
+    if not extend:
+        ic(global_bot_story)
+        story_text = " ".join([f.text for f in global_bot_story])
+        ic(story_text)
+        await ctx.send(story_text)
+        return
+
+    # extend with the current story
+    user_said = Fragment(player="student", text=extend)
+    global_bot_story.extend(user_said)
+
+    prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
+        global_bot_story
+    )
+
+    json_version_of_a_story = ask_gpt(
+        prompt_to_gpt=prompt,
+        debug=False,
+        u4=False,
+    )
+
+    ic(json_version_of_a_story)
+
+    # convert json_version_of_a_story to a list of fragments
+    # Damn - Copilot wrote this code, and it's right (or so I think)
+    global_bot_story = json.loads(
+        json_version_of_a_story, object_hook=lambda d: Fragment(**d)
+    )
+
+    # convert story to text
+    print_story(global_bot_story, show_story=True)
+    story_text = " ".join([f.text for f in global_bot_story])
+    ic(story_text)
+    await ctx.send(story_text)
+
+
+@app.command()
+def run_bot():
+    # read token from environment variable
+    token = os.environ.get("DISCORD_BOT_TOKEN")
+    # throw if token not found
+    if not token:
+        raise ValueError("DISCORD_BOT_TOKEN environment variable not set")
+    bot.run(token)
 
 
 @app.command()
