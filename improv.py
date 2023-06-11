@@ -24,6 +24,9 @@ import discord
 import aiohttp
 from io import BytesIO
 
+# import OpenAI exceptiions
+from openai.error import APIError, InvalidRequestError, AuthenticationError
+
 # make a fastapi app called server
 service = fastapi.FastAPI()
 
@@ -572,22 +575,28 @@ async def visualize(ctx, count: int = 2):
     # await ctx.followup.send(
     # f"Asking improv gods to visualize  {color_story_for_discord(global_bot_story)}to the improv gods, hold your breath..."
     # )
-    response = openai.Image.create(
-        prompt=prompt,
-        n=count,
-    )
-    ic(response)
-    image_urls = [response["data"][i]["url"] for i in range(count)]
-    ic(image_urls)
 
-    images = []
+    response = None
+    try:
+        response = openai.Image.create(
+            prompt=prompt,
+            n=count,
+        )
+        ic(response)
+        image_urls = [response["data"][i]["url"] for i in range(count)]
+        ic(image_urls)
 
-    for url in image_urls:
-        image_data = await download_image(url)
-        image_file = discord.File(BytesIO(image_data), filename="image.png")
-        images.append(image_file)
+        images = []
 
-    await ctx.followup.send(files=images)
+        for url in image_urls:
+            image_data = await download_image(url)
+            image_file = discord.File(BytesIO(image_data), filename="image.png")
+            images.append(image_file)
+
+        await ctx.followup.send(files=images)
+    # Catch an invalid request due to inapropriate content
+    except InvalidRequestError as e:
+        await ctx.followup.send(f"Error: {e}")
 
 
 @app.command()
