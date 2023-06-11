@@ -1,6 +1,7 @@
 #!python3
 
 import os
+import asyncio
 import openai
 import json
 from icecream import ic
@@ -25,6 +26,7 @@ import aiohttp
 from io import BytesIO
 from asyncer import asyncify
 from discord.ext import commands
+from discord.ui import Button, View, Modal
 
 # import OpenAI exceptiions
 from openai.error import APIError, InvalidRequestError, AuthenticationError
@@ -440,6 +442,18 @@ def color_story_for_discord(story: List[Fragment]):
 
 
 @bot.command(description="Start a new story with the bot")
+async def flavor(ctx):
+    active_story = get_story_for_channel(ctx)
+    ctx.defer()
+    colored = color_story_for_discord(active_story)
+    progress = await ctx.send(f"{colored}The improv gods thinketh, be patient ..." "")
+    # async sleep 3 seconds
+    await asyncio.sleep(3)
+    await ctx.send(content="Chooose a flavor!", view=MyView())
+    # await progress.delete()
+
+
+@bot.command(description="Start a new story with the bot")
 async def once_upon_a_time(ctx):
     reset_story_for_channel(ctx)
     active_story = get_story_for_channel(ctx)
@@ -608,6 +622,31 @@ async def visualize(ctx, count: int = 2):
         await progress_message.edit(content=f"**{prompt}** ")
     except InvalidRequestError as e:
         await ctx.followup.send(f"Error: {e}")
+
+
+class MyView(discord.ui.View):
+    @discord.ui.select(  # the decorator that lets you specify the properties of the select menu
+        placeholder="Choose a Flavor!",  # the placeholder text that will be displayed if nothing is selected
+        min_values=1,  # the minimum number of values that must be selected by the users
+        max_values=1,  # the maximum number of values that can be selected by the users
+        options=[  # the list of options from which users can choose, a required field
+            discord.SelectOption(
+                label="Vanilla", description="Pick this if you like vanilla!"
+            ),
+            discord.SelectOption(
+                label="Chocolate", description="Pick this if you like chocolate!"
+            ),
+            discord.SelectOption(
+                label="Strawberry", description="Pick this if you like strawberry!"
+            ),
+        ],
+    )
+    async def select_callback(
+        self, select, interaction
+    ):  # the function called when the user is done selecting options
+        await interaction.response.send_message(
+            f"Awesome! I like {select.values[0]} too!"
+        )
 
 
 class MentionListener(commands.Cog):
