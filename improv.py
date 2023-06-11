@@ -156,16 +156,6 @@ default_story_start = [
     Fragment.Pos("coach", "Once upon a time", "A normal story start"),
 ]
 
-# https://rebane2001.com/discord-colored-text-generator/
-# We can colorize story for discord
-def write_story_for_discord(story: List[Fragment]):
-
-    output = """
-    ```ansi Welcome to [2;33mRebane[0m's [2;45m[2;37mDiscord[0m[2;45m[0m [2;31mC[0m[2;32mo[0m[2;33ml[0m[2;34mo[0m[2;35mr[0m[2;36me[0m[2;37md[0m Text Generator!
-    ```
-    """
-    return output
-
 
 def print_story(story: List[Fragment], show_story: bool):
     # Split on '.', but only if there isn't a list
@@ -347,6 +337,22 @@ async def on_ready():
 global_bot_story = default_story_start
 
 
+# https://rebane2001.com/discord-colored-text-generator/
+# We can colorize story for discord
+def color_story_for_discord(story: List[Fragment]):
+
+    output_hold = """```ansi
+    Welcome to [2;33mRebane[0m's [2;45m[2;37mDiscord[0m[2;45m[0m [2;31mC[0m[2;32mo[0m[2;33ml[0m[2;34mo[0m[2;35mr[0m[2;36me[0m[2;37md[0m Text Generator!
+    ```
+    """
+    text = " ".join([x.text for x in story])
+    output = f"""```ansi
+{text}
+    ```
+    """
+    return output
+
+
 @bot.command(description="Start a new story with the bot")
 async def new(ctx):
     global global_bot_story, default_story_start
@@ -355,11 +361,12 @@ async def new(ctx):
     print_story(global_bot_story, show_story=True)
     story_text = " ".join([f.text for f in global_bot_story])
     ic(story_text)
-    await ctx.send(story_text)
+    colored = color_story_for_discord(global_bot_story)
+    ic(colored)
+    await ctx.respond(colored)
 
 
-@bot.command(description="Write a story with the bot")
-async def story(ctx, extend: str = ""):
+async def story_code(ctx, extend: str = ""):
     global global_bot_story
     # if story is empty, then start with the default story
     ic(extend)
@@ -367,12 +374,15 @@ async def story(ctx, extend: str = ""):
         ic(global_bot_story)
         story_text = " ".join([f.text for f in global_bot_story])
         ic(story_text)
-        await ctx.send(story_text)
+        await ctx.respond(story_text)
         return
 
     # extend with the current story
-    user_said = Fragment(player="student", text=extend)
-    global_bot_story.extend(user_said)
+    await ctx.defer()
+    user_said = Fragment(player=ctx.author.name, text=extend)
+    global_bot_story += [user_said]
+    ic(global_bot_story)
+    ic("calling gpt")
 
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
         global_bot_story
@@ -396,7 +406,19 @@ async def story(ctx, extend: str = ""):
     print_story(global_bot_story, show_story=True)
     story_text = " ".join([f.text for f in global_bot_story])
     ic(story_text)
-    await ctx.send(story_text)
+    colored = color_story_for_discord(global_bot_story)
+    ic(colored)
+    await ctx.followup.send(colored)
+
+
+@bot.command(description="Write a story with the bot")
+async def story(ctx, extend: str = ""):
+    await story_code(ctx, extend)
+
+
+@bot.command(description="Write a story with the bot")
+async def extend(ctx, by: str = ""):
+    await story_code(ctx, by)
 
 
 @app.command()
