@@ -543,8 +543,13 @@ async def debug(ctx):
 
 @app.command()
 def run_bot():
-    # read token from environment variable
+    # read token from environment variable, or from the secret box, if in neither throw
     token = os.environ.get("DISCORD_BOT_TOKEN")
+    if not token:
+        with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
+            SECRETS = json.load(json_data)
+            token = SECRETS["discord-improv-bot"]
+
     # throw if token not found
     if not token:
         raise ValueError("DISCORD_BOT_TOKEN environment variable not set")
