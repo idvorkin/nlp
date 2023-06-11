@@ -342,14 +342,14 @@ bot_help_text = "Replaced on_ready"
 async def on_ready():
     print(f"{bot.user} is ready and online!")
     global bot_help_text
-    bot_help_text = f"""```ansi Commands:
+    bot_help_text = f"""```Commands:
  /once-upon-a-time - start a new story
  /continue  - continue the story
  /story  - print or continue the story
  /help - show this help
  /debug - show debug info
  /visualize - show a visualization of the story so far
-With direct messages:
+Or with mentions
  @{bot.user.display_name} - See the story so far
  @{bot.user.display_name} more words - extend the story
     ```"""
@@ -358,21 +358,10 @@ With direct messages:
 context_to_story = dict()
 
 
+# Due to permissions, we should only get this for a direct message
 @bot.event
 async def on_message(message):
-    # Ignore messages sent by the bot itself
-    if message.author == bot.user:
-        return
-
-    # Check if the message is a DM
-    if isinstance(message.channel, discord.DMChannel):
-        print(f"Received DM from {message.author}: {message.content}")
-
-        # Send a response to the DM
-        await message.channel.send("Try /help")
-
-    # Process commands if any
-    # await bot.process_commands(message)
+    await on_mention(message)
 
 
 def key_for_ctx(ctx):
@@ -632,65 +621,67 @@ class MentionListener(commands.Cog):
         # Check if the bot is mentioned
         if self.bot.user in message.mentions:
             # Your custom callback function here
-            await self.on_mention(message)
+            await on_mention(message)
 
     # TODO: Refactor to be with extend_story_for_bot
-    async def on_mention(self, message):
-        message_content = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
-        active_story = get_story_for_channel(message)
-        ic(active_story)
-        colored = color_story_for_discord(active_story)
-        # await message.channel.send(f"Hello, {message.author.mention}! You mentioned me saying - {message_content}!")
-        if message_content == "":
-            response = (
-                f"You're writing a story with a bot! \nSo far the story is:  {colored}Interact with the bot via"
-                + bot_help_text
-            )
-            await message.channel.send(response)
-            return
 
-        # extend with the current story
-        # await ctx.followup.send(
-        # f"Wispering *'{extend}'* to the improv gods, hold your breath..."
-        # )
-        user_said = Fragment(player=message.author.name, text=message_content)
-        active_story += [user_said]
-        ic(active_story)
-        ic("calling gpt")
 
-        prompt = (
-            prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
-                active_story
-            )
+async def on_mention(message):
+    if message.author == bot.user:
+        return
+    message_content = message.content.replace(f"<@{bot.user.id}>", "").strip()
+    active_story = get_story_for_channel(message)
+    ic(active_story)
+    colored = color_story_for_discord(active_story)
+    # await message.channel.send(f"Hello, {message.author.mention}! You mentioned me saying - {message_content}!")
+    if message_content == "":
+        response = (
+            f"You're writing a story with a bot! \nSo far the story is:  {colored}Interact with the bot via"
+            + bot_help_text
         )
+        await message.channel.send(response)
+        return
 
-        sent_message = await message.channel.send(
-            f"Summoning the improv gods with *{message_content}*..."
-        )
+    # extend with the current story
+    # await ctx.followup.send(
+    # f"Wispering *'{extend}'* to the improv gods, hold your breath..."
+    # )
+    user_said = Fragment(player=message.author.name, text=message_content)
+    active_story += [user_said]
+    ic(active_story)
+    ic("calling gpt")
 
-        json_version_of_a_story = await asyncify(ask_gpt)(
-            prompt_to_gpt=prompt,
-            debug=False,
-            u4=False,
-        )
+    prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
+        active_story
+    )
 
-        ic(json_version_of_a_story)
+    sent_message = await message.channel.send(
+        f"Summoning the improv gods with *{message_content}*..."
+    )
 
-        # convert json_version_of_a_story to a list of fragments
-        # Damn - Copilot wrote this code, and it's right (or so I think)
-        active_story = json.loads(
-            json_version_of_a_story, object_hook=lambda d: Fragment(**d)
-        )
+    json_version_of_a_story = await asyncify(ask_gpt)(
+        prompt_to_gpt=prompt,
+        debug=False,
+        u4=False,
+    )
 
-        set_story_for_channel(message, active_story)
+    ic(json_version_of_a_story)
 
-        # convert story to text
-        print_story(active_story, show_story=True)
-        story_text = " ".join([f.text for f in active_story])
-        ic(story_text)
-        colored = color_story_for_discord(active_story)
-        ic(colored)
-        await sent_message.edit(content=f"{colored}")
+    # convert json_version_of_a_story to a list of fragments
+    # Damn - Copilot wrote this code, and it's right (or so I think)
+    active_story = json.loads(
+        json_version_of_a_story, object_hook=lambda d: Fragment(**d)
+    )
+
+    set_story_for_channel(message, active_story)
+
+    # convert story to text
+    print_story(active_story, show_story=True)
+    story_text = " ".join([f.text for f in active_story])
+    ic(story_text)
+    colored = color_story_for_discord(active_story)
+    ic(colored)
+    await sent_message.edit(content=f"{colored}")
 
 
 @app.command()
