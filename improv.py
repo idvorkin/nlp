@@ -349,8 +349,29 @@ async def on_ready():
 context_to_story = dict()
 
 
+@bot.event
+async def on_message(message):
+    # Ignore messages sent by the bot itself
+    if message.author == bot.user:
+        return
+
+    # Check if the message is a DM
+    if isinstance(message.channel, discord.DMChannel):
+        print(f"Received DM from {message.author}: {message.content}")
+
+        # Send a response to the DM
+        await message.channel.send("Try /help")
+
+    # Process commands if any
+    # await bot.process_commands(message)
+
+
 def key_for_ctx(ctx):
-    return f"{ctx.guild.name}-{ctx.channel.name}"
+    is_dm_channel = ctx.guild is None
+    if is_dm_channel:
+        return f"DM-{ctx.author.name}-{ctx.author.id}"
+    else:
+        return f"{ctx.guild.name}-{ctx.channel.name}"
 
 
 def get_story_for_channel(ctx):
@@ -538,7 +559,15 @@ async def visualize(ctx, count: int = 2):
     count = min(count, 8)
     active_story = get_story_for_channel(ctx)
     story_as_text = " ".join([f.text for f in active_story])
-    prompt = f"""Make a good prompt for DALL-E2 (A Stable diffusion model) to make a picture of this story: \n\n {story_as_text}"""
+    prompt = f"""Make a good prompt for DALL-E2 (A Stable diffusion model) to make a picture of this story. Only return the prompt that will be passed in directly: \n\n {story_as_text}"""
+
+    prompt = ask_gpt(
+        prompt_to_gpt=prompt,
+        debug=False,
+        u4=False,
+    )
+    ic(prompt)
+
     await ctx.defer()
     # await ctx.followup.send(
     # f"Asking improv gods to visualize  {color_story_for_discord(global_bot_story)}to the improv gods, hold your breath..."
