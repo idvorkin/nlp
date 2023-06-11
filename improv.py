@@ -361,7 +361,8 @@ context_to_story = dict()
 # Due to permissions, we should only get this for a direct message
 @bot.event
 async def on_message(message):
-    await on_mention(message)
+    ic(message)
+    # await on_mention(message)
 
 
 def key_for_ctx(ctx):
@@ -425,7 +426,7 @@ def color_story_for_discord(story: List[Fragment]):
         return color_for_user
 
     def wrap_color(text, color):
-        return f" [{color}m{text}[0m"
+        return f"[{color}m{text}[0m "
 
     ansi_text = ""
     for fragment in story:
@@ -434,8 +435,7 @@ def color_story_for_discord(story: List[Fragment]):
 
     output = f"""```ansi
 {ansi_text}
-    ```
-    """
+    ```"""
     return output
 
 
@@ -472,10 +472,10 @@ async def extend_story_for_bot(ctx, extend: str = ""):
     active_story += [user_said]
     ic(active_story)
     ic("calling gpt")
+    colored = color_story_for_discord(active_story)
     progress_message = await ctx.send(
-        f"Asking improv gods to continue with *{extend}* ..."
+        f"{colored}The improv gods thinketh, be patient ..." ""
     )
-
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
         active_story
     )
@@ -529,13 +529,14 @@ async def help(ctx):
     await ctx.respond(bot_help_text)
 
 
-@bot.command(description="See debug stuf")
+@bot.command(description="See local state")
 async def debug(ctx):
     active_story = get_story_for_channel(ctx)
     debug_out = f"""```ansi
-        {repr(active_story)}
-        Active Channels:
-        {context_to_story.keys()}
+Active Story:
+{ic.format(active_story)}
+Other Stories
+{context_to_story.keys()}
     ```
     """
     await ctx.respond(debug_out)
@@ -619,9 +620,13 @@ class MentionListener(commands.Cog):
             return
 
         # Check if the bot is mentioned
-        if self.bot.user in message.mentions:
-            # Your custom callback function here
+        is_mention = self.bot.user in message.mentions
+        is_dm = isinstance(message.channel, discord.channel.DMChannel)
+        ic(is_mention, is_dm)
+        if is_mention or is_dm:
             await on_mention(message)
+            return
+        # check if message is a DM
 
     # TODO: Refactor to be with extend_story_for_bot
 
@@ -655,8 +660,9 @@ async def on_mention(message):
         active_story
     )
 
+    colored = color_story_for_discord(active_story)
     sent_message = await message.channel.send(
-        f"Summoning the improv gods with *{message_content}*..."
+        f"{colored}The improv gods thinketh, be patient ..." ""
     )
 
     json_version_of_a_story = await asyncify(ask_gpt)(
