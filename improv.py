@@ -23,6 +23,7 @@ from pydantic import BaseModel
 import discord
 import aiohttp
 from io import BytesIO
+from asyncer import asyncify
 
 # import OpenAI exceptiions
 from openai.error import APIError, InvalidRequestError, AuthenticationError
@@ -482,7 +483,7 @@ async def story_code(ctx, extend: str = ""):
         active_story
     )
 
-    json_version_of_a_story = ask_gpt(
+    json_version_of_a_story = await asyncify(ask_gpt)(
         prompt_to_gpt=prompt,
         debug=False,
         u4=False,
@@ -583,7 +584,7 @@ async def visualize(ctx, count: int = 2):
 
     response = None
     try:
-        response = openai.Image.create(
+        response = await asyncify(openai.Image.create)(
             prompt=prompt,
             n=count,
         )
