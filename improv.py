@@ -473,7 +473,7 @@ async def story_code(ctx, extend: str = ""):
 async def story(
     ctx,
     extend: discord.Option(
-        str, name="continue with", description="continue story with"
+        str, name="continue_with", description="continue story with"
     ),
 ):
     await story_code(ctx, extend)
