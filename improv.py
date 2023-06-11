@@ -341,13 +341,56 @@ global_bot_story = default_story_start
 # We can colorize story for discord
 def color_story_for_discord(story: List[Fragment]):
 
-    output_hold = """```ansi
-    Welcome to [2;33mRebane[0m's [2;45m[2;37mDiscord[0m[2;45m[0m [2;31mC[0m[2;32mo[0m[2;33ml[0m[2;34mo[0m[2;35mr[0m[2;36me[0m[2;37md[0m Text Generator!
-    ```
-    """
-    text = " ".join([x.text for x in story])
+    color_to_ansi_map = {
+        "bold cyan": "36;1",
+        "bold red": "31;1",
+        "green": "32;1",
+        "blue": "34",
+        "yellow": "33",
+        "purple": "35",
+        "grey": "37",
+    }
+
+    # convert map to list
+    color_to_ansi_list = list(color_to_ansi_map.values())
+
+    # let coach be grey
+    coach_color = color_to_ansi_map["grey"]
+
+    # let users map to brighter colors, there can be up to 5 users in a story, map them by the order they show up
+
+    def get_color_for(story, fragment: Fragment):
+        if fragment.player == "coach":
+            return coach_color
+
+        # get list of users from the story
+        users = list(set([f.player for f in story if f.player != "coach"]))
+
+        # give each user a color, wrap when there are more then 5 users
+        color_for_user = color_to_ansi_list[users.index(fragment.player) % 5]
+        ic(color_for_user)
+        return color_for_user
+
+    def wrap_color(text, color):
+        return f"[{color}m{text}[0m"
+
+    ansi_text = ""
+    for fragment in story:
+        s = fragment.text
+        split_line = len(s.split(".")) == 2
+        # assume it only contains 1 period , todo handle when it does not
+        if split_line:
+            end_sentance, new_sentance = s.split(".")
+            ansi_text += wrap_color(
+                f" {end_sentance}.\n", get_color_for(story, fragment)
+            )
+            ansi_text += wrap_color(f" {new_sentance}", get_color_for(story, fragment))
+            continue
+
+        ansi_text += wrap_color(f" {s}", get_color_for(story, fragment))
+
     output = f"""```ansi
-{text}
+{ansi_text}
     ```
     """
     return output
