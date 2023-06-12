@@ -407,6 +407,24 @@ def reset_story_for_channel(ctx):
 # https://rebane2001.com/discord-colored-text-generator/
 # We can colorize story for discord
 def color_story_for_discord(story: List[Fragment]):
+    def get_color_for(story, fragment: Fragment):
+        if fragment.player == "coach":
+            return ""
+        else:
+            return "**"
+
+    def wrap_color(text, color):
+        return f"{color}{text}{color}  "
+
+    output = ""
+    for fragment in story:
+        s = fragment.text
+        output += wrap_color(f"{s}", get_color_for(story, fragment))
+
+    return "\n" + output + "\n"
+
+
+def color_story_for_discord_desktop(story: List[Fragment]):
 
     color_to_ansi_map = {
         "yellow": "33;4",
@@ -541,7 +559,7 @@ async def extend_story_for_bot(ctx, extend: str = ""):
     ic("calling gpt")
     colored = color_story_for_discord(active_story)
     progress_message = await ctx.send(
-        f"{colored}The improv gods thinketh, be patient ..." ""
+        f"{colored}\n\nThe improv gods thinketh, be patient ..." ""
     )
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
         active_story
@@ -698,6 +716,14 @@ class MentionListener(commands.Cog):
     # TODO: Refactor to be with extend_story_for_bot
 
 
+async def output_dot_dot_dot(output, text):
+    # Stop after 5 seconds - probably nver gonna come back after that.
+    for i in range(5 * 2):
+        await asyncio.sleep(0.5)
+        await output(text)
+        text += "."
+
+
 async def on_mention(message):
     if message.author == bot.user:
         return
@@ -708,7 +734,7 @@ async def on_mention(message):
     # await message.channel.send(f"Hello, {message.author.mention}! You mentioned me saying - {message_content}!")
     if message_content == "":
         response = (
-            f"You're writing a story with a bot! \nSo far the story is:  {colored}Interact with the bot via"
+            f"You're writing a story with a bot! \nSo far the story is:\n  {colored}Interact with the bot via"
             + bot_help_text
         )
         await message.channel.send(response)
@@ -728,15 +754,19 @@ async def on_mention(message):
     )
 
     colored = color_story_for_discord(active_story)
-    sent_message = await message.channel.send(
-        f"{colored}The improv gods thinketh, be patient ..." ""
-    )
 
+    output_message = await message.channel.send(f"{colored}The improv gods thinketh")
+    output_waiting_task = asyncio.create_task(
+        output_dot_dot_dot(
+            lambda t: output_message.edit(t), f"{colored}The improv gods thinketh."
+        )
+    )
     json_version_of_a_story = await asyncify(ask_gpt)(
         prompt_to_gpt=prompt,
         debug=False,
         u4=False,
     )
+    output_waiting_task.cancel()
 
     ic(json_version_of_a_story)
 
@@ -754,7 +784,7 @@ async def on_mention(message):
     ic(story_text)
     colored = color_story_for_discord(active_story)
     ic(colored)
-    await sent_message.edit(content=f"{colored}")
+    await output_message.edit(content=f"{colored}")
 
 
 @app.command()
