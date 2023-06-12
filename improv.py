@@ -354,7 +354,9 @@ bot_help_text = "Replaced on_ready"
 async def on_ready():
     print(f"{bot.user} is ready and online!")
     global bot_help_text
-    bot_help_text = f"""```Commands:
+    bot_help_text = f"""```
+
+Commands:
  /once-upon-a-time - start a new story
  /continue  - continue the story
  /story  - print or continue the story
@@ -362,9 +364,10 @@ async def on_ready():
  /debug - show debug info
  /visualize - show a visualization of the story so far
  /explore - do a choose a your own adventure completion
-Or with mentions
- @{bot.user.display_name} - See the story so far
- @{bot.user.display_name} more words - extend the story
+When you DM the bot directly, or include a @{bot.user.display_name} in a channel
+ - Add your own words to the story - extend the story
+ - '.' - The bot will give you suggestions to continue
+ - More coming ...
     ```"""
 
 
@@ -490,9 +493,16 @@ class StoryButton(discord.ui.Button):
 @bot.command(description="Explore alternatives with the bot")
 async def explore(ctx):
     active_story = get_story_for_channel(ctx)
-    await ctx.defer()
+    is_message = not hasattr(ctx, "defer")
+
+    if not is_message:
+        await ctx.defer()
+
     colored = color_story_for_discord(active_story)
-    progress_message = await ctx.send(".")
+    # Can pass in a message or a context, silly pycord, luckily can cheat in pycord
+    progress_message = (
+        await ctx.channel.send(".") if is_message else await ctx.send(".")
+    )
     view = View()
 
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
@@ -532,7 +542,7 @@ async def once_upon_a_time(ctx):
     ic(story_text)
     colored_story = color_story_for_discord(active_story)
     response = (
-        f"You're writing a story with a bot! So far the story is:  {colored_story} You can interact with the bot via "
+        f"You're writing a story with a bot! So far the story is:  {colored_story} You can interact with the bot via\n\n "
         + bot_help_text
     )
     await ctx.respond(response)
@@ -733,6 +743,11 @@ async def on_mention(message):
     if message.author == bot.user:
         return
     message_content = message.content.replace(f"<@{bot.user.id}>", "").strip()
+    # If user sends prompt, let them get a choice of what to write next
+    if message.content.strip() == ".":
+        await explore(message)
+        return
+
     active_story = get_story_for_channel(message)
     ic(active_story)
     colored = color_story_for_discord(active_story)
