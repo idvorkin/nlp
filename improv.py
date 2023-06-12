@@ -549,17 +549,15 @@ async def extend_story_for_bot(ctx, extend: str = ""):
         await ctx.followup.send(colored)
         return
 
-    # extend with the current story
-    # await ctx.followup.send(
-    # f"Wispering *'{extend}'* to the improv gods, hold your breath..."
-    # )
     user_said = Fragment(player=ctx.author.name, text=extend)
     active_story += [user_said]
     ic(active_story)
     ic("calling gpt")
     colored = color_story_for_discord(active_story)
-    progress_message = await ctx.send(
-        f"{colored}\n\nThe improv gods thinketh, be patient ..." ""
+    # print progress in the background while running
+    progress_message = await ctx.send(f"{colored}")
+    output_waiting_task = asyncio.create_task(
+        output_dot_dot_dot(lambda t: progress_message.edit(t), f"{colored}")
     )
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
         active_story
@@ -570,6 +568,7 @@ async def extend_story_for_bot(ctx, extend: str = ""):
         debug=False,
         u4=False,
     )
+    output_waiting_task.cancel()
 
     ic(json_version_of_a_story)
 
@@ -668,10 +667,6 @@ async def visualize(ctx, count: int = 2):
         content=f"Asking improv gods to visualize - *{prompt}* "
     )
 
-    # await ctx.followup.send(
-    # f"Asking improv gods to visualize  {color_story_for_discord(global_bot_story)}to the improv gods, hold your breath..."
-    # )
-
     response = None
     try:
         response = await asyncify(openai.Image.create)(
@@ -755,11 +750,9 @@ async def on_mention(message):
 
     colored = color_story_for_discord(active_story)
 
-    output_message = await message.channel.send(f"{colored}The improv gods thinketh")
+    output_message = await message.channel.send(f"{colored}")
     output_waiting_task = asyncio.create_task(
-        output_dot_dot_dot(
-            lambda t: output_message.edit(t), f"{colored}The improv gods thinketh."
-        )
+        output_dot_dot_dot(lambda t: output_message.edit(t), f"{colored}")
     )
     json_version_of_a_story = await asyncify(ask_gpt)(
         prompt_to_gpt=prompt,
