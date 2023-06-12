@@ -379,7 +379,8 @@ async def on_message(message):
 
 
 def key_for_ctx(ctx):
-    is_dm_channel = ctx.guild is None
+    is_dm_type = isinstance(ctx, discord.channel.DMChannel)
+    is_dm_channel = is_dm_type or ctx.guild is None
     if is_dm_channel:
         return f"DM-{ctx.author.name}-{ctx.author.id}"
     else:
@@ -481,8 +482,6 @@ class StoryButton(discord.ui.Button):
     # This function is called whenever this particular button is pressed.
     # This is part of the "meat" of the game logic.
     async def callback(self, interaction: discord.Interaction):
-        assert self.view is not None
-        view = self.view
         colored = color_story_for_discord(self.story)
         set_story_for_channel(self.ctx, self.story)
         await interaction.response.edit_message(content=colored, view=None)
@@ -501,7 +500,7 @@ async def explore(ctx):
     )
 
     output_waiting_task = asyncio.create_task(
-        output_dot_dot_dot(lambda t: progress_message.edit(t), f".")
+        output_dot_dot_dot(lambda t: progress_message.edit(t), ".")
     )
 
     n = 4
@@ -516,15 +515,11 @@ async def explore(ctx):
         for json_version_of_a_story in list_of_json_version_of_a_story
     ]
 
-    # last fragment of each story
-    last_fragments = [story[-1] for story in list_of_stories]
-
     # write a button for each fragment.
     for story in list_of_stories:
         # add a button for the last fragment of each
         view.add_item(StoryButton(label=story[-1].text[:70], ctx=ctx, story=story))
-    progress = await progress_message.edit(content=colored, view=view)
-    # await progress.delete()
+    await progress_message.edit(content=colored, view=view)
 
 
 @bot.command(description="Start a new story with the bot")
@@ -660,7 +655,7 @@ async def visualize(ctx, count: int = 2):
     prompt = f"""Make a good prompt for DALL-E2 (A Stable diffusion model) to make a picture of this story. Only return the prompt that will be passed in directly: \n\n {story_as_text}"""
     progress_message = await ctx.send(".")
     output_waiting_task = asyncio.create_task(
-        output_dot_dot_dot(lambda t: progress_message.edit(t), f".")
+        output_dot_dot_dot(lambda t: progress_message.edit(t), ".")
     )
 
     prompt = await asyncify(ask_gpt)(
@@ -711,8 +706,8 @@ class MentionListener(commands.Cog):
             return
 
         # Check if the bot is mentioned
-        is_mention = self.bot.user in message.mentions
         is_dm = isinstance(message.channel, discord.channel.DMChannel)
+        is_mention = self.bot.user in message.mentions
         ic(is_mention, is_dm)
         if is_mention or is_dm:
             await on_mention(message)
