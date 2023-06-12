@@ -500,7 +500,9 @@ async def explore(ctx):
     )
 
     output_waiting_task = asyncio.create_task(
-        output_dot_dot_dot(lambda t: progress_message.edit(t), ".")
+        edit_message_to_append_dots_every_second(
+            progress_message, "Improv gods are thinking"
+        )
     )
 
     n = 4
@@ -555,7 +557,7 @@ async def extend_story_for_bot(ctx, extend: str = ""):
     # print progress in the background while running
     progress_message = await ctx.send(f"{colored}")
     output_waiting_task = asyncio.create_task(
-        output_dot_dot_dot(lambda t: progress_message.edit(t), f"{colored}")
+        edit_message_to_append_dots_every_second(progress_message, f"{colored}")
     )
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
         active_story
@@ -655,7 +657,9 @@ async def visualize(ctx, count: int = 2):
     prompt = f"""Make a good prompt for DALL-E2 (A Stable diffusion model) to make a picture of this story. Only return the prompt that will be passed in directly: \n\n {story_as_text}"""
     progress_message = await ctx.send(".")
     output_waiting_task = asyncio.create_task(
-        output_dot_dot_dot(lambda t: progress_message.edit(t), ".")
+        edit_message_to_append_dots_every_second(
+            progress_message, "Figuring out prompt"
+        )
     )
 
     prompt = await asyncify(ask_gpt)(
@@ -668,7 +672,7 @@ async def visualize(ctx, count: int = 2):
     ic(prompt)
     content = f"Asking improv gods to visualize - *{prompt}* "
     output_waiting_task = asyncio.create_task(
-        output_dot_dot_dot(lambda t: progress_message.edit(t), f"{content}")
+        edit_message_to_append_dots_every_second(progress_message, f"{content}")
     )
 
     response = None
@@ -717,12 +721,12 @@ class MentionListener(commands.Cog):
     # TODO: Refactor to be with extend_story_for_bot
 
 
-async def output_dot_dot_dot(output, text):
+async def edit_message_to_append_dots_every_second(message, base_text):
     # Stop after 30 seconds - probably nver gonna come back after that.
     for i in range(30 * 2):
+        base_text += "."
+        await message.edit(base_text)
         await asyncio.sleep(0.5)
-        await output(text)
-        text += "."
 
 
 async def on_mention(message):
@@ -758,7 +762,7 @@ async def on_mention(message):
 
     output_message = await message.channel.send(f"{colored}")
     output_waiting_task = asyncio.create_task(
-        output_dot_dot_dot(lambda t: output_message.edit(t), f"{colored}")
+        edit_message_to_append_dots_every_second(output_message, f"{colored}")
     )
     json_version_of_a_story = await asyncify(ask_gpt)(
         prompt_to_gpt=prompt,
