@@ -744,7 +744,7 @@ async def on_mention(message):
         return
     message_content = message.content.replace(f"<@{bot.user.id}>", "").strip()
     # If user sends prompt, let them get a choice of what to write next
-    if message.content.strip() == ".":
+    if message_content.strip() == ".":
         await explore(message)
         return
 
