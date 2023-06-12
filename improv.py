@@ -7,6 +7,7 @@ import json
 from icecream import ic
 import typer
 import sys
+import random
 from rich import print as rich_print
 from rich.console import Console
 from rich.text import Text
@@ -86,6 +87,16 @@ def ask_gpt(
     u4=True,
     debug=False,
 ):
+    return ask_gpt_n(prompt_to_gpt, tokens=tokens, u4=u4, debug=debug, n=1)[0]
+
+
+def ask_gpt_n(
+    prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
+    tokens: int = 0,
+    u4=True,
+    debug=False,
+    n=1,
+):
     text_model_best, tokens = process_u4(u4)
     messages = [
         {"role": "system", "content": "You are a really good improv coach."},
@@ -102,7 +113,7 @@ def ask_gpt(
         ic(output_tokens)
 
     start = time.time()
-    responses = 1
+    responses = n
     response_contents = ["" for x in range(responses)]
     for chunk in openai.ChatCompletion.create(
         model=text_model_best,
@@ -125,8 +136,7 @@ def ask_gpt(
         ic(out)
 
     # hard code to only return first response
-    assert len(response_contents) == 1
-    return response_contents[0]
+    return response_contents
 
 
 def process_u4(u4, tokens=0):
@@ -351,6 +361,7 @@ async def on_ready():
  /help - show this help
  /debug - show debug info
  /visualize - show a visualization of the story so far
+ /explore - do a choose a your own adventure completion
 Or with mentions
  @{bot.user.display_name} - See the story so far
  @{bot.user.display_name} more words - extend the story
@@ -441,15 +452,57 @@ def color_story_for_discord(story: List[Fragment]):
     return output
 
 
-@bot.command(description="Start a new story with the bot")
-async def flavor(ctx):
+# Defines a custom button that contains the logic of the game.
+# what the type of `self.view` is. It is not required.
+class StoryButton(discord.ui.Button):
+    def __init__(self, label, ctx, story):
+        super().__init__(label=label, custom_id=f"button_{random.randint(0, 99999999)}")
+        self.ctx = ctx
+        self.story = story
+
+    # This function is called whenever this particular button is pressed.
+    # This is part of the "meat" of the game logic.
+    async def callback(self, interaction: discord.Interaction):
+        assert self.view is not None
+        view = self.view
+        colored = color_story_for_discord(self.story)
+        set_story_for_channel(self.ctx, self.story)
+        await interaction.response.edit_message(content=colored, view=None)
+
+
+@bot.command(description="Explore alternatives with the bot")
+async def explore(ctx):
     active_story = get_story_for_channel(ctx)
-    ctx.defer()
+    await ctx.defer()
     colored = color_story_for_discord(active_story)
-    progress = await ctx.send(f"{colored}The improv gods thinketh, be patient ..." "")
-    # async sleep 3 seconds
-    await asyncio.sleep(3)
-    await ctx.send(content="Chooose a flavor!", view=MyView())
+    initial_message = await ctx.send(
+        f"{colored}The improv gods thinketh, be patient ..." ""
+    )
+    view = View()
+
+    prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
+        active_story
+    )
+
+    n = 4
+    list_of_json_version_of_a_story = await asyncify(ask_gpt_n)(
+        prompt_to_gpt=prompt, debug=False, u4=False, n=n
+    )
+
+    # make stories from json
+    list_of_stories = [
+        json.loads(json_version_of_a_story, object_hook=lambda d: Fragment(**d))
+        for json_version_of_a_story in list_of_json_version_of_a_story
+    ]
+
+    # last fragment of each story
+    last_fragments = [story[-1] for story in list_of_stories]
+
+    # write a button for each fragment.
+    for story in list_of_stories:
+        # add a button for the last fragment of each
+        view.add_item(StoryButton(label=story[-1].text[:70], ctx=ctx, story=story))
+    progress = await ctx.send(content=colored, view=view)
     # await progress.delete()
 
 
@@ -548,7 +601,7 @@ async def debug(ctx):
     active_story = get_story_for_channel(ctx)
     debug_out = f"""```ansi
 Active Story:
-{ic.format(active_story)}
+    {[repr(f) for f in active_story] }
 Other Stories
 {context_to_story.keys()}
     ```
@@ -622,31 +675,6 @@ async def visualize(ctx, count: int = 2):
         await progress_message.edit(content=f"**{prompt}** ")
     except InvalidRequestError as e:
         await ctx.followup.send(f"Error: {e}")
-
-
-class MyView(discord.ui.View):
-    @discord.ui.select(  # the decorator that lets you specify the properties of the select menu
-        placeholder="Choose a Flavor!",  # the placeholder text that will be displayed if nothing is selected
-        min_values=1,  # the minimum number of values that must be selected by the users
-        max_values=1,  # the maximum number of values that can be selected by the users
-        options=[  # the list of options from which users can choose, a required field
-            discord.SelectOption(
-                label="Vanilla", description="Pick this if you like vanilla!"
-            ),
-            discord.SelectOption(
-                label="Chocolate", description="Pick this if you like chocolate!"
-            ),
-            discord.SelectOption(
-                label="Strawberry", description="Pick this if you like strawberry!"
-            ),
-        ],
-    )
-    async def select_callback(
-        self, select, interaction
-    ):  # the function called when the user is done selecting options
-        await interaction.response.send_message(
-            f"Awesome! I like {select.values[0]} too!"
-        )
 
 
 class MentionListener(commands.Cog):
