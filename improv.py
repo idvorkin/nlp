@@ -24,6 +24,7 @@ import uvicorn
 from pydantic import BaseModel
 import discord
 import aiohttp
+import datetime
 from io import BytesIO
 from asyncer import asyncify
 from discord.ext import commands
@@ -425,7 +426,7 @@ def color_story_for_discord(story: List[Fragment]):
         s = fragment.text
         output += wrap_color(f"{s}", get_color_for(story, fragment))
 
-    return "\n" + output + "\n"
+    return "\n" + output
 
 
 def color_story_for_discord_desktop(story: List[Fragment]):
@@ -510,9 +511,7 @@ async def explore(ctx):
     )
 
     output_waiting_task = asyncio.create_task(
-        edit_message_to_append_dots_every_second(
-            progress_message, "Improv gods are thinking"
-        )
+        edit_message_to_append_dots_every_second(progress_message, colored)
     )
 
     n = 4
@@ -532,6 +531,9 @@ async def explore(ctx):
         # add a button for the last fragment of each
         view.add_item(StoryButton(label=story[-1].text[:70], ctx=ctx, story=story))
     await progress_message.edit(content=colored, view=view)
+    if not is_message:
+        # acknolwedge without sending
+        await ctx.send(content="")
 
 
 @bot.command(description="Start a new story with the bot")
@@ -551,7 +553,9 @@ async def once_upon_a_time(ctx):
 async def extend_story_for_bot(ctx, extend: str = ""):
     # if story is empty, then start with the default story
     ic(extend)
-    await ctx.defer()
+    is_message = not hasattr(ctx, "defer")
+    if not is_message:
+        await ctx.defer()
     active_story = get_story_for_channel(ctx)
     if not extend:
         colored = color_story_for_discord(active_story)
@@ -565,7 +569,9 @@ async def extend_story_for_bot(ctx, extend: str = ""):
     ic("calling gpt")
     colored = color_story_for_discord(active_story)
     # print progress in the background while running
-    progress_message = await ctx.send(f"{colored}")
+    progress_message = (
+        await ctx.channel.send(".") if is_message else await ctx.send(".")
+    )
     output_waiting_task = asyncio.create_task(
         edit_message_to_append_dots_every_second(progress_message, f"{colored}")
     )
@@ -596,9 +602,11 @@ async def extend_story_for_bot(ctx, extend: str = ""):
     ic(story_text)
     colored = color_story_for_discord(active_story)
     ic(colored)
-    await progress_message.delete()
 
-    await ctx.followup.send(colored)
+    await progress_message.edit(content=colored)
+    if not is_message:
+        # acknolwedge without sending
+        await ctx.send(content="")
 
 
 @bot.command(description="Show the story so far, or extend it")
@@ -623,10 +631,21 @@ async def help(ctx):
     await ctx.respond(bot_help_text)
 
 
+import os
+import psutil
+
+
 @bot.command(description="See local state")
 async def debug(ctx):
     active_story = get_story_for_channel(ctx)
+    process = psutil.Process(os.getpid())
+    memory_info = process.memory_info()
     debug_out = f"""```ansi
+Process:
+    Up time: {datetime.datetime.now() - datetime.datetime.fromtimestamp(process.create_time())}
+    VM: {memory_info.vms / 1024 / 1024} MB
+    Residitent: {memory_info.rss / 1024 / 1024} MB
+    Shared: {memory_info.shared / 1024 / 1024} MB
 Active Story:
     {[repr(f) for f in active_story] }
 Other Stories
@@ -743,66 +762,16 @@ async def on_mention(message):
     if message.author == bot.user:
         return
     message_content = message.content.replace(f"<@{bot.user.id}>", "").strip()
-    # If user sends prompt, let them get a choice of what to write next
+
+    # If user sends '.', let them get a choice of what to write next
     if message_content.strip() == ".":
         await explore(message)
         return
 
-    active_story = get_story_for_channel(message)
-    ic(active_story)
-    colored = color_story_for_discord(active_story)
-    # await message.channel.send(f"Hello, {message.author.mention}! You mentioned me saying - {message_content}!")
-    if message_content == "":
-        response = (
-            f"You're writing a story with a bot! \nSo far the story is:\n  {colored}Interact with the bot via"
-            + bot_help_text
-        )
-        await message.channel.send(response)
-        return
+    # TODO: handle help now
 
-    # extend with the current story
-    # await ctx.followup.send(
-    # f"Wispering *'{extend}'* to the improv gods, hold your breath..."
-    # )
-    user_said = Fragment(player=message.author.name, text=message_content)
-    active_story += [user_said]
-    ic(active_story)
-    ic("calling gpt")
-
-    prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
-        active_story
-    )
-
-    colored = color_story_for_discord(active_story)
-
-    output_message = await message.channel.send(f"{colored}")
-    output_waiting_task = asyncio.create_task(
-        edit_message_to_append_dots_every_second(output_message, f"{colored}")
-    )
-    json_version_of_a_story = await asyncify(ask_gpt)(
-        prompt_to_gpt=prompt,
-        debug=False,
-        u4=False,
-    )
-    output_waiting_task.cancel()
-
-    ic(json_version_of_a_story)
-
-    # convert json_version_of_a_story to a list of fragments
-    # Damn - Copilot wrote this code, and it's right (or so I think)
-    active_story = json.loads(
-        json_version_of_a_story, object_hook=lambda d: Fragment(**d)
-    )
-
-    set_story_for_channel(message, active_story)
-
-    # convert story to text
-    print_story(active_story, show_story=True)
-    story_text = " ".join([f.text for f in active_story])
-    ic(story_text)
-    colored = color_story_for_discord(active_story)
-    ic(colored)
-    await output_message.edit(content=f"{colored}")
+    await extend_story_for_bot(message, message_content)
+    return
 
 
 @app.command()
