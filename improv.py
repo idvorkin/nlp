@@ -9,6 +9,7 @@ import typer
 import sys
 import random
 from rich import print as rich_print
+import psutil
 from rich.console import Console
 from rich.text import Text
 import rich
@@ -545,11 +546,8 @@ async def once_upon_a_time(ctx):
     active_story = get_story_for_channel(ctx)
     story_text = " ".join([f.text for f in active_story])
     ic(story_text)
-    colored_story = color_story_for_discord(active_story)
-    response = (
-        f"You're writing a story with a bot! So far the story is:  {colored_story} You can interact with the bot via\n\n "
-        + bot_help_text
-    )
+    colored = color_story_for_discord(active_story)
+    response = f"{bot_help_text}\n**The story so far:** {colored}"
     await ctx.respond(response)
 
 
@@ -564,7 +562,7 @@ async def extend_story_for_bot(ctx, extend: str = ""):
         # If called with an empty message lets send help as well
         colored = color_story_for_discord(active_story)
         ic(colored)
-        await smart_send(ctx, f"{bot_help_text}\n The story so far: {colored}")
+        await smart_send(ctx, f"{bot_help_text}\n**The story so far:** {colored}")
         return
 
     if not is_message:
@@ -635,11 +633,10 @@ async def extend(
 
 @bot.command(description="Show help")
 async def help(ctx):
-    await ctx.respond(bot_help_text)
-
-
-import os
-import psutil
+    active_story = get_story_for_channel(ctx)
+    colored = color_story_for_discord(active_story)
+    response = f"{bot_help_text}\n**The story so far:** {colored}"
+    await ctx.respond(response)
 
 
 @bot.command(description="See local state")
