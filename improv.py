@@ -493,19 +493,22 @@ async def explore(ctx):
     active_story = get_story_for_channel(ctx)
     await ctx.defer()
     colored = color_story_for_discord(active_story)
-    initial_message = await ctx.send(
-        f"{colored}The improv gods thinketh, be patient ..." ""
-    )
+    progress_message = await ctx.send(".")
     view = View()
 
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
         active_story
     )
 
+    output_waiting_task = asyncio.create_task(
+        output_dot_dot_dot(lambda t: progress_message.edit(t), f".")
+    )
+
     n = 4
     list_of_json_version_of_a_story = await asyncify(ask_gpt_n)(
         prompt_to_gpt=prompt, debug=False, u4=False, n=n
     )
+    output_waiting_task.cancel()
 
     # make stories from json
     list_of_stories = [
@@ -520,7 +523,7 @@ async def explore(ctx):
     for story in list_of_stories:
         # add a button for the last fragment of each
         view.add_item(StoryButton(label=story[-1].text[:70], ctx=ctx, story=story))
-    progress = await ctx.send(content=colored, view=view)
+    progress = await progress_message.edit(content=colored, view=view)
     # await progress.delete()
 
 
@@ -655,16 +658,22 @@ async def visualize(ctx, count: int = 2):
     story_as_text = " ".join([f.text for f in active_story])
     await ctx.defer()
     prompt = f"""Make a good prompt for DALL-E2 (A Stable diffusion model) to make a picture of this story. Only return the prompt that will be passed in directly: \n\n {story_as_text}"""
-    progress_message = await ctx.send("Asking improv gods what to visualize...")
+    progress_message = await ctx.send(".")
+    output_waiting_task = asyncio.create_task(
+        output_dot_dot_dot(lambda t: progress_message.edit(t), f".")
+    )
 
     prompt = await asyncify(ask_gpt)(
         prompt_to_gpt=prompt,
         debug=False,
         u4=False,
     )
+    output_waiting_task.cancel()
+
     ic(prompt)
-    progress_message = await progress_message.edit(
-        content=f"Asking improv gods to visualize - *{prompt}* "
+    content = f"Asking improv gods to visualize - *{prompt}* "
+    output_waiting_task = asyncio.create_task(
+        output_dot_dot_dot(lambda t: progress_message.edit(t), f"{content}")
     )
 
     response = None
@@ -688,6 +697,8 @@ async def visualize(ctx, count: int = 2):
         await progress_message.edit(content=f"**{prompt}** ")
     except InvalidRequestError as e:
         await ctx.followup.send(f"Error: {e}")
+    finally:
+        output_waiting_task.cancel()
 
 
 class MentionListener(commands.Cog):
@@ -712,8 +723,8 @@ class MentionListener(commands.Cog):
 
 
 async def output_dot_dot_dot(output, text):
-    # Stop after 5 seconds - probably nver gonna come back after that.
-    for i in range(5 * 2):
+    # Stop after 30 seconds - probably nver gonna come back after that.
+    for i in range(30 * 2):
         await asyncio.sleep(0.5)
         await output(text)
         text += "."
