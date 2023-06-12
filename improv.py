@@ -351,6 +351,11 @@ bot = discord.Bot()
 bot_help_text = "Replaced on_ready"
 
 
+async def smart_send(ctx, message):
+    is_message = not hasattr(ctx, "defer")
+    return await ctx.channel.send(message) if is_message else await ctx.send(message)
+
+
 @bot.event
 async def on_ready():
     print(f"{bot.user} is ready and online!")
@@ -501,9 +506,7 @@ async def explore(ctx):
 
     colored = color_story_for_discord(active_story)
     # Can pass in a message or a context, silly pycord, luckily can cheat in pycord
-    progress_message = (
-        await ctx.channel.send(".") if is_message else await ctx.send(".")
-    )
+    progress_message = await smart_send(ctx, ".")
     view = View()
 
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
@@ -554,14 +557,18 @@ async def extend_story_for_bot(ctx, extend: str = ""):
     # if story is empty, then start with the default story
     ic(extend)
     is_message = not hasattr(ctx, "defer")
-    if not is_message:
-        await ctx.defer()
+
     active_story = get_story_for_channel(ctx)
+
     if not extend:
+        # If called with an empty message lets send help as well
         colored = color_story_for_discord(active_story)
         ic(colored)
-        await ctx.followup.send(colored)
+        await smart_send(ctx, f"{bot_help_text}\n The story so far: {colored}")
         return
+
+    if not is_message:
+        await ctx.defer()
 
     user_said = Fragment(player=ctx.author.name, text=extend)
     active_story += [user_said]
