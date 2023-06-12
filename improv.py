@@ -292,7 +292,7 @@ Example 2 Output:
 
 --
 
-Now, here is the story we're doing together. Add the next coach fragment to the story
+Now, here is the story we're doing together. Add the next coach fragment to the story, and correct spelling and grammer mistakes in the fragments
 
 --
 Actual Input:
