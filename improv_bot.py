@@ -360,7 +360,8 @@ def get_story_for_channel(ctx):
 
 def set_story_for_channel(ctx, story):
     key = key_for_ctx(ctx)
-    context_to_story[key] = story
+    # force a copy
+    context_to_story[key] = story[:]
 
 
 def reset_story_for_channel(ctx):
