@@ -421,9 +421,7 @@ async def explore(ctx):
         active_story
     )
 
-    output_waiting_task = asyncio.create_task(
-        edit_message_to_append_dots_every_second(progress_message, colored)
-    )
+    output_waiting_task = append_dots_to_message_task(progress_message, colored)
 
     n = 4
     list_of_json_version_of_a_story = await asyncify(ask_gpt_n)(
@@ -468,7 +466,6 @@ async def extend_story_for_bot(ctx, extend: str = ""):
     if not extend:
         # If called with an empty message lets send help as well
         colored = color_story_for_discord(active_story)
-        ic(colored)
         await smart_send(ctx, f"{bot_help_text}\n**The story so far:** {colored}")
         return
 
@@ -484,9 +481,8 @@ async def extend_story_for_bot(ctx, extend: str = ""):
     progress_message = (
         await ctx.channel.send(".") if is_message else await ctx.send(".")
     )
-    output_waiting_task = asyncio.create_task(
-        edit_message_to_append_dots_every_second(progress_message, f"{colored}")
-    )
+    output_waiting_task = append_dots_to_message_task(progress_message, colored)
+
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
         active_story
     )
@@ -596,11 +592,8 @@ async def visualize(ctx, count: int = 2):
     await ctx.defer()
     prompt = f"""Make a good prompt for DALL-E2 (A Stable diffusion model) to make a picture of this story. Only return the prompt that will be passed in directly: \n\n {story_as_text}"""
     progress_message = await ctx.send(".")
-    output_waiting_task = asyncio.create_task(
-        edit_message_to_append_dots_every_second(
-            progress_message, "Figuring out prompt"
-        )
-    )
+
+    output_waiting_task = append_dots_to_message_task(progress_message, "Finding a good prompt")
 
     prompt = await asyncify(ask_gpt)(
         prompt_to_gpt=prompt,
@@ -611,9 +604,8 @@ async def visualize(ctx, count: int = 2):
 
     ic(prompt)
     content = f"Asking improv gods to visualize - *{prompt}* "
-    output_waiting_task = asyncio.create_task(
-        edit_message_to_append_dots_every_second(progress_message, f"{content}")
-    )
+
+    output_waiting_task = append_dots_to_message_task(progress_message, content)
 
     response = None
     try:
@@ -661,13 +653,15 @@ class MentionListener(commands.Cog):
     # TODO: Refactor to be with extend_story_for_bot
 
 
-async def edit_message_to_append_dots_every_second(message, base_text):
+async def append_dots_to_message_in_background(message, base_text):
     # Stop after 30 seconds - probably nver gonna come back after that.
     for i in range(30 * 2):
         base_text += "."
         await message.edit(base_text)
         await asyncio.sleep(0.5)
 
+def append_dots_to_message_task(message, base_text):
+    return asyncio.create_task(append_dots_to_message_in_background(message, base_text))
 
 async def on_mention(message):
     if message.author == bot.user:
