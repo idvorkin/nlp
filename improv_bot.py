@@ -1,5 +1,6 @@
 #!python3
 
+import contextlib
 import os
 import asyncio
 import openai
@@ -161,6 +162,13 @@ class Fragment(BaseModel):
 
     def __repr__(self):
         return str(self)
+
+    def __eq__(self, other):
+        return (
+            self.player == other.player
+            and self.text == other.text
+            and self.reasoning == other.reasoning
+        )
 
     # a static constructor that takes positional arguments
     @staticmethod
@@ -397,20 +405,28 @@ class StoryButton(discord.ui.Button):
         self.story = story
 
     # This function is called whenever this particular button is pressed.
-    # This is part of the "meat" of the game logic.
     async def callback(self, interaction: discord.Interaction):
-        colored = color_story_for_discord(self.story)
-        set_story_for_channel(self.ctx, self.story)
-        await interaction.response.edit_message(content=colored, view=None)
+
+        # My story has a new fragment appened, so should have equality on the previous line.
+        latest_story = get_story_for_channel(self.ctx)
+        is_story_changed_under_us = latest_story[-1] != self.story[-2]
+        if is_story_changed_under_us:
+            colored = color_story_for_discord(latest_story)
+            response = f"{latest_story[-1].player} changed the story first. The current story is:\n{colored}"
+            await interaction.response.edit_message(content=response, view=None)
+        else:
+            colored = color_story_for_discord(self.story)
+            set_story_for_channel(self.ctx, self.story)
+            await interaction.response.edit_message(content=colored, view=None)
 
 
 @bot.command(description="Explore alternatives with the bot")
 async def explore(ctx):
-    active_story = get_story_for_channel(ctx)
-    is_message = not hasattr(ctx, "defer")
+    async with make_slash_command_deferred(ctx):
+        await explore_internal(ctx)
 
-    if not is_message:
-        await ctx.defer()
+async def explore_internal(ctx):
+    active_story = get_story_for_channel(ctx)
 
     colored = color_story_for_discord(active_story)
     # Can pass in a message or a context, silly pycord, luckily can cheat in pycord
@@ -435,15 +451,11 @@ async def explore(ctx):
         for json_version_of_a_story in list_of_json_version_of_a_story
     ]
 
-    # write a button for each fragment.
     for story in list_of_stories:
-        # add a button for the last fragment of each
+        # add a button for the last fragment of each story
         view.add_item(StoryButton(label=story[-1].text[:70], ctx=ctx, story=story))
-    await progress_message.edit(content=colored, view=view)
-    if not is_message:
-        # acknolwedge without sending
-        await ctx.send(content="")
 
+    await progress_message.edit(content=colored, view=view)
 
 @bot.command(description="Start a new story with the bot")
 async def once_upon_a_time(ctx):
@@ -456,31 +468,38 @@ async def once_upon_a_time(ctx):
     await ctx.respond(response)
 
 
-async def extend_story_for_bot(ctx, extend: str = ""):
-    # if story is empty, then start with the default story
-    ic(extend)
-    is_message = not hasattr(ctx, "defer")
+@contextlib.asynccontextmanager
+async def make_slash_command_deferred(ctx):
+    is_slash_command = hasattr(ctx, "defer")
+    try:
+        if is_slash_command:
+            await ctx.defer()
+        yield
+    finally:
+        if is_slash_command:
+            await ctx.followup.send(content="")
 
+async def extend_story_for_bot(ctx, extend: str = ""):
+    async with make_slash_command_deferred(ctx):
+        await extend_story_for_bot_internal(ctx,extend)
+
+
+async def extend_story_for_bot_internal(ctx, extend: str = ""):
+    # if story is empty, then start with the default story
     active_story = get_story_for_channel(ctx)
 
     if not extend:
-        # If called with an empty message lets send help as well
+        # Called with an empty message lets send help as well
         colored = color_story_for_discord(active_story)
         await smart_send(ctx, f"{bot_help_text}\n**The story so far:** {colored}")
         return
 
-    if not is_message:
-        await ctx.defer()
-
     user_said = Fragment(player=ctx.author.name, text=extend)
     active_story += [user_said]
+
     ic(active_story)
-    ic("calling gpt")
     colored = color_story_for_discord(active_story)
-    # print progress in the background while running
-    progress_message = (
-        await ctx.channel.send(".") if is_message else await ctx.send(".")
-    )
+    progress_message = await smart_send(ctx,".")
     output_waiting_task = append_dots_to_message_task(progress_message, colored)
 
     prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
@@ -502,19 +521,27 @@ async def extend_story_for_bot(ctx, extend: str = ""):
         json_version_of_a_story, object_hook=lambda d: Fragment(**d)
     )
 
+    # The active story is the original story + user fragment + coach fragment, last original story is at -3
+    #story changed if the last fragment is the one before we added the bot fragment
+    latest_story = get_story_for_channel(ctx)
+    is_story_changed_under_us = latest_story[-1] != active_story[-3]
+
+    # It's possible someone edited the story before we got an answer from GPT.
+    # When then happens, lets not update.
+    if is_story_changed_under_us:
+        colored = color_story_for_discord(latest_story)
+        user_fragment = active_story[-2]
+        response = f"Can't add {user_fragment.player} line of **{user_fragment.text}** because the story has changed.\nThe current story is:\n{colored}"
+        await progress_message.edit(content=response)
+        return
+
     set_story_for_channel(ctx, active_story)
 
     # convert story to text
     print_story(active_story, show_story=True)
-    story_text = " ".join([f.text for f in active_story])
-    ic(story_text)
     colored = color_story_for_discord(active_story)
-    ic(colored)
 
     await progress_message.edit(content=colored)
-    if not is_message:
-        # acknolwedge without sending
-        await ctx.send(content="")
 
 
 @bot.command(description="Show the story so far, or extend it")
@@ -646,11 +673,8 @@ class MentionListener(commands.Cog):
         is_mention = self.bot.user in message.mentions
         ic(is_mention, is_dm)
         if is_mention or is_dm:
-            await on_mention(message)
+            await on_message_internal(message)
             return
-        # check if message is a DM
-
-    # TODO: Refactor to be with extend_story_for_bot
 
 
 async def append_dots_to_message_in_background(message, base_text):
@@ -663,9 +687,11 @@ async def append_dots_to_message_in_background(message, base_text):
 def append_dots_to_message_task(message, base_text):
     return asyncio.create_task(append_dots_to_message_in_background(message, base_text))
 
-async def on_mention(message):
+async def on_message_internal(message):
     if message.author == bot.user:
         return
+
+    # Possibly this was a mention, if so remove that from the message content.
     message_content = message.content.replace(f"<@{bot.user.id}>", "").strip()
 
     # If user sends '.', let them get a choice of what to write next
