@@ -409,10 +409,12 @@ class StoryButton(discord.ui.Button):
 
         # My story has a new fragment appened, so should have equality on the previous line.
         latest_story = get_story_for_channel(self.ctx)
+        active_story=self.story
         is_story_changed_under_us = latest_story[-1] != self.story[-2]
         if is_story_changed_under_us:
             colored = color_story_for_discord(latest_story)
-            response = f"{latest_story[-1].player} changed the story first. The current story is:\n{colored}"
+            user_fragment = active_story[-1]
+            response = f"Can't add **{user_fragment.text}** because the story has changed.\nThe current story is:\n{colored}"
             await interaction.response.edit_message(content=response, view=None)
         else:
             colored = color_story_for_discord(self.story)
