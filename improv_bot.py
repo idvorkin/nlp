@@ -273,7 +273,7 @@ I'll write 1-5 words, and then you do the same, and we'll go back and forth writ
 The story is expressed as a json, I will pass in json, and you add the coach line to the json.
 You will add a third field as to why you added those words in the line
 Only add a single coach field to the output
-You can correct spelling and capilization mistakes
+Do not correct spelling and capilization mistakes
 The below strings are python strings, so if using ' quotes, ensure to escape them properly
 
 Example 1 Input:
@@ -414,7 +414,7 @@ class StoryButton(discord.ui.Button):
         if is_story_changed_under_us:
             colored = color_story_for_discord(latest_story)
             user_fragment = active_story[-1]
-            response = f"Can't add **{user_fragment.text}** because the story has changed.\nThe current story is:\n{colored}"
+            response = f"Can't add **{user_fragment.text}** \nBecause the story has changed.\nThe current story is:\n{colored}"
             await interaction.response.edit_message(content=response, view=None)
         else:
             colored = color_story_for_discord(self.story)
@@ -460,11 +460,15 @@ async def explore_internal(ctx):
     await progress_message.edit(content=colored, view=view)
 
 @bot.command(description="Start a new story with the bot")
-async def once_upon_a_time(ctx):
+async def once_upon_a_time(ctx, continue_with: discord.Option(str, name="continue_with", description="continue story with", required="False")
+                           =""):
     reset_story_for_channel(ctx)
     active_story = get_story_for_channel(ctx)
-    story_text = " ".join([f.text for f in active_story])
-    ic(story_text)
+    if continue_with:
+        # extend what the coach said
+        active_story[-1].text+=f" {continue_with}"
+        set_story_for_channel(ctx, active_story)
+
     colored = color_story_for_discord(active_story)
     response = f"{bot_help_text}\n**The story so far:** {colored}"
     await ctx.respond(response)
@@ -533,7 +537,7 @@ async def extend_story_for_bot_internal(ctx, extend: str = ""):
     if is_story_changed_under_us:
         colored = color_story_for_discord(latest_story)
         user_fragment = active_story[-2]
-        response = f"Can't add {user_fragment.player} line of **{user_fragment.text}** because the story has changed.\nThe current story is:\n{colored}"
+        response = f"Can't add {user_fragment.player} line of **{user_fragment.text}**\n Because the story has changed.\nThe current story is:\n{colored}"
         await progress_message.edit(content=response)
         return
 
