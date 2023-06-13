@@ -679,7 +679,7 @@ async def on_mention(message):
         await explore(message)
         return
 
-    # TODO: handle help now
+    # TODO: handle all the other slash commands here
 
     await extend_story_for_bot(message, message_content)
     return
