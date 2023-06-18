@@ -35,9 +35,16 @@ signal.signal(signal.SIGINT, keep_pipe_alive_on_control_c)
 original_print = print
 is_from_console = False
 
-# text_model_best = "gpt-4"
-text_model_best = "gpt-3.5-turbo"
+text_model_gpt_4 = "gpt-4-0613"
+gpt_4_tokens = 7800
+text_model_gpt35 = "gpt-3.5-turbo-16k-0613"
+gpt_3_5_tokens = 16000
 code_model_best = "code-davinci-003"
+
+
+def model_to_max_tokens(model):
+    model_to_tokens = {text_model_gpt_4: gpt_4_tokens, text_model_gpt35: gpt_3_5_tokens}
+    return model_to_tokens[model]
 
 
 def bold_console(s):
@@ -275,7 +282,9 @@ def tldr(
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
+    u4=False,
 ):
+    text_model_best, tokens = process_u4(u4, tokens)
     prompt = "".join(sys.stdin.readlines())
     prompt_to_gpt = remove_trailing_spaces(prompt) + "\ntl;dr:"
     response = openai.Completion.create(
@@ -374,7 +383,6 @@ def base_query(
     stream=False,
     u4=False,
 ):
-    global text_model_best
     text_model_best, tokens = process_u4(u4, tokens)
 
     # encoding = tiktoken.get_encoding("cl100k_base")
@@ -473,7 +481,6 @@ def mood(
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
-    global text_model_best
     text_model_best, tokens = process_u4(u4, tokens)
 
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
@@ -553,7 +560,6 @@ def commit_message(
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
-    global text_model_best
     text_model_best, tokens = process_u4(u4)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
@@ -634,15 +640,17 @@ def eli5(
 
 
 def process_u4(u4, tokens=0):
-    is_token_count_the_default = tokens == 0  # TBD if we can do it without hardcoding.
+    model = "SPECIFY_MODEL"
     if u4:
-        if is_token_count_the_default:
-            tokens = 7800
-        return "gpt-4", tokens
+        model = text_model_gpt_4
     else:
-        if is_token_count_the_default:
-            tokens = 3800
-        return text_model_best, tokens
+        model = text_model_gpt35
+
+    is_token_count_the_default = tokens == 0  # TBD if we can do it without hardcoding.
+    if is_token_count_the_default:
+        tokens = model_to_max_tokens(model)
+
+    return model, tokens
 
 
 @app.command()
@@ -653,7 +661,6 @@ def book(
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
-    global text_model_best
     text_model_best, tokens = process_u4(u4, tokens)
 
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
