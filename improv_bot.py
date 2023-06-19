@@ -9,7 +9,6 @@ from icecream import ic
 import typer
 import sys
 import random
-from rich import print as rich_print
 import psutil
 from rich.console import Console
 from rich.text import Text
@@ -29,124 +28,28 @@ from io import BytesIO
 from asyncer import asyncify
 from discord.ext import commands
 from discord.ui import Button, View, Modal
+from rich import print as rich_print
 
 # import OpenAI exceptiions
 from openai.error import APIError, InvalidRequestError, AuthenticationError
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+    retry_if_exception_type,
+)
+from openai_wrapper import (
+    setup_gpt,
+    choose_model,
+    num_tokens_from_string,
+    ask_gpt,
+    ask_gpt_n,
+)
 
 console = Console()
 
-# By default, when you hit C-C in a pipe, the pipe is stopped
-# with this, pipe continues
-def keep_pipe_alive_on_control_c(sig, frame):
-    sys.stdout.write(
-        "\nInterrupted with Control+C, but I'm still writing to stdout...\n"
-    )
-    sys.exit(0)
-
-
-# Register the signal handler for SIGINT
-signal.signal(signal.SIGINT, keep_pipe_alive_on_control_c)
-
-original_print = print
-is_from_console = False
-
-# text_model_best = "gpt-4"
-text_model_best = "gpt-3.5-turbo"
-code_model_best = "code-davinci-003"
-
-
-# Load your API key from an environment variable or secret management service
-
-
-def setup_gpt():
-    PASSWORD = "replaced_from_secret_box"
-    with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
-        SECRETS = json.load(json_data)
-        PASSWORD = SECRETS["openai"]
-    openai.api_key = PASSWORD
-    return openai
-
-
-gpt3 = setup_gpt()
+model = setup_gpt()
 app = typer.Typer()
-
-
-def num_tokens_from_string(string: str, encoding_name: str = "") -> int:
-    """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding(encoding_name)
-    num_tokens = len(encoding.encode(string))
-    num_tokens = num_tokens + 1  # for newline
-    return num_tokens
-
-
-def ask_gpt(
-    prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
-    tokens: int = 0,
-    u4=True,
-    debug=False,
-):
-    return ask_gpt_n(prompt_to_gpt, tokens=tokens, u4=u4, debug=debug, n=1)[0]
-
-
-def ask_gpt_n(
-    prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
-    tokens: int = 0,
-    u4=True,
-    debug=False,
-    n=1,
-):
-    text_model_best, tokens = process_u4(u4)
-    messages = [
-        {"role": "system", "content": "You are a really good improv coach."},
-        {"role": "user", "content": prompt_to_gpt},
-    ]
-
-    input_tokens = num_tokens_from_string(prompt_to_gpt, "cl100k_base") + 100
-    output_tokens = tokens - input_tokens
-
-    if debug:
-        ic(text_model_best)
-        ic(tokens)
-        ic(input_tokens)
-        ic(output_tokens)
-
-    start = time.time()
-    responses = n
-    response_contents = ["" for x in range(responses)]
-    for chunk in openai.ChatCompletion.create(
-        model=text_model_best,
-        messages=messages,
-        max_tokens=output_tokens,
-        n=responses,
-        temperature=0.7,
-        stream=True,
-    ):
-        if not "choices" in chunk:
-            continue
-
-        for elem in chunk["choices"]:  # type: ignore
-
-            delta = elem["delta"]
-            delta_content = delta.get("content", "")
-            response_contents[elem["index"]] += delta_content
-    if debug:
-        out = f"All chunks took: {int((time.time() - start)*1000)} ms"
-        ic(out)
-
-    # hard code to only return first response
-    return response_contents
-
-
-def process_u4(u4, tokens=0):
-    is_token_count_the_default = tokens == 0  # TBD if we can do it without hardcoding.
-    if u4:
-        if is_token_count_the_default:
-            tokens = 7800
-        return "gpt-4", tokens
-    else:
-        if is_token_count_the_default:
-            tokens = 3800
-        return text_model_best, tokens
 
 
 class Fragment(BaseModel):
