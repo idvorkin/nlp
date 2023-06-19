@@ -15,6 +15,7 @@ from typeguard import typechecked
 import tiktoken
 import time
 from typing import List
+from openai_wrapper import choose_model, setup_gpt
 
 import signal
 
@@ -35,17 +36,6 @@ signal.signal(signal.SIGINT, keep_pipe_alive_on_control_c)
 original_print = print
 is_from_console = False
 
-text_model_gpt_4 = "gpt-4-0613"
-gpt_4_tokens = 7800
-text_model_gpt35 = "gpt-3.5-turbo-16k-0613"
-gpt_3_5_tokens = 16000
-code_model_best = "code-davinci-003"
-
-
-def model_to_max_tokens(model):
-    model_to_tokens = {text_model_gpt_4: gpt_4_tokens, text_model_gpt35: gpt_3_5_tokens}
-    return model_to_tokens[model]
-
 
 def bold_console(s):
     if is_from_console:
@@ -57,16 +47,7 @@ def bold_console(s):
 # Load your API key from an environment variable or secret management service
 
 
-def setup_gpt():
-    PASSWORD = "replaced_from_secret_box"
-    with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
-        SECRETS = json.load(json_data)
-        PASSWORD = SECRETS["openai"]
-    openai.api_key = PASSWORD
-    return openai
-
-
-gpt3 = setup_gpt()
+gpt_model = setup_gpt()
 app = typer.Typer()
 
 
@@ -284,7 +265,7 @@ def tldr(
     to_fzf: bool = typer.Option(False),
     u4=False,
 ):
-    text_model_best, tokens = process_u4(u4, tokens)
+    text_model_best, tokens = choose_model(u4, tokens)
     prompt = "".join(sys.stdin.readlines())
     prompt_to_gpt = remove_trailing_spaces(prompt) + "\ntl;dr:"
     response = openai.Completion.create(
@@ -333,7 +314,7 @@ def query_no_print(
     u4=True,
     debug=False,
 ):
-    text_model_best, tokens = process_u4(u4)
+    text_model_best, tokens = choose_model(u4)
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": prompt_to_gpt},
@@ -383,7 +364,7 @@ def base_query(
     stream=False,
     u4=False,
 ):
-    text_model_best, tokens = process_u4(u4, tokens)
+    text_model_best, tokens = choose_model(u4, tokens)
 
     # encoding = tiktoken.get_encoding("cl100k_base")
     # encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
@@ -481,7 +462,7 @@ def mood(
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
-    text_model_best, tokens = process_u4(u4, tokens)
+    text_model_best, tokens = choose_model(u4, tokens)
 
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = """"""
@@ -560,7 +541,7 @@ def commit_message(
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
-    text_model_best, tokens = process_u4(u4)
+    text_model_best, tokens = choose_model(u4)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = f"""Write the commit message for the diff below
@@ -639,20 +620,6 @@ def eli5(
     base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
 
 
-def process_u4(u4, tokens=0):
-    model = "SPECIFY_MODEL"
-    if u4:
-        model = text_model_gpt_4
-    else:
-        model = text_model_gpt35
-
-    is_token_count_the_default = tokens == 0  # TBD if we can do it without hardcoding.
-    if is_token_count_the_default:
-        tokens = model_to_max_tokens(model)
-
-    return model, tokens
-
-
 @app.command()
 def book(
     tokens: int = typer.Option(0),
@@ -661,7 +628,7 @@ def book(
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
-    text_model_best, tokens = process_u4(u4, tokens)
+    text_model_best, tokens = choose_model(u4, tokens)
 
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""

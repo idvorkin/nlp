@@ -30,6 +30,15 @@ from io import BytesIO
 from asyncer import asyncify
 from discord.ext import commands
 from discord.ui import Button, View, Modal
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+    retry_if_exception_type,
+)
+from openai_wrapper import setup_gpt, choose_model, num_tokens_from_string
+
+# TODO consider moving this to openai_wrapper
 
 # import OpenAI exceptiions
 from openai.error import APIError, InvalidRequestError, AuthenticationError
@@ -48,39 +57,11 @@ def keep_pipe_alive_on_control_c(sig, frame):
     sys.exit(0)
 
 
-# Register the signal handler for SIGINT
-signal.signal(signal.SIGINT, keep_pipe_alive_on_control_c)
-
-original_print = print
-is_from_console = False
-
-# text_model_best = "gpt-4"
-text_model_best = "gpt-3.5-turbo"
-code_model_best = "code-davinci-003"
-
-
 # Load your API key from an environment variable or secret management service
 
 
-def setup_gpt():
-    PASSWORD = "replaced_from_secret_box"
-    with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
-        SECRETS = json.load(json_data)
-        PASSWORD = SECRETS["openai"]
-    openai.api_key = PASSWORD
-    return openai
-
-
-gpt3 = setup_gpt()
+gpt_model = setup_gpt()
 app = typer.Typer()
-
-
-def num_tokens_from_string(string: str, encoding_name: str = "") -> int:
-    """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding(encoding_name)
-    num_tokens = len(encoding.encode(string))
-    num_tokens = num_tokens + 1  # for newline
-    return num_tokens
 
 
 def ask_gpt(
@@ -92,6 +73,14 @@ def ask_gpt(
     return ask_gpt_n(prompt_to_gpt, tokens=tokens, u4=u4, debug=debug, n=1)[0]
 
 
+@retry(
+    wait=wait_random_exponential(min=1, max=60),
+    stop=stop_after_attempt(3),
+    retry=(
+        retry_if_exception_type(openai.error.RateLimitError)
+        | retry_if_exception_type(openai.error.RateLimitError)
+    ),
+)
 def ask_gpt_n(
     prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
     tokens: int = 0,
@@ -99,7 +88,7 @@ def ask_gpt_n(
     debug=False,
     n=1,
 ):
-    text_model_best, tokens = process_u4(u4)
+    text_model_best, tokens = choose_model(u4)
     messages = [
         {"role": "system", "content": "You are a really good improv coach."},
         {"role": "user", "content": prompt_to_gpt},
@@ -139,18 +128,6 @@ def ask_gpt_n(
 
     # hard code to only return first response
     return response_contents
-
-
-def process_u4(u4, tokens=0):
-    is_token_count_the_default = tokens == 0  # TBD if we can do it without hardcoding.
-    if u4:
-        if is_token_count_the_default:
-            tokens = 7800
-        return "gpt-4", tokens
-    else:
-        if is_token_count_the_default:
-            tokens = 3800
-        return text_model_best, tokens
 
 
 class Fragment(BaseModel):
