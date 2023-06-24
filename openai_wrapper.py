@@ -51,7 +51,7 @@ def num_tokens_from_string(string: str, encoding_name: str = "") -> int:
 def ask_gpt(
     prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
     tokens: int = 0,
-    u4=True,
+    u4=False,
     debug=False,
 ):
     return ask_gpt_n(prompt_to_gpt, tokens=tokens, u4=u4, debug=debug, n=1)[0]
@@ -60,7 +60,7 @@ def ask_gpt(
 def ask_gpt_n(
     prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
     tokens: int = 0,
-    u4=True,
+    u4=False,
     debug=False,
     n=1,
 ):
