@@ -701,6 +701,53 @@ def debug():
 
 
 @app.command()
+def paginate(
+    file_path: str,
+    u4: bool = typer.Option(True),
+    debug: bool = typer.Option(1),
+):
+    file_path = os.path.expanduser(file_path)
+    text = open(file_path).read()
+    paginate_internal(text, u4, debug)
+
+
+def paginate_internal(
+    text: str,
+    u4: bool,
+    debug: bool,
+):
+
+    transcript = text
+    prompt = f""" You are a superb editor.
+
+The following text was a speech to text conversion of a podcast. The text is missing paragraphs. Please do the following
+
+* Fix spelling mistakes
+* Break the text into paragraphs
+* Ensure no paragraph is too long to be readable
+* Cleanup all the text, don't skip any of it. Do not summarize
+* The Cleanuped text should be about the same length as the original text
+
+Clean up the following text:
+
+{transcript}
+
+"""
+    # TOOD: If the paginated transcript is shoreter, probably a bug
+
+    paginated_transcript = ask_gpt(prompt, u4=u4, debug=debug)
+    print(paginated_transcript)
+    fudge_factor = 100
+    is_cleanup_fishy = len(paginated_transcript) + fudge_factor < len(transcript)
+    if is_cleanup_fishy:
+        print("## ++ **Fishy cleanup, showing original**")
+        print(f"Paginated: {len(paginated_transcript)}, Original: {len(transcript)}")
+        print(transcript)
+        print("## -- **Fishy cleanup, showing original*")
+        return
+
+
+@app.command()
 def transcribe(
     file_path: str,
     cleanup: bool = typer.Option(True),
@@ -733,31 +780,7 @@ def transcribe(
         print(transcript)
         return
 
-    prompt = f""" You are a superb editor.
-
-The following  text was a speech to text conversion of a podcast. The text is missing paragraphs. Please do the following
-
-* Fix spelling mistakes
-* Break the text into paragraphs
-* Ensure no paragraph is too long to be readable
-
-Clean up the following text:
-
-{transcript}
-
-"""
-    # TOOD: If the paginated transcript is shoreter, probably a bug
-
-    paginated_transcript = ask_gpt(prompt, u4=u4, debug=debug)
-    print(paginated_transcript)
-    fudge_factor = 100
-    is_cleanup_fishy = len(paginated_transcript) + fudge_factor < len(transcript)
-    if is_cleanup_fishy:
-        print("## ++ **Fishy cleanup, showing original**")
-        print(f"Paginated: {len(paginated_transcript)}, Original: {len(transcript)}")
-        print(transcript)
-        print("## -- **Fishy cleanup, showing original*")
-        return
+    paginate_internal(transcript, u4, debug)
 
 
 def configure_width_for_rich():

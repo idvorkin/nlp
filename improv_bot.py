@@ -30,13 +30,7 @@ from discord.ui import Button, View, Modal
 from rich import print as rich_print
 
 # import OpenAI exceptiions
-from openai.error import APIError, InvalidRequestError, AuthenticationError
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_random_exponential,
-    retry_if_exception_type,
-)
+from openai.error import InvalidRequestError
 from openai_wrapper import (
     setup_gpt,
     choose_model,

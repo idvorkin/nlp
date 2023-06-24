@@ -4,6 +4,18 @@ import openai
 import tiktoken
 from icecream import ic
 import time
+from openai.error import (
+    APIError,
+    InvalidRequestError,
+    AuthenticationError,
+    RateLimitError,
+)
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+    retry_if_exception_type,
+)
 
 text_model_gpt_4 = "gpt-4-0613"
 gpt_4_tokens = 7800
@@ -57,6 +69,14 @@ def ask_gpt(
     return ask_gpt_n(prompt_to_gpt, tokens=tokens, u4=u4, debug=debug, n=1)[0]
 
 
+@retry(
+    wait=wait_random_exponential(min=1, max=60),
+    stop=stop_after_attempt(3),
+    retry=(
+        retry_if_exception_type(openai.error.RateLimitError)
+        | retry_if_exception_type(openai.error.RateLimitError)
+    ),
+)
 def ask_gpt_n(
     prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
     tokens: int = 0,
