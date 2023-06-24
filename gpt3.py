@@ -735,7 +735,7 @@ def transcribe(
 
     prompt = f""" You are a superb editor.
 
-The podcast text was a speech to text conversion of a podcast. The text is missing paragraphs. Please do the following
+The following  text was a speech to text conversion of a podcast. The text is missing paragraphs. Please do the following
 
 * Fix spelling mistakes
 * Break the text into paragraphs
