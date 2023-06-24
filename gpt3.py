@@ -730,12 +730,14 @@ def transcribe(
         return
 
     prompt = f"""
-You are a superb editor.
-Clean up the text following '-----' by doing the following:
+You are a superb editor. When you clean up text you do the following:
 
-* Fix spelling mistakes
-* Add paragraphs if they're missing
----------------------------------
+    * Fix spelling mistakes
+    * Break the text into paragraphs
+    * Ensure no paragraph is too long to be readable
+
+Clean up the following text:
+
 
 {transcript}
 
