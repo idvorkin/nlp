@@ -730,7 +730,8 @@ def transcribe(
         return
 
     prompt = f"""
-Clean up the following transcript by using these commands:
+You are a superb editor.
+Clean up the text following '-----' by doing the following:
 
 * Fix spelling mistakes
 * Add paragraphs if they're missing
@@ -739,8 +740,16 @@ Clean up the following transcript by using these commands:
 {transcript}
 
 """
+    # TOOD: If the paginated transcript is shoreter, probably a bug
+
     paginated_transcript = ask_gpt(prompt)
     print(paginated_transcript)
+    is_cleanup_fishy = len(paginated_transcript) < len(transcript)
+    if is_cleanup_fishy:
+        print("**Fishy cleanup, showing original**")
+        print(transcript)
+        print("**Fishy cleanup, showing original*")
+        return
 
 
 def configure_width_for_rich():
