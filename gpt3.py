@@ -720,9 +720,17 @@ def transcribe(
         print(transcript)
         return
 
-    paginated_transcript = ask_gpt(
-        transcript, "Rewrite the following to have paragraphs:\n\n{transcript}\n\n"
-    )
+    prompt = f"""
+Clean up the following transcript by using these commands:
+
+* Fix spelling mistakes
+* Add paragraphs if they're missing
+---------------------------------
+
+{transcript}
+
+"""
+    paginated_transcript = ask_gpt(prompt)
     print(transcript)
     print("------")
     print(paginated_transcript)
