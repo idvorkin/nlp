@@ -705,14 +705,19 @@ def transcribe(
     file_path: str,
     cleanup: bool = typer.Option(True),
     split_input: bool = typer.Option(False),
+    u4: bool = typer.Option(True),
+    debug: bool = typer.Option(1),
 ):
 
     """
     Transcribe an audio file using openai's API
 
     If your file is too big, split it up w/ffmpeg then run the for loop
+
     ffmpeg -i input.mp3 -f segment -segment_time 120 -c copy output%03d.mp3
-    for file in $(ls output*.mp3); do gpt transcribe $file > $file.txt; done
+
+
+    for file in $(ls output*.mp3); do gpt transcribe $file & > $file.txt; done
 
     """
     if split_input:
@@ -729,28 +734,30 @@ def transcribe(
         print(transcript)
         return
 
-    prompt = f"""
-You are a superb editor. When you clean up text you do the following:
+    prompt = f""" You are a superb editor.
 
-    * Fix spelling mistakes
-    * Break the text into paragraphs
-    * Ensure no paragraph is too long to be readable
+The podcast text was a speech to text conversion of a podcast. The text is missing paragraphs. Please do the following
+
+* Fix spelling mistakes
+* Break the text into paragraphs
+* Ensure no paragraph is too long to be readable
 
 Clean up the following text:
-
 
 {transcript}
 
 """
     # TOOD: If the paginated transcript is shoreter, probably a bug
 
-    paginated_transcript = ask_gpt(prompt)
+    paginated_transcript = ask_gpt(prompt, u4=u4, debug=debug)
     print(paginated_transcript)
-    is_cleanup_fishy = len(paginated_transcript) < len(transcript)
+    fudge_factor = 100
+    is_cleanup_fishy = len(paginated_transcript) + fudge_factor < len(transcript)
     if is_cleanup_fishy:
-        print("**Fishy cleanup, showing original**")
+        print("## ++ **Fishy cleanup, showing original**")
+        print(f"Paginated: {len(paginated_transcript)}, Original: {len(transcript)}")
         print(transcript)
-        print("**Fishy cleanup, showing original*")
+        print("## - **Fishy cleanup, showing original*")
         return
 
 
