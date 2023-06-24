@@ -703,9 +703,18 @@ def debug():
 @app.command()
 def transcribe(
     file_path: str,
-    clean_transcript: bool = typer.Option(True),
+    cleanup: bool = typer.Option(True),
     split_input: bool = typer.Option(False),
 ):
+
+    """
+    Transcribe an audio file using openai's API
+
+    If your file is too big, split it up w/ffmpeg then run the for loop
+    ffmpeg -i input.mp3 -f segment -segment_time 120 -c copy output%03d.mp3
+    for file in $(ls output*.mp3); do gpt transcribe $file > $file.txt; done
+
+    """
     if split_input:
         raise NotImplementedError("clean input and split output not implemented")
 
@@ -716,7 +725,7 @@ def transcribe(
             file=audio_file, model="whisper-1", response_format="text", language="en"
         )
 
-    if not clean_transcript:
+    if not cleanup:
         print(transcript)
         return
 
@@ -731,8 +740,6 @@ Clean up the following transcript by using these commands:
 
 """
     paginated_transcript = ask_gpt(prompt)
-    print(transcript)
-    print("------")
     print(paginated_transcript)
 
 
