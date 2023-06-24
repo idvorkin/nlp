@@ -720,15 +720,9 @@ def paginate_internal(
     transcript = text
     prompt = f""" You are a superb editor.
 
-The following text was a speech to text conversion of a podcast. The text is missing paragraphs. Please do the following
+    "Given an inline text file of a speech that's had all newline characters removed, following the prompt, please identify where the new paragraphs should begin and split the text into paragraphs accordingly. The text should be intelligently divided.  Please ensure that the output text is at least as long as the input text, meaning that no part of the input text should be omitted in the output. Please output the newly formatted text with the appropriate paragraphs."
 
-* Fix spelling mistakes
-* Break the text into paragraphs
-* Ensure no paragraph is too long to be readable
-* Cleanup all the text, don't skip any of it. Do not summarize
-* The Cleanuped text should be about the same length as the original text
-
-Clean up the following text:
+Inline File:
 
 {transcript}
 
