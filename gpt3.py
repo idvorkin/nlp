@@ -15,7 +15,7 @@ from typeguard import typechecked
 import tiktoken
 import time
 from typing import List
-from openai_wrapper import choose_model, setup_gpt
+from openai_wrapper import choose_model, setup_gpt, ask_gpt
 
 import signal
 
@@ -698,6 +698,34 @@ def debug():
     print(
         "long line -brb:w aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     )
+
+
+@app.command()
+def transcribe(
+    file_path: str,
+    clean_transcript: bool = typer.Option(True),
+    split_input: bool = typer.Option(False),
+):
+    if split_input:
+        raise NotImplementedError("clean input and split output not implemented")
+
+    file_path = os.path.expanduser(file_path)
+    transcript = "None"
+    with open(file_path, "rb") as audio_file:
+        transcript = openai.Audio.transcribe(
+            file=audio_file, model="whisper-1", response_format="text", language="en"
+        )
+
+    if not clean_transcript:
+        print(transcript)
+        return
+
+    paginated_transcript = ask_gpt(
+        transcript, "Rewrite the following to have paragraphs:\n\n{transcript}\n\n"
+    )
+    print(transcript)
+    print("------")
+    print(paginated_transcript)
 
 
 def configure_width_for_rich():
