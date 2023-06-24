@@ -714,8 +714,7 @@ def transcribe(
 
     If your file is too big, split it up w/ffmpeg then run the for loop
 
-    ffmpeg -i input.mp3 -f segment -segment_time 120 -c copy output%03d.mp3
-
+    ffmpeg -i input.mp3 -f segment -segment_time 600 -c copy output%03d.mp3
 
     for file in $(ls output*.mp3); do gpt transcribe $file & > $file.txt; done
 
@@ -757,7 +756,7 @@ Clean up the following text:
         print("## ++ **Fishy cleanup, showing original**")
         print(f"Paginated: {len(paginated_transcript)}, Original: {len(transcript)}")
         print(transcript)
-        print("## - **Fishy cleanup, showing original*")
+        print("## -- **Fishy cleanup, showing original*")
         return
 
 
