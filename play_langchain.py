@@ -41,6 +41,9 @@ from langchain.prompts.chat import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
+from langchain.agents import AgentType, initialize_agent, load_tools
+from langchain.tools import BraveSearch
+
 
 llm = OpenAI(temperature=0.9)
 chat = ChatOpenAI(temperature=0)
@@ -51,16 +54,60 @@ def app_wrap_loguru():
     app()
 
 
+# Google search setup
+# https://github.com/hwchase17/langchain/blob/d0c7f7c317ee595a421b19aa6d94672c96d7f42e/langchain/utilities/google_search.py#L9
+
+
+@app.command()
+def financial_agent(stock: str):
+    # tools = load_tools(["serpapi", "llm-math"], llm=llm)
+    tools = load_tools(["bing-search"], llm=llm)
+    # braveSearch = BraveSearch()
+    # tools += [braveSearch]
+    agent = initialize_agent(
+        tools=tools, llm=chat, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True
+    )
+
+    agent.run(
+        f"""
+              What's the price outlook for : {stock}?, What are the top 3 reasons for the stock to go up?, What are the top 3 reasons for the stock to go down?
+
+The output should be of the form:
+
+Stock: XXX
+Price: XXX
+Price 1 year ago: XXX
+Price 1 year ahead: XXX
+Price goes up because:
+- Point 1
+- Point 2
+- Point 3
+Price goes down because:
+- Point 1
+- Point 2
+- Point 3
+"""
+    )
+
+
 @app.command()
 def product_recommendation(product: str):
 
-    template = "You are a helpful assistant"
-    system_message_prompt = SystemMessagePromptTemplate.from_template(template)
-    human_template = "Make a list of 10  good name for a company that makes {product}?"
-    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+    system_message_prompt = SystemMessagePromptTemplate.from_template(
+        "You are a helpful assistant"
+    )
+
+    human_message_template = (
+        "Make a list of 10  good name for a company that makes {product}?"
+    )
+    human_message_prompt = HumanMessagePromptTemplate.from_template(
+        human_message_template
+    )
+
     chat_prompt = ChatPromptTemplate.from_messages(
         [system_message_prompt, human_message_prompt]
     )
+
     chain = LLMChain(llm=chat, prompt=chat_prompt)
     response = chain.run(product=product, snow="Not Used")  # Yukky,
     print(f"A company that makes {product} is called: \n{response}")
