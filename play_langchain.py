@@ -332,5 +332,17 @@ def dnd(protagonist_name="Donald Trump", quest="Find all the social security spe
         n += 1
 
 
+@app.command()
+def docs():
+    from langchain.document_loaders import DirectoryLoader
+
+    loader = DirectoryLoader(os.path.expanduser("~/blog"), glob="**/*.md")
+    docs = loader.load()
+    ic(len(docs))
+    ic(docs[34])
+    ic(docs[25])
+    ic(docs[1])
+
+
 if __name__ == "__main__":
     app_wrap_loguru()
