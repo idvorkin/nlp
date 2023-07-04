@@ -317,17 +317,28 @@ def dnd(protagonist_name="Donald Trump", quest="Find all the social security spe
     max_iters = 6
     n = 0
 
+    name_cache = []
+
+    def colorize_name(name):
+        colors = ["red", "green", "blue", "yellow", "magenta", "cyan"]
+        if name not in name_cache:
+            name_cache.append(name)
+        # get index of name in name_cache
+        name_idx = name_cache.index(name)
+        color = colors[name_idx % len(colors)]
+        return f"[{color}]{name}[/{color}]"
+
     simulator = DialogueSimulator(
         agents=[storyteller, protagonist], selection_function=select_next_speaker
     )
     simulator.reset()
     simulator.inject(storyteller_name, specified_quest)
-    print(f"[yellow]{storyteller_name}[/yellow]: {specified_quest}")
+    print(f"{colorize_name(storyteller_name)}: {specified_quest}")
     print("\n")
 
     while n < max_iters:
         name, message = simulator.step()
-        print(f"[cyan]{name}[/cyan]: {message}")
+        print(f"{colorize_name(name)}: {message}")
         print("\n")
         n += 1
 
