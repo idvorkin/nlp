@@ -210,41 +210,34 @@ def dnd(protagonist_name="Donald Trump", quest="Find all the social security spe
     There is one player in this game: the protagonist, {protagonist_name}.
     The story is narrated by the storyteller, {storyteller_name}."""
 
-    player_descriptor_system_message = SystemMessage(
-        content="You can add detail to the description of a Dungeons & Dragons player."
-    )
+    def make_player_description(role: str, name: str):
+        player_descriptor_system_message = SystemMessage(
+            content="You can add detail to the description of a Dungeons & Dragons player."
+        )
 
-    protagonist_specifier_prompt = [
-        player_descriptor_system_message,
-        HumanMessage(
-            content=f"""{game_description}
-            Please reply with a creative description of the protagonist, {protagonist_name}, in {word_limit} words or less.
-            Speak directly to {protagonist_name}.
-            Do not add anything else."""
-        ),
-    ]
+        make_player_description_prompt = [
+            player_descriptor_system_message,
+            HumanMessage(
+                content=f"""{game_description}
+                Please reply with a creative description of the {role}, {name}, in {word_limit} words or less.
+                Speak directly to {name}.
+                Do not add anything else."""
+            ),
+        ]
 
-    protagonist_description = ChatOpenAI(temperature=1.0)(
-        protagonist_specifier_prompt
-    ).content
+        return ChatOpenAI(temperature=1.0)(make_player_description_prompt).content
 
-    storyteller_specifier_prompt = [
-        player_descriptor_system_message,
-        HumanMessage(
-            content=f"""{game_description}
-            Please reply with a creative description of the storyteller, {storyteller_name}, in {word_limit} words or less.
-            Speak directly to {storyteller_name}.
-            Do not add anything else."""
-        ),
-    ]
+    protagonist_description = make_player_description("protagonist", protagonist_name)
+    storyteller_description = make_player_description("story teller", storyteller_name)
 
-    storyteller_description = ChatOpenAI(temperature=1.0)(
-        storyteller_specifier_prompt
-    ).content
-
-    # dump
     ic(protagonist_description)
     ic(storyteller_description)
+
+    # TODO, I should be able to remove duplication between system messages
+    # Notice how I'm instructing the stop message to speak to the next agent.
+    # That's an example of moving content from the AI to the Code
+    # Anything that you want to be simple/deterministic keep as much as possible in the code
+    # So intead of having end w/it's your turn next. Put tha tin the dialgo simulator
 
     protagonist_system_message = SystemMessage(
         content=(
@@ -282,7 +275,7 @@ def dnd(protagonist_name="Donald Trump", quest="Find all the social security spe
         )
     )
 
-    quest_specifier_prompt = [
+    make_detailed_quest_prompt = [
         SystemMessage(content="You can make a task more specific."),
         HumanMessage(
             content=f"""{game_description}
@@ -294,7 +287,7 @@ def dnd(protagonist_name="Donald Trump", quest="Find all the social security spe
             Do not add anything else."""
         ),
     ]
-    specified_quest = ChatOpenAI(temperature=1.0)(quest_specifier_prompt).content
+    specified_quest = ChatOpenAI(temperature=1.0)(make_detailed_quest_prompt).content
     ic(f"Original quest:\n{quest}\n")
     ic(f"Detailed quest:\n{specified_quest}\n")
 
@@ -320,7 +313,7 @@ def dnd(protagonist_name="Donald Trump", quest="Find all the social security spe
     name_cache = []
 
     def colorize_name(name):
-        colors = ["red", "green", "blue", "yellow", "magenta", "cyan"]
+        colors = ["red", "yellow", "blue", "yellow", "magenta", "cyan"]
         if name not in name_cache:
             name_cache.append(name)
         # get index of name in name_cache
