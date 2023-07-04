@@ -336,12 +336,13 @@ def dnd(protagonist_name="Donald Trump", quest="Find all the social security spe
 def docs():
     from langchain.document_loaders import DirectoryLoader
 
-    loader = DirectoryLoader(os.path.expanduser("~/blog"), glob="**/*.md")
+    loader = DirectoryLoader(os.path.expanduser("~/blog/_d"), glob="**/*.md")
     docs = loader.load()
-    ic(len(docs))
-    ic(docs[34])
-    ic(docs[25])
-    ic(docs[1])
+    from langchain.indexes import VectorstoreIndexCreator
+
+    index = VectorstoreIndexCreator().from_loaders([loader])
+    answer = index.query("What should a manager do")
+    ic(answer)
 
 
 if __name__ == "__main__":
