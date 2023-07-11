@@ -302,6 +302,7 @@ def base_query_from_dict(kwargs):
         debug=a["debug"],
         to_fzf=a["to_fzf"],
         prompt_to_gpt=a["prompt_to_gpt"],
+        system_prompt=a.get("system_prompt", "You are a helpful assistant."),
         gpt_response_start=a.get("gpt_response_start", ""),
         stream=a.get("stream", a["responses"] == 1 or not a["to_fzf"]),
         u4=a.get("u4", False),
@@ -361,6 +362,7 @@ def base_query(
     to_fzf: bool = False,
     prompt_to_gpt="replace_prompt",
     gpt_response_start="gpt_response_start",
+    system_prompt="You are a helpful assistant.",
     stream=False,
     u4=False,
 ):
@@ -371,7 +373,7 @@ def base_query(
 
     # Define the messages for the chat
     messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt_to_gpt},
     ]
 
@@ -381,6 +383,7 @@ def base_query(
     output_tokens = tokens - input_tokens
 
     if debug:
+        ic(system_prompt)
         # ic(prompt_to_gpt)
         ic(text_model_best)
         ic(tokens)
@@ -537,17 +540,24 @@ def summary(
 def commit_message(
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
-    debug: bool = False,
     to_fzf: bool = typer.Option(False),
+    debug: bool = typer.Option(False),
+    stream: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
     text_model_best, tokens = choose_model(u4)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
-    gpt_start_with = ""
-    prompt_to_gpt = f"""Write the commit message for the diff below
----
-{user_text}"""
-    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with)
+    system_prompt = """
+    You are an AI trained to write effective and concise Git commit messages.
+    You have been presented with a diff from a recent system change.
+    The diff shows that additional context lines have been added to improve the clarity of the changes.
+    Your task is  to write a meaningful commit message .
+    Start with a 1 line summary,  and then have the body of the commit message be point form for all the changes
+    If it seems like there are multiple disjoint commits, then you can write multiple commit messages
+
+    """
+    prompt_to_gpt = f"""{user_text}"""
+    base_query_from_dict(locals())
 
 
 @app.command()
