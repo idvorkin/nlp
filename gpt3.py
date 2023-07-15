@@ -463,19 +463,22 @@ def mood(
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
-    u4: bool = typer.Option(False),
+    u4: bool = typer.Option(True),
 ):
     text_model_best, tokens = choose_model(u4, tokens)
 
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
-    gpt_start_with = """"""
-    prompt_to_gpt = f""" I am a psychologist who writes reports after reading patient's journal entries
+    system_prompt = f""" You are an expert psychologist who writes reports
+    after reading patient's journal entries
 
-The reports include the entry date in the summary, and a 1-10 scale rating of depression to mania, where 0 represents mild depression and 10 represents hypomania. I provide a justification for the rating, as well as an assessment of their level of anxiety, with a rating from 1 to 10, where 10 signifies high anxiety.
+You task it to write a report based on the passed in journal entry.
+
+The reports include the entry date in the summary,
+and a 1-10 scale rating of anxiety, depression, and mania.
 
 Summary:
 - Includes entry date
-- Provides rating of depression and mania
+- Provides rating of depression anxiety and mania
 
 Depression Rating:
 - Uses a 1-10 scale
@@ -488,11 +491,15 @@ Anxiety Rating:
 - 10 signifies high anxiety
 - Provides justification for rating
 
+Mania Rating:
+- Uses a 1-10 scale
+- 10 signifies mania
+- 5 signifies hypomania
+- Provides justification for rating
+
+
 # Here are some facts to help you assess
 {patient_facts()}
-
-# Journal entry
-{user_text}
 
 # Report
 <!-- prettier-ignore-start -->
@@ -507,6 +514,8 @@ Anxiety Rating:
 <!-- prettier-ignore-end -->
 <!-- vim-markdown-toc GFM -->
 """
+
+    prompt_to_gpt = user_text
     base_query_from_dict(locals())
 
 
