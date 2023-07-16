@@ -43,6 +43,15 @@ def choose_model(u4, tokens=0):
     return model, tokens
 
 
+def remaining_response_tokens(model, system_prompt, user_prompt):
+    tokens = model_to_max_tokens(model)
+    input_tokens = (
+        num_tokens_from_string(user_prompt + system_prompt, "cl100k_base") + 100
+    )  # too lazy to count the messages stuf
+    output_tokens = tokens - input_tokens
+    return output_tokens
+
+
 def setup_gpt():
     PASSWORD = "replaced_from_secret_box"
     with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
