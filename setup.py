@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name="gpt",
+    name="idvorkin_nlp",
     version="0.1.0",
     py_modules=["gpt3", "igor_journal", "dump_grateful", "improv", "openai_wrapper"],
     install_requires=[],
