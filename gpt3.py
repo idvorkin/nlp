@@ -699,7 +699,9 @@ def fix(
     u4: bool = typer.Option(False),
 ):
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
-    system_prompt = """You are an advanced AI with superior spelling correction abilities. Your task is to correct any spelling errors you encounter in the text provided below.
+    system_prompt = """You are an advanced AI with superior spelling correction abilities.
+Your task is to correct any spelling errors you encounter in the text provided below.
+The text is markdown, don't change the markdown formatting.
     """
     gpt_start_with = ""
     prompt = f"""{user_text}"""
