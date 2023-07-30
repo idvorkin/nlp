@@ -690,6 +690,46 @@ def embed():
     print(z)
 
 
+def split_string(input_string):
+    # TODO update the to use the tokenizer
+    chunk_size = 1000 * 10 * 4
+    for i in range(0, len(input_string), chunk_size):
+        yield input_string[i : i + chunk_size]
+
+
+@app.command()
+def captions(
+    tokens: int = typer.Option(0),
+    debug: bool = typer.Option(1),
+    responses: int = typer.Option(1),
+    to_fzf: bool = typer.Option(False),
+    u4: bool = typer.Option(False),
+):
+    original_user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    system_prompt = """
+You  are a super smart AI, who understands captions formats, and also english grammar and spelling
+
+You will be given captions as input, you should output the text that can be read by a human like a book
+
+Be sure to include punctuation, correct errors and include paragraphs when they make sense.
+
+A sentence should not be more then 30 words, and a paragraph should not be more then 10 sentences.
+
+
+    """
+
+    # Hymn lets do some chunking here.
+    # Weird doing chunks here.
+    # TODO: Put this into a yield  function
+    for user_text in split_string(original_user_text):
+        gpt_start_with = ""
+        prompt = f"""{user_text}"""
+        ic(len(prompt))
+        prompt_to_gpt = remove_trailing_spaces(prompt)
+        base_query_from_dict(locals())
+        print("----")
+
+
 @app.command()
 def fix(
     tokens: int = typer.Option(0),
