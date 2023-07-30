@@ -705,6 +705,11 @@ def captions(
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
+    """
+    Convert captions files into readable text. You can get them via
+    youtube-dl --write-sub --sub-format srt --skip-download
+    """
+
     original_user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     system_prompt = """
 You  are a super smart AI, who understands captions formats, and also english grammar and spelling
