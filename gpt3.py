@@ -260,31 +260,23 @@ You will be grouping elements. I'll provide group categories, facts, and then gr
 @app.command()
 def tldr(
     tokens: int = typer.Option(0),
+    debug: bool = typer.Option(False),
     responses: int = typer.Option(1),
-    debug: bool = False,
     to_fzf: bool = typer.Option(False),
-    u4=False,
+    u4: bool = typer.Option(False),
 ):
-    text_model_best, tokens = choose_model(u4, tokens)
-    prompt = "".join(sys.stdin.readlines())
-    prompt_to_gpt = remove_trailing_spaces(prompt) + "\ntl;dr:"
-    response = openai.Completion.create(
-        engine=text_model_best,
-        n=responses,
-        prompt=prompt_to_gpt,
-        max_tokens=tokens,
-    )
-    if debug:
-        ic(prompt_to_gpt)
-        print(prompt_to_gpt)
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    system_prompt = """You are an advanced AI that can summarize text so it's easy for high school students to understnad
+    Your task is to creat a TL;DR from the text below. Use the following format:
 
-    for c in response.choices:  # type: ignore
-        if to_fzf:
-            # ; is newline
-            text = ";**tl,dr:* " + prep_for_fzf(c.text)
-        else:
-            text = f"\n**tl,dr:** {c.text}"
-        print(text)
+#### TL;DR
+#### Key Takeaways (point form)
+#### Journaling Prompts (point form)
+    """
+    gpt_start_with = ""
+    prompt = f"""{user_text}"""
+    prompt_to_gpt = remove_trailing_spaces(prompt)
+    base_query_from_dict(locals())
 
 
 def num_tokens_from_string(string: str, encoding_name: str = "") -> int:
@@ -692,7 +684,7 @@ def embed():
 
 def split_string(input_string):
     # TODO update the to use the tokenizer
-    chunk_size = 1000 * 10 * 4
+    chunk_size = 1000 * 5 * 4
     for i in range(0, len(input_string), chunk_size):
         yield input_string[i : i + chunk_size]
 
@@ -717,6 +709,8 @@ You  are a super smart AI, who understands captions formats, and also english gr
 You will be given captions as input, you should output the text that can be read by a human like a book
 
 Be sure to include punctuation, correct errors and include paragraphs when they make sense.
+
+Even if the person is talking continuously, still make sentances and paragraphs
 
 A sentence should not be more then 30 words, and a paragraph should not be more then 10 sentences.
 
