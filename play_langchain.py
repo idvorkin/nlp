@@ -31,6 +31,8 @@ from discord.ui import Button, View, Modal
 from loguru import logger
 from rich import print as rich_print
 from langchain.prompts import PromptTemplate
+from langchain.schema.runnable import RunnablePassthrough
+from operator import itemgetter
 
 console = Console()
 app = typer.Typer()
@@ -52,6 +54,7 @@ from langchain.schema import (
 
 llm = OpenAI(temperature=0.9)
 chat = ChatOpenAI(temperature=0)
+chat_model = chat
 
 
 @logger.catch()
@@ -98,24 +101,31 @@ Price goes down because:
 @app.command()
 def product_recommendation(product: str):
 
-    system_message_prompt = SystemMessagePromptTemplate.from_template(
+    system_message = SystemMessagePromptTemplate.from_template(
         "You are a helpful assistant"
     )
-
-    human_message_template = (
+    human_message = HumanMessagePromptTemplate.from_template(
         "Make a list of 10  good name for a company that makes {product}?"
     )
-    human_message_prompt = HumanMessagePromptTemplate.from_template(
-        human_message_template
-    )
 
-    chat_prompt = ChatPromptTemplate.from_messages(
-        [system_message_prompt, human_message_prompt]
-    )
+    chat_prompt = ChatPromptTemplate.from_messages([system_message, human_message])
 
-    chain = LLMChain(llm=chat, prompt=chat_prompt)
-    response = chain.run(product=product, snow="Not Used")  # Yukky,
-    print(f"A company that makes {product} is called: \n{response}")
+    """
+    chain = chat_prompt | chat_model
+    response = chain.invoke({"product":product})
+    ic (response)
+    print(f"A company that makes {product} is called: \n{response.content}")
+    """
+
+    # Instead of having to pass product as a dict, can just map it
+    chain = (
+        {"product": RunnablePassthrough()}
+        | chat_prompt
+        | chat_model.bind(temperature=0.9)
+    )
+    response = chain.invoke({"product": product})
+    ic(response)
+    print(f"A company that makes {product} is called: \n{response.content}")
 
 
 class DialogueAgent:
