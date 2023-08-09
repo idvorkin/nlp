@@ -21,13 +21,10 @@ from typing import List, Callable
 import signal
 import ast
 from pydantic import BaseModel
-import discord
 import aiohttp
 import datetime
 from io import BytesIO
 from asyncer import asyncify
-from discord.ext import commands
-from discord.ui import Button, View, Modal
 from loguru import logger
 from rich import print as rich_print
 from langchain.prompts import PromptTemplate
@@ -99,7 +96,40 @@ Price goes down because:
 
 
 @app.command()
+def latest_xkcd():
+    from langchain.chains.openai_functions.openapi import get_openapi_chain
+
+    chain = get_openapi_chain(
+        "https://gist.githubusercontent.com/roaldnefs/053e505b2b7a807290908fe9aa3e1f00/raw/0a212622ebfef501163f91e23803552411ed00e4/openapi.yaml",
+        verbose=True,
+    )
+    response = chain.invoke("What is today's comic ")
+    ic(response)
+
+
+@app.command()
+def talk_slide_1():
+    """Prompting a model"""
+    model = ChatOpenAI().bind(temperature=1.9)
+    prompt = ChatPromptTemplate.from_template("tell me a joke about {foo}")
+    chain = prompt | model
+    response = chain.invoke({"foo": "bear"})
+    print(response.content)
+
+
+@app.command()
+def talk_slide_2():
+    # simplest
+    model = ChatOpenAI().bind(temperature=1.9)
+    prompt = ChatPromptTemplate.from_template("tell me a joke about {foo}")
+    chain = prompt | model
+    response = chain.invoke({"foo": "bear"})
+    print(response.content)
+
+
+@app.command()
 def product_recommendation(product: str):
+    model = ChatOpenAI()
 
     system_message = SystemMessagePromptTemplate.from_template(
         "You are a helpful assistant"
@@ -117,11 +147,12 @@ def product_recommendation(product: str):
     print(f"A company that makes {product} is called: \n{response.content}")
     """
 
+    print("[blue] Starting")
     # Instead of having to pass product as a dict, can just map it
     chain = (
         {"product": RunnablePassthrough()}
         | chat_prompt
-        | chat_model.bind(temperature=0.9)
+        | ChatOpenAI().bind(temperature=1.5)
     )
     response = chain.invoke({"product": product})
     ic(response)
