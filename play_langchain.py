@@ -132,18 +132,18 @@ def latest_xkcd():
 
 
 @app.command()
-def talk_1(ctx: typer.Context, topic: str = "software engineers"):
+def talk_1(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
     """Call a model with a prompt"""
     process_shared_app_options(ctx)
     model = ChatOpenAI().bind(temperature=1.9)
-    prompt = ChatPromptTemplate.from_template("tell me a joke about {topic}")
+    prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
     chain = prompt | model
-    response = chain.invoke({"topic": topic})
+    response = chain.invoke({"topic": topic, "count": count})
     print(response.content)
 
 
 @app.command()
-def talk_2(ctx: typer.Context, topic: str = "software engineers"):
+def talk_2(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
     """Call a model with a prompt,  but use structured output"""
     process_shared_app_options(ctx)
 
@@ -159,17 +159,15 @@ def talk_2(ctx: typer.Context, topic: str = "software engineers"):
         count: int
         jokes: List[Joke]
 
-    get_joke = {"name": "get_jokes", "parameters": Jokes.model_json_schema()}
+    get_joke = {"name": "jokes", "parameters": Jokes.model_json_schema()}
 
     process_shared_app_options(ctx)
-    model = ChatOpenAI().bind(temperature=1.9)
-    prompt = ChatPromptTemplate.from_template("tell me jokes about {topic}")
-    chain = (
-        prompt
-        | model.bind(function_call={"name": get_joke["name"]}, functions=[get_joke])
-        | JsonOutputFunctionsParser()
+    model = ChatOpenAI()
+    prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
+    chain = prompt | model.bind(
+        function_call={"name": get_joke["name"]}, functions=[get_joke]
     )
-    response = chain.invoke({"topic": topic})
+    response = chain.invoke({"topic": topic, "count": count})
     ic(response)
 
 
