@@ -49,6 +49,7 @@ from langchain.schema import (
     HumanMessage,
     SystemMessage,
 )
+from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
 
 
 # Todo consider converting to a class
@@ -132,7 +133,7 @@ def latest_xkcd():
 
 @app.command()
 def talk_1(ctx: typer.Context, topic: str = "software engineers"):
-    """Demonstrate langchain syntax"""
+    """Call a model with a prompt"""
     process_shared_app_options(ctx)
     model = ChatOpenAI().bind(temperature=1.9)
     prompt = ChatPromptTemplate.from_template("tell me a joke about {topic}")
@@ -142,14 +143,34 @@ def talk_1(ctx: typer.Context, topic: str = "software engineers"):
 
 
 @app.command()
-def talk_2(ctx: typer.Context):
-    # simplest
+def talk_2(ctx: typer.Context, topic: str = "software engineers"):
+    """Call a model with a prompt,  but use structured output"""
+    process_shared_app_options(ctx)
+
+    print("Define the requested structured output")
+    print("FYI: Very handy to include reasoning")
+
+    class Joke(BaseModel):
+        setup: str
+        punch_line: str
+        reasoning_for_joke: str
+
+    class Jokes(BaseModel):
+        count: int
+        jokes: List[Joke]
+
+    get_joke = {"name": "get_jokes", "parameters": Jokes.model_json_schema()}
+
     process_shared_app_options(ctx)
     model = ChatOpenAI().bind(temperature=1.9)
-    prompt = ChatPromptTemplate.from_template("tell me a joke about {topic}")
-    chain = prompt | model
-    response = chain.invoke({"foo": "bear"})
-    print(response.content)
+    prompt = ChatPromptTemplate.from_template("tell me jokes about {topic}")
+    chain = (
+        prompt
+        | model.bind(function_call={"name": get_joke["name"]}, functions=[get_joke])
+        | JsonOutputFunctionsParser()
+    )
+    response = chain.invoke({"topic": topic})
+    ic(response)
 
 
 @app.command()

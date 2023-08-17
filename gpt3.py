@@ -687,9 +687,10 @@ def eli5(
 def book(
     ctx: typer.Context,
     tokens: int = typer.Option(0),
-    debug: bool = False,
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
+    debug: bool = typer.Option(False),
+    stream: bool = typer.Option(True),
     u4: bool = typer.Option(False),
 ):
     process_shared_app_options(ctx)
@@ -704,7 +705,7 @@ def book(
     Write it in the style of the heath brothers, with an acronym, and chapter for each letter
 
     Use markdown in writing the books. And have chapter titles be an h2 in markdown.
-    target {tokens} tokens for your response
+    target {tokens} tokens for your response.
 
     Before the book starts write a paragraph summarzing the key take aways from the book
     Then write a detailed outline
@@ -719,8 +720,7 @@ def book(
 
     """
     prompt_to_gpt = remove_trailing_spaces(prompt)
-    # Last Param is stream output
-    base_query(tokens, responses, debug, to_fzf, prompt_to_gpt, gpt_start_with, True)
+    base_query_from_dict(locals())
 
 
 def get_embedding(text, model="text-embedding-ada-002"):
