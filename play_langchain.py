@@ -30,6 +30,8 @@ from rich import print as rich_print
 from langchain.prompts import PromptTemplate
 from langchain.schema.runnable import RunnablePassthrough
 from operator import itemgetter
+import pudb
+from typing_extensions import Annotated
 
 console = Console()
 app = typer.Typer()
@@ -47,6 +49,27 @@ from langchain.schema import (
     HumanMessage,
     SystemMessage,
 )
+
+
+# Todo consider converting to a class
+class SimpleNamespace:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
+# Shared command line arguments
+# https://jacobian.org/til/common-arguments-with-typer/
+@app.callback()
+def load_options(
+    ctx: typer.Context,
+    attach: bool = Annotated[bool, typer.Option(prompt="Attach to existing process")],
+):
+    ctx.obj = SimpleNamespace(attach=attach)
+
+
+def process_shared_app_options(ctx: typer.Context):
+    if ctx.obj.attach:
+        pudb.set_trace()
 
 
 llm = OpenAI(temperature=0.9)
@@ -108,27 +131,30 @@ def latest_xkcd():
 
 
 @app.command()
-def talk_slide_1():
-    """Prompting a model"""
+def talk_1(ctx: typer.Context, topic: str = "software engineers"):
+    """Demonstrate langchain syntax"""
+    process_shared_app_options(ctx)
     model = ChatOpenAI().bind(temperature=1.9)
-    prompt = ChatPromptTemplate.from_template("tell me a joke about {foo}")
+    prompt = ChatPromptTemplate.from_template("tell me a joke about {topic}")
     chain = prompt | model
-    response = chain.invoke({"foo": "bear"})
+    response = chain.invoke({"topic": topic})
     print(response.content)
 
 
 @app.command()
-def talk_slide_2():
+def talk_2(ctx: typer.Context):
     # simplest
+    process_shared_app_options(ctx)
     model = ChatOpenAI().bind(temperature=1.9)
-    prompt = ChatPromptTemplate.from_template("tell me a joke about {foo}")
+    prompt = ChatPromptTemplate.from_template("tell me a joke about {topic}")
     chain = prompt | model
     response = chain.invoke({"foo": "bear"})
     print(response.content)
 
 
 @app.command()
-def product_recommendation(product: str):
+def product_recommendation(ctx: typer.Context, product: str):
+    process_shared_app_options(ctx)
     model = ChatOpenAI()
 
     system_message = SystemMessagePromptTemplate.from_template(

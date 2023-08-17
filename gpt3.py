@@ -16,6 +16,8 @@ import tiktoken
 import time
 from typing import List
 from openai_wrapper import choose_model, setup_gpt, ask_gpt
+import pudb
+from typing_extensions import Annotated
 
 import signal
 
@@ -50,6 +52,26 @@ def bold_console(s):
 gpt_model = setup_gpt()
 app = typer.Typer()
 
+# Todo consider converting to a class
+class SimpleNamespace:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
+# Shared command line arguments
+# https://jacobian.org/til/common-arguments-with-typer/
+@app.callback()
+def load_options(
+    ctx: typer.Context,
+    attach: bool = Annotated[bool, typer.Option(prompt="Attach to existing process")],
+):
+    ctx.obj = SimpleNamespace(attach=attach)
+
+
+def process_shared_app_options(ctx: typer.Context):
+    if ctx.obj.attach:
+        pudb.set_trace()
+
 
 # GPT performs poorly with trailing spaces (wow this function was writting by gpt)
 def remove_trailing_spaces(str):
@@ -74,6 +96,7 @@ def tokens():
 
 @app.command()
 def stdin(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
@@ -82,6 +105,7 @@ def stdin(
     stream: bool = typer.Option(True),
     u4: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = prompt.replace("*", user_text)
@@ -91,6 +115,7 @@ def stdin(
 
 @app.command()
 def compress(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
@@ -98,6 +123,7 @@ def compress(
     stream: bool = typer.Option(True),
     u4: bool = typer.Option(True),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     # Find this prompt from the web
     gpt_start_with = ""
@@ -135,11 +161,13 @@ def uncompress(
 
 @app.command()
 def joke(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
     debug: bool = False,
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = f"I am a very funny comedian and after I read the following text:\n---\n {user_text}\n---\n After that I wrote these 5 jokes about it:\n 1."
@@ -149,6 +177,7 @@ def joke(
 
 @app.command()
 def group(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
@@ -157,6 +186,7 @@ def group(
     stream: bool = typer.Option(True),
     u4: bool = typer.Option(True),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     prompt_to_gpt = f"""Group the following:
 -----
@@ -185,6 +215,7 @@ def patient_facts():
 
 @app.command()
 def life_group(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
@@ -193,6 +224,7 @@ def life_group(
     stream: bool = typer.Option(True),
     u4: bool = typer.Option(True),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     prompt_to_gpt = f"""
 
@@ -259,6 +291,7 @@ You will be grouping elements. I'll provide group categories, facts, and then gr
 
 @app.command()
 def tldr(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     debug: bool = typer.Option(False),
     responses: int = typer.Option(1),
@@ -273,6 +306,7 @@ def tldr(
 #### Key Takeaways (point form)
 #### Journaling Prompts (point form)
     """
+    process_shared_app_options(ctx)
     gpt_start_with = ""
     prompt = f"""{user_text}"""
     prompt_to_gpt = remove_trailing_spaces(prompt)
@@ -451,12 +485,14 @@ def base_query(
 
 @app.command()
 def mood(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(True),
 ):
+    process_shared_app_options(ctx)
     text_model_best, tokens = choose_model(u4, tokens)
 
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
@@ -513,11 +549,13 @@ Mania Rating:
 
 @app.command()
 def anygram(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = "\nFrom this I conclude the authors type and the following 5 points about how the patient feels, and 3 recommendations to the author\n"
     prompt_to_gpt = f"I am a enniagram expert and read the following journal entry:\n {user_text}\n {gpt_start_with} "
@@ -526,11 +564,13 @@ def anygram(
 
 @app.command()
 def summary(
+    ctx: typer.Context,
     tokens: int = typer.Option(3),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = f"Create an interesting opening paragraph for the following text, if it's possible, make the last sentance a joke or include an alliteration: \n\n {user_text}\n {gpt_start_with} "
@@ -539,6 +579,7 @@ def summary(
 
 @app.command()
 def commit_message(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
@@ -546,6 +587,7 @@ def commit_message(
     stream: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     text_model_best, tokens = choose_model(u4)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     system_prompt = """
@@ -563,11 +605,13 @@ def commit_message(
 
 @app.command()
 def headline(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = f"Create an attention grabbing headline and then a reason why you should care of the following post:\n {user_text}\n {gpt_start_with} "
@@ -576,11 +620,13 @@ def headline(
 
 @app.command()
 def protagonist(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = "The protagonist"
     prompt_to_gpt = f"Summarize the following text:\n {user_text}\n {gpt_start_with} "
@@ -589,11 +635,13 @@ def protagonist(
 
 @app.command()
 def poem(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = f"Rewrite the following text in the form as a rhyming couplet poem by Dr. Seuss with at least 5 couplets:\n {user_text}\n {gpt_start_with} "
@@ -602,12 +650,14 @@ def poem(
 
 @app.command()
 def study(
+    ctx: typer.Context,
     points: int = typer.Option(5),
     tokens: int = typer.Option(0),
     debug: bool = False,
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = (
@@ -619,11 +669,13 @@ def study(
 
 @app.command()
 def eli5(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     debug: bool = False,
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt = f"""Summarize this for a second-grade sudent: {user_text}"""
@@ -633,12 +685,14 @@ def eli5(
 
 @app.command()
 def book(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     debug: bool = False,
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     text_model_best, tokens = choose_model(u4, tokens)
 
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
@@ -691,6 +745,7 @@ def split_string(input_string):
 
 @app.command()
 def captions(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     debug: bool = typer.Option(1),
     responses: int = typer.Option(1),
@@ -731,12 +786,14 @@ A sentence should not be more then 30 words, and a paragraph should not be more 
 
 @app.command()
 def fix(
+    ctx: typer.Context,
     tokens: int = typer.Option(0),
     debug: bool = typer.Option(1),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(False),
 ):
+    process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     system_prompt = """You are an advanced AI with superior spelling correction abilities.
 Your task is to correct any spelling errors you encounter in the text provided below.
@@ -804,6 +861,7 @@ Inline File:
 
 @app.command()
 def transcribe(
+    ctx: typer.Context,
     file_path: str,
     cleanup: bool = typer.Option(True),
     split_input: bool = typer.Option(False),
