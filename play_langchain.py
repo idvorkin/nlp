@@ -29,6 +29,8 @@ from loguru import logger
 from rich import print as rich_print
 from langchain.prompts import PromptTemplate
 from langchain.schema.runnable import RunnablePassthrough
+from langchain.utilities import PythonREPL
+from langchain.schema.output_parser import StrOutputParser
 from operator import itemgetter
 import pudb
 from typing_extensions import Annotated
@@ -45,11 +47,37 @@ from langchain.prompts.chat import (
 )
 from langchain.agents import AgentType, initialize_agent, load_tools
 from langchain.tools import BraveSearch
+from typing import Any
 from langchain.schema import (
     HumanMessage,
     SystemMessage,
 )
 from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
+from langchain.output_parsers.openai_functions import JsonKeyOutputFunctionsParser
+from langchain.output_parsers.openai_functions import OutputFunctionsParser
+
+
+from langchain.schema import (
+    ChatGeneration,
+    Generation,
+    OutputParserException,
+)
+
+
+class JsonOutputFunctionsParser2(OutputFunctionsParser):
+    """Parse an output as the Json object."""
+
+    def parse_result(self, result: List[Generation]) -> Any:
+        function_call_info = super().parse_result(result)
+        if self.args_only:
+            try:
+                return json.loads(function_call_info, strict=False)
+            except (json.JSONDecodeError, TypeError) as exc:
+                raise OutputParserException(
+                    f"Could not parse function call data: {exc}"
+                )
+        function_call_info["arguments"] = json.loads(function_call_info["arguments"])
+        return function_call_info
 
 
 # Todo consider converting to a class
@@ -133,21 +161,22 @@ def latest_xkcd():
 
 @app.command()
 def talk_1(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
-    """Call a model with a prompt"""
+    """Tell me a joke"""
     process_shared_app_options(ctx)
-    model = ChatOpenAI().bind(temperature=1.9)
+    model = ChatOpenAI()
     prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
     chain = prompt | model
     response = chain.invoke({"topic": topic, "count": count})
-    print(response.content)
+    ic(response.content)
 
 
 @app.command()
 def talk_2(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
-    """Call a model with a prompt,  but use structured output"""
+    """Tell me a joke, but with structured output"""
+
     process_shared_app_options(ctx)
 
-    print("Define the requested structured output")
+    print("Use structured output, to make it easier to parse")
     print("FYI: Very handy to include reasoning")
 
     class Joke(BaseModel):
@@ -164,44 +193,74 @@ def talk_2(ctx: typer.Context, topic: str = "software engineers", count: int = 2
     process_shared_app_options(ctx)
     model = ChatOpenAI()
     prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
-    chain = prompt | model.bind(
-        function_call={"name": get_joke["name"]}, functions=[get_joke]
+    chain = (
+        prompt
+        | model.bind(function_call={"name": get_joke["name"]}, functions=[get_joke])
+        | JsonOutputFunctionsParser2()
     )
+
+    # JsonKeyOutputFunctionsParser(key_name="jokes")
+
     response = chain.invoke({"topic": topic, "count": count})
     ic(response)
 
 
 @app.command()
-def product_recommendation(ctx: typer.Context, product: str):
+def talk_3(ctx: typer.Context, n: int = 20234, count: int = 4):
+    """Ask for the n-th prime"""
     process_shared_app_options(ctx)
+
+    print("FYI: Like humans, models hallucinate ")
+    prompt = ChatPromptTemplate.from_template(f"What is the {n}th prime")
     model = ChatOpenAI()
+    chain = prompt | model
 
-    system_message = SystemMessagePromptTemplate.from_template(
-        "You are a helpful assistant"
+    for _ in range(count):
+        response = chain.invoke({})
+        ic(response)
+
+
+@app.command()
+def talk_4(ctx: typer.Context, n: int = 20234, count: int = 4):
+    """Ask for the nth prime, but use tools"""
+    process_shared_app_options(ctx)
+    model = ChatOpenAI(
+        model="gpt-4-0613"
+    )  # code generation on gpt-3.5 isn't strong enough
+    prompt = ChatPromptTemplate(
+        messages=[
+            SystemMessagePromptTemplate.from_template(
+                "Write code to solve the users problem. the last line of the python  program should print the answer. Do not use sympy"
+            ),
+            HumanMessagePromptTemplate.from_template(f"What is the {n}th prime"),
+        ]
     )
-    human_message = HumanMessagePromptTemplate.from_template(
-        "Make a list of 10  good name for a company that makes {product}?"
-    )
 
-    chat_prompt = ChatPromptTemplate.from_messages([system_message, human_message])
+    class PythonExecutionEnvironment(BaseModel):
+        valid_python: str
+        code_explanation: str
 
-    """
-    chain = chat_prompt | chat_model
-    response = chain.invoke({"product":product})
-    ic (response)
-    print(f"A company that makes {product} is called: \n{response.content}")
-    """
+    python_repl = {
+        "name": "python_repl",
+        "parameters": PythonExecutionEnvironment.model_json_schema(),
+    }
 
-    print("[blue] Starting")
-    # Instead of having to pass product as a dict, can just map it
     chain = (
-        {"product": RunnablePassthrough()}
-        | chat_prompt
-        | ChatOpenAI().bind(temperature=1.5)
+        prompt
+        | model.bind(
+            function_call={"name": python_repl["name"]}, functions=[python_repl]
+        )
+        | JsonOutputFunctionsParser2()
     )
-    response = chain.invoke({"product": product})
-    ic(response)
-    print(f"A company that makes {product} is called: \n{response.content}")
+    response = chain.invoke({})
+
+    valid_python = response["valid_python"]
+    print(valid_python)
+    print("----")
+    print(response["code_explanation"])
+    print("----")
+    input("Are you sure you want to run this code??")
+    exec(valid_python)
 
 
 class DialogueAgent:
@@ -427,7 +486,7 @@ def docs():
     from langchain.document_loaders import DirectoryLoader
 
     loader = DirectoryLoader(os.path.expanduser("~/blog/_d"), glob="**/*.md")
-    docs = loader.load()
+    # docs = loader.load()
     from langchain.indexes import VectorstoreIndexCreator
 
     index = VectorstoreIndexCreator().from_loaders([loader])
