@@ -71,6 +71,7 @@ class JsonOutputFunctionsParser2(OutputFunctionsParser):
         function_call_info = super().parse_result(result)
         if self.args_only:
             try:
+                # Waiting for this to merge upstream
                 return json.loads(function_call_info, strict=False)
             except (json.JSONDecodeError, TypeError) as exc:
                 raise OutputParserException(
