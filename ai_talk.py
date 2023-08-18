@@ -23,6 +23,7 @@ from langchain.prompts.chat import (
 )
 from typing import Any, Optional
 from langchain.output_parsers.openai_functions import OutputFunctionsParser
+from langchain.schema import FunctionMessage
 
 
 from langchain.schema import (
@@ -89,7 +90,7 @@ def app_wrap_loguru():
 
 @app.command()
 def talk_1(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
-    """Tell me a joke"""
+    """Tell a joke"""
     process_shared_app_options(ctx)
     model = ChatOpenAI()
     prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
@@ -100,7 +101,7 @@ def talk_1(ctx: typer.Context, topic: str = "software engineers", count: int = 2
 
 @app.command()
 def talk_2(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
-    """Tell me a joke, but with structured output"""
+    """Tell a joke, but with structured output"""
 
     process_shared_app_options(ctx)
     print("FYI: Very handy to include reasoning")
@@ -110,25 +111,17 @@ def talk_2(ctx: typer.Context, topic: str = "software engineers", count: int = 2
         punch_line: str
         reasoning_for_joke: str
 
-    class Jokes(BaseModel):
+    class GetJokes(BaseModel):
         count: int
         jokes: List[Joke]
 
-    get_joke = openai_func(Jokes)
-
-    process_shared_app_options(ctx)
     model = ChatOpenAI()
     prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
     chain = (
         prompt
-        | model.bind(
-            functions=[get_joke]
-            # function_call={"name": get_joke["name"]}, functions=[get_joke]
-        )
+        | model.bind(functions=[openai_func(GetJokes)])
         | JsonOutputFunctionsParser2()
     )
-
-    # JsonKeyOutputFunctionsParser(key_name="jokes")
 
     response = chain.invoke({"topic": topic, "count": count})
     print(response)
@@ -151,19 +144,8 @@ def talk_3(ctx: typer.Context, n: int = 20234, count: int = 4):
 
 @app.command()
 def talk_4(ctx: typer.Context, n: int = 20234, count: int = 4):
-    """Ask for the nth prime, but use tools"""
+    """Ask for the nth prime, use powerful tools"""
     process_shared_app_options(ctx)
-    model = ChatOpenAI(
-        model="gpt-4-0613"
-    )  # code generation on gpt-3.5 isn't strong enough
-    prompt = ChatPromptTemplate(
-        messages=[
-            SystemMessagePromptTemplate.from_template(
-                "Write code to solve the users problem. the last line of the python  program should print the answer. Do not use sympy"
-            ),
-            HumanMessagePromptTemplate.from_template(f"What is the {n}th prime"),
-        ]
-    )
 
     class PythonExecutionEnvironment(BaseModel):
         valid_python: str
@@ -173,6 +155,19 @@ def talk_4(ctx: typer.Context, n: int = 20234, count: int = 4):
         "name": "python_repl",
         "parameters": PythonExecutionEnvironment.model_json_schema(),
     }
+
+    model = ChatOpenAI(model="gpt-4-0613").bind(
+        functions=[openai_func(PythonExecutionEnvironment)]
+    )
+
+    prompt = ChatPromptTemplate(
+        messages=[
+            SystemMessagePromptTemplate.from_template(
+                "Write code to solve the users problem. the last line of the python  program should print the answer. Do not use sympy"
+            ),
+            HumanMessagePromptTemplate.from_template(f"What is the {n}th prime"),
+        ]
+    )
 
     chain = prompt | model.bind(functions=[python_repl]) | JsonOutputFunctionsParser2()
     response = chain.invoke({})
@@ -187,7 +182,12 @@ def talk_4(ctx: typer.Context, n: int = 20234, count: int = 4):
 
 
 @app.command()
-def talk_5(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
+def talk_5(
+    ctx: typer.Context,
+    topic: str = "software engineers",
+    count: int = 2,
+    season: str = "winter",
+):
     """Tell me a joke, but with structured output"""
     process_shared_app_options(ctx)
 
@@ -200,40 +200,42 @@ def talk_5(ctx: typer.Context, topic: str = "software engineers", count: int = 2
         count: int
         jokes: List[Joke]
 
-    class GetAudienceGender(BaseModel):
+    class GetCurrentSeason(BaseModel):
         pass
 
     model = ChatOpenAI()
-    model = ChatOpenAI(model="gpt-4")
-    model = model.bind(functions=[openai_func(Jokes), openai_func(GetAudienceGender)])
+    # model = ChatOpenAI(model="gpt-4")
+    model = model.bind(functions=[openai_func(Jokes), openai_func(GetCurrentSeason)])
 
     prompt = ChatPromptTemplate(
         messages=[
             SystemMessagePromptTemplate.from_template(
-                f"You are a great comedian. Before telling joke you will understand the audience"
+                "You are a great comedian. You know it's critical to tell joke related to the season "
             ),
             HumanMessagePromptTemplate.from_template(
-                "tell me {count} jokes about {topic} take into consideration the gender of the auidance"
+                "tell me {count} jokes about {topic} take into consideration the current season"
             ),
         ]
     )
-    prompt.append(HumanMessagePromptTemplate.from_template("Ignore"))
 
-    for i in range(10):  # Keep it limited to 1000 to avoid a run away loop
+    for i in range(4):  # Keep it limited to 1000 to avoid a run away loop
         chain = prompt | model
         response = chain.invoke({"topic": topic, "count": count})
-        print(response)
         called_function = response.additional_kwargs["function_call"]["name"]
         arguments = response.additional_kwargs["function_call"]["arguments"]
-        ic(arguments)
         match called_function:
-            case "GetAudienceGender":
+            case "GetCurrentSeason":
+                ic(called_function)
+                print(f"'Calling' GetCurrentSeason returning {season}")
                 # 'simulate calling the function, include it in state'
+                prompt.append(FunctionMessage(name=called_function, content=season))
+            case "Jokes":
+                ic(called_function)
+                print(arguments)
                 break
             case _:
-                print("No function called")
-                ic(called_function)
-                ic(arguments)
+                # if it's another function process that
+                ic("Sorry, I don't support {function} yet")
                 break
 
     # JsonKeyOutputFunctionsParser(key_name="jokes")
