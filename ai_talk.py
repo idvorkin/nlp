@@ -69,14 +69,24 @@ def load_options(
     ctx.obj = SimpleNamespace(attach=attach)
 
 
+# Our task is the docstring of the called function
+# We're called from a helper function this task so we're 2 down in the stack
+def tell_our_task():
+    import inspect
+
+    for frame_info in inspect.stack()[2:3]:
+        function_name = frame_info.function
+        function_object = frame_info.frame.f_globals.get(function_name)
+        if function_object:
+            docstring = inspect.getdoc(function_object)
+            print(f"Our task is: {docstring}")
+            input()
+
+
 def process_shared_app_options(ctx: typer.Context):
     if ctx.obj.attach:
         pudb.set_trace()
-
-
-llm = OpenAI(temperature=0.9)
-chat = ChatOpenAI(temperature=0)
-chat_model = chat
+    tell_our_task()
 
 
 @logger.catch()
@@ -84,32 +94,37 @@ def app_wrap_loguru():
     app()
 
 
-# Google search setup
-# https://github.com/hwchase17/langchain/blob/d0c7f7c317ee595a421b19aa6d94672c96d7f42e/langchain/utilities/google_search.py#L9
+def tell_model_ready():
+    print("ready to show output")
+    input()
+    print("--")
 
 
 @app.command()
 def talk_1(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
-    """Tell a joke"""
+    """Input to output: Get  a joke"""
     process_shared_app_options(ctx)
+    tell_our_task()
+
     model = ChatOpenAI()
     prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
+    print(prompt.messages)
     chain = prompt | model
     response = chain.invoke({"topic": topic, "count": count})
-    ic(response.content)
+    tell_model_ready()
+    print(response.content)
 
 
 @app.command()
 def talk_2(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
-    """Tell a joke, but with structured output"""
+    """Chain: Get  a joke, and why its funny"""
 
     process_shared_app_options(ctx)
-    print("FYI: Very handy to include reasoning")
 
     class Joke(BaseModel):
         setup: str
         punch_line: str
-        reasoning_for_joke: str
+        reason_joke_is_funny: str
 
     class GetJokes(BaseModel):
         count: int
@@ -122,14 +137,15 @@ def talk_2(ctx: typer.Context, topic: str = "software engineers", count: int = 2
         | model.bind(functions=[openai_func(GetJokes)])
         | JsonOutputFunctionsParser2()
     )
-
+    print(prompt.messages)
     response = chain.invoke({"topic": topic, "count": count})
+    tell_model_ready()
     print(response)
 
 
 @app.command()
 def talk_3(ctx: typer.Context, n: int = 20234, count: int = 4):
-    """Ask for the n-th prime"""
+    """Get the n-th prime"""
     process_shared_app_options(ctx)
 
     print("FYI: Like humans, models hallucinate ")
@@ -143,21 +159,17 @@ def talk_3(ctx: typer.Context, n: int = 20234, count: int = 4):
 
 
 @app.command()
-def talk_4(ctx: typer.Context, n: int = 20234, count: int = 4):
-    """Ask for the nth prime, use powerful tools"""
+def talk_4(ctx: typer.Context, n: int = 20234):
+    """Get the nth prime, but use tools"""
     process_shared_app_options(ctx)
 
-    class PythonExecutionEnvironment(BaseModel):
+    class ExecutePythonCode(BaseModel):
         valid_python: str
         code_explanation: str
 
-    python_repl = {
-        "name": "python_repl",
-        "parameters": PythonExecutionEnvironment.model_json_schema(),
-    }
-
     model = ChatOpenAI(model="gpt-4-0613").bind(
-        functions=[openai_func(PythonExecutionEnvironment)]
+        function_call={"name": "ExecutePythonCode"},  # tell gpt to use this model
+        functions=[openai_func(ExecutePythonCode)],
     )
 
     prompt = ChatPromptTemplate(
@@ -165,12 +177,15 @@ def talk_4(ctx: typer.Context, n: int = 20234, count: int = 4):
             SystemMessagePromptTemplate.from_template(
                 "Write code to solve the users problem. the last line of the python  program should print the answer. Do not use sympy"
             ),
-            HumanMessagePromptTemplate.from_template(f"What is the {n}th prime"),
+            HumanMessagePromptTemplate.from_template("What is the {n}th prime"),
         ]
     )
+    print(prompt.messages)
 
-    chain = prompt | model.bind(functions=[python_repl]) | JsonOutputFunctionsParser2()
-    response = chain.invoke({})
+    chain = prompt | model | JsonOutputFunctionsParser2()
+    response = chain.invoke({"n": n})
+    input("Ready")
+    print("----")
 
     valid_python = response["valid_python"]
     print(valid_python)
@@ -188,7 +203,7 @@ def talk_5(
     count: int = 2,
     season: str = "winter",
 ):
-    """Tell me a joke, but with structured output"""
+    """Tell me a joke, according to the season"""
     process_shared_app_options(ctx)
 
     class Joke(BaseModel):
@@ -220,6 +235,8 @@ def talk_5(
 
     for i in range(4):  # Keep it limited to 1000 to avoid a run away loop
         chain = prompt | model
+        print(prompt.messages)
+        input("Show Model Output")
         response = chain.invoke({"topic": topic, "count": count})
         called_function = response.additional_kwargs["function_call"]["name"]
         arguments = response.additional_kwargs["function_call"]["arguments"]
