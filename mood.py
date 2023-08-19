@@ -21,8 +21,8 @@ from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
 from langchain.prompts import PromptTemplate
 from langchain.prompts.chat import (
     ChatPromptTemplate,
-    HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
 )
 from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
@@ -215,8 +215,6 @@ You task it to write a report based on the journal entry that is going to be pas
     )
     # JsonKeyOutputFunctionsParser(key_name="jokes")
     response = chain.invoke({})
-    #  rich_print(response)
-    # print(response)
     print(json.dumps(response, indent=2))
     with open("out.json", "w") as f:
         json.dump(response, f)
