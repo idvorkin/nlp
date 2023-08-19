@@ -1,47 +1,50 @@
 #!python3
 
-import os
-import asyncio
-import openai
-import json
-from icecream import ic
-import typer
-import sys
-import random
-from rich import print as rich_print
-import psutil
-from rich.console import Console
-from rich.text import Text
-import rich
-import re
-from typeguard import typechecked
-import tiktoken
-import time
-from typing import List
-import signal
 import ast
-import fastapi
-import uvicorn
-from pydantic import BaseModel
-import discord
-import aiohttp
+import asyncio
 import datetime
+import json
+import os
+import random
+import re
+import signal
+import sys
+import time
 from io import BytesIO
+from typing import List
+
+import aiohttp
+import discord
+import fastapi
+import openai
+import psutil
+import rich
+import tiktoken
+import typer
+import uvicorn
 from asyncer import asyncify
 from discord.ext import commands
-from discord.ui import Button, View, Modal
+from discord.ui import Button, Modal, View
+from icecream import ic
+
+# import OpenAI exceptiions
+from openai.error import APIError, AuthenticationError, InvalidRequestError
+from pydantic import BaseModel
+from rich import print as rich_print
+from rich.console import Console
+from rich.text import Text
 from tenacity import (
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_random_exponential,
-    retry_if_exception_type,
 )
-from openai_wrapper import setup_gpt, choose_model, num_tokens_from_string
+from typeguard import typechecked
+
+from openai_wrapper import choose_model, num_tokens_from_string, setup_gpt
 
 # TODO consider moving this to openai_wrapper
 
-# import OpenAI exceptiions
-from openai.error import APIError, InvalidRequestError, AuthenticationError
 
 # make a fastapi app called server
 service = fastapi.FastAPI()
