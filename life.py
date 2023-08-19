@@ -124,13 +124,13 @@ def openai_func(cls):
 
 
 @app.command()
-def mood(
+def journal_report(
     ctx: typer.Context,
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
-    u4: Annotated[bool, typer.Option(prompt="use gpt4")] = False,
+    u4: Annotated[bool, typer.Option("use gpt4")] = False,
 ):
     process_shared_app_options(ctx)
     text_model_best, tokens = choose_model(u4, tokens)

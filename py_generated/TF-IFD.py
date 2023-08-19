@@ -109,5 +109,3 @@ for x in df.columns:
 d = DataFrame()
 # d.sum?
 # -
-
-

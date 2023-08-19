@@ -25,37 +25,39 @@ from pandas import DataFrame
 import matplotlib as mpl
 """
 
-from typing import List, Tuple
-from dataclasses import dataclass
-import pandas as pd
-
-import matplotlib.pyplot as plt
-import matplotlib
-
 import glob
+import importlib
+import itertools
 import os
+import time
+from dataclasses import dataclass
+from datetime import timedelta
+from functools import lru_cache
 from pathlib import Path
+from typing import List, Tuple
+
+import matplotlib
+import matplotlib.pyplot as plt
 
 # get nltk and corpus
 import nltk
-from nltk.corpus import stopwords
+import pandas as pd
 
 # get scapy and corpus
 import spacy
-import time
-from functools import lru_cache
-from matplotlib import animation, rc
 from IPython.display import HTML
-from datetime import timedelta
-import itertools
-import importlib
+from matplotlib import animation, rc
+from nltk.corpus import stopwords
+
 import igor_journal
 
 # python won't reload an already imported library
 # since co-editting files in another directory, need to do a reload
 importlib.reload(igor_journal)
-from igor_journal import corpus_path_months
 from icecream import ic
+
+from igor_journal import corpus_path_months
+
 # -
 
 print(igor_journal.test_journal_entry)
@@ -164,7 +166,7 @@ GraphWordDistribution(
 
 # +
 # # !python -m spacy download en_core_web_lg
-from igor_journal import Corpus, LoadCorpus, DocForCorpus
+from igor_journal import Corpus, DocForCorpus, LoadCorpus
 
 nlp = get_nlp_model("en_core_web_lg")
 nlp.max_length = 100 * 1000 * 1000
@@ -337,13 +339,3 @@ from spacy import displacy
 
 displacy.render(nlp("Igor wonders if Ray is working too much"))
 # -
-
-
-
-
-
-
-
-
-
-
