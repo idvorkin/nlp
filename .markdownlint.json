@@ -14,6 +14,7 @@
   "MD033": false,
   "MD033_doc": "No inline HTML",
   "MD046": false,
+  "MD041": false,
   "MD046_doc": "Code style blocks need to be indent",
   "no-hard-tabs": false,
   "whitespace": false

@@ -130,7 +130,7 @@ def journal_report(
     responses: int = typer.Option(1),
     debug: bool = False,
     to_fzf: bool = typer.Option(False),
-    u4: Annotated[bool, typer.Option("use gpt4")] = False,
+    u4: Annotated[bool, typer.Option()] = False,
 ):
     process_shared_app_options(ctx)
     text_model_best, tokens = choose_model(u4, tokens)
@@ -216,8 +216,8 @@ You task it to write a report based on the journal entry that is going to be pas
     # JsonKeyOutputFunctionsParser(key_name="jokes")
     response = chain.invoke({})
     print(json.dumps(response, indent=2))
-    with open("out.json", "w") as f:
-        json.dump(response, f)
+    with open("journal_report.json", "w") as f:
+        json.dump(response, f, indent=2)
 
 
 if __name__ == "__main__":

@@ -8,13 +8,15 @@
     "prepare": "husky install"
   },
   "lint-staged": {
-      "*.{js,css}": ["prettier --write"],
-      "*.md": [
-          "prettier --write",
-          "markdownlint --fix"
-      ],
-      "*.{py,ipynb}": [
-          "black"
-          ]
+    "*.{js,css}": [
+      "prettier --write"
+    ],
+    "*.md": [
+      "prettier --write",
+      "markdownlint --fix"
+    ],
+    "*.{py,ipynb}": [
+      "black"
+    ]
   }
 }
