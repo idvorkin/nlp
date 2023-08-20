@@ -10,6 +10,7 @@ from datetime import datetime
 from enum import Enum, IntEnum, auto
 from typing import Annotated, List
 
+import subprocess
 import openai
 import pudb
 import rich
@@ -129,13 +130,25 @@ def journal_report(
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
-    to_fzf: bool = typer.Option(False),
     u4: Annotated[bool, typer.Option()] = False,
+    journal_for: str = typer.Argument(
+        datetime.now().date(), help="Pass a date or int for days ago"
+    ),
 ):
     process_shared_app_options(ctx)
     text_model_best, tokens = choose_model(u4, tokens)
 
-    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    # Get my closest journal for the day:
+    completed_process = subprocess.run(
+        f"python3 ~/gits/nlp/igor_journal.py body {journal_for} --close",
+        shell=True,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    user_text = completed_process.stdout
+
+    # remove_trailing_spaces("".join(sys.stdin.readlines()))
 
     # Interesting we can specify in the prompt or in the "models" via text or type annotations
     class Person(BaseModel):
@@ -158,10 +171,10 @@ def journal_report(
 
     class CategorySummary(BaseModel):
         TheCategory: Category
-        Observations: str
+        Observations: List[str]
 
     class Recommendation(BaseModel):
-        ThingToDoDifferently: int
+        ThingToDoDifferently: str
         ReframeToTellYourself: str
         PromptToUseDuringReflection: str
         ReasonIncluded: str
@@ -172,7 +185,8 @@ def journal_report(
 
     class GetPychiatristReport(BaseModel):
         Date: datetime
-        SummaryOfThePatientExperience: str
+        DoctorName: str
+        PointFormSummaryOfEntry: List[str]
         Depression: AssessmentWithReason
         Anxiety: AssessmentWithReason
         Mania: AssessmentWithReason
@@ -183,7 +197,7 @@ def journal_report(
 
     report = openai_func(GetPychiatristReport)
 
-    system_prompt = f""" You are an expert psychologist who writes reports after reading patient's journal entries
+    system_prompt = f""" You are an expert psychologist named Dr. {{model}} who writes reports after reading patient's journal entries
 
 You task it to write a report based on the journal entry that is going to be passed in
 
@@ -214,10 +228,16 @@ You task it to write a report based on the journal entry that is going to be pas
         | JsonOutputFunctionsParser()
     )
     # JsonKeyOutputFunctionsParser(key_name="jokes")
-    response = chain.invoke({})
-    print(json.dumps(response, indent=2))
-    with open("journal_report.json", "w") as f:
+    response = chain.invoke({"model": model_name})
+    with open(os.path.expanduser("~/tmp/journal_report/latest.json"), "w") as f:
         json.dump(response, f, indent=2)
+    perma_path = os.path.expanduser(
+        f"~/tmp/journal_report/{response['Date']}_{response['DoctorName']}.json"
+    )
+    with open(perma_path, "w") as f:
+        json.dump(response, f, indent=2)
+    print(json.dumps(response, indent=2))
+    ic(perma_path)
 
 
 if __name__ == "__main__":
