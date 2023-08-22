@@ -14,6 +14,7 @@ from typing_extensions import Annotated
 
 console = Console()
 app = typer.Typer()
+from langchain.llms import GPT4All
 from langchain.llms import OpenAI
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts.chat import (
@@ -294,13 +295,7 @@ def talk_91(ctx: typer.Context, topic: str = "software engineers", count: int = 
     process_shared_app_options(ctx)
     tell_our_task()
 
-    from langchain.llms import GPT4All
-
-    local_path = (
-        "/Users/idvorkin/Library/Application Support/nomic.ai/GPT4All/ggml-model-gpt4all-falcon-q4_0.bin"
-    )
-
-    model = GPT4All( model=local_path)
+    model = GPT4All( model="./falcon.bin")
     prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
     print(prompt.messages)
     chain = prompt | model
