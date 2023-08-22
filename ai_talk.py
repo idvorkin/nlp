@@ -327,6 +327,23 @@ def get_func(filename, funcname):
     return None
 
 @app.command()
+def dump(funcname1):
+    filename = sys.argv[0]
+    funcname1 = funcname1.replace("-", "_")
+    func1 = get_func(filename, funcname1)
+
+    if not func1:
+        print(f"Function {funcname1} not found in {filename}")
+        return
+    import tempfile
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f1:
+        f1.write(func1)
+        f1.write("\n")
+        f1.flush()
+        import subprocess
+        x = subprocess.run(["rich",'-n',f"{f1.name}"], capture_output=False)
+
+@app.command()
 def diff(funcname1, funcname2):
     filename = sys.argv[0]
     ic(filename)
