@@ -33,7 +33,7 @@ from langchain.schema import (
 )
 
 
-def openai_func(cls):
+def model_to_function(cls):
     return {"name": cls.__name__, "parameters": cls.model_json_schema()}
 
 
@@ -135,7 +135,7 @@ def talk_2(ctx: typer.Context, topic: str = "software engineers", count: int = 2
     prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
     chain = (
         prompt
-        | model.bind(functions=[openai_func(GetJokes)])
+        | model.bind(functions=[model_to_function(GetJokes)])
         | JsonOutputFunctionsParser2()
     )
     print(prompt.messages)
@@ -170,7 +170,7 @@ def talk_4(ctx: typer.Context, n: int = 20234):
 
     model = ChatOpenAI(model="gpt-4-0613").bind(
         function_call={"name": "ExecutePythonCode"},  # tell gpt to use this model
-        functions=[openai_func(ExecutePythonCode)],
+        functions=[model_to_function(ExecutePythonCode)],
     )
 
     prompt = ChatPromptTemplate(
@@ -221,7 +221,7 @@ def talk_5(
 
     model = ChatOpenAI()
     # model = ChatOpenAI(model="gpt-4")
-    model = model.bind(functions=[openai_func(Jokes), openai_func(GetCurrentSeason)])
+    model = model.bind(functions=[model_to_function(Jokes), model_to_function(GetCurrentSeason)])
 
     prompt = ChatPromptTemplate(
         messages=[
@@ -295,7 +295,7 @@ def talk_91(ctx: typer.Context, topic: str = "software engineers", count: int = 
     process_shared_app_options(ctx)
     tell_our_task()
 
-    model = GPT4All( model="./falcon.bin")
+    model = GPT4All( model="./falcon.bin", temperate=1.5)
     prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
     print(prompt.messages)
     chain = prompt | model
