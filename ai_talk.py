@@ -295,7 +295,7 @@ def talk_91(ctx: typer.Context, topic: str = "software engineers", count: int = 
     process_shared_app_options(ctx)
     tell_our_task()
 
-    model = GPT4All( model="./falcon.bin", temperate=1.5)
+    model = GPT4All( model="./falcon.bin")
     prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
     print(prompt.messages)
     chain = prompt | model
