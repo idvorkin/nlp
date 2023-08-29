@@ -1,0 +1,84 @@
+{
+  "Date": "2022-04-10",
+  "DoctorName": "Dr. gpt-4",
+  "PointFormSummaryOfEntry": [
+    "Patient has COVID, feels like a cold, wants to do things to avoid feeling stir crazy.",
+    "Spent previous day in bed watching TV, which was found to be boring.",
+    "Ambivalent about work, considering taking a day off and going to the arboretum.",
+    "Patient has a sore throat, has been sick for 5 days.",
+    "Happy about stable weight, but wishes it would come down, has plans to lose weight.",
+    "Feels bad but not as bad as a headache.",
+    "Considering learning a new magic trick, practicing a rubber band trick.",
+    "Mentioned a desire to write a book with GPT, start wearing funny and colorful shirts.",
+    "Mentioned Tori, who seems to be working, found work as a good distraction.",
+    "Looking forward to being excited again, make progress."
+  ],
+  "Depression": {
+    "scale_1_to_10": 4,
+    "reasoning_for_assessment": "Patient has a mild sense of boredom and dissatisfaction but no significant depressive symptoms."
+  },
+  "Anxiety": {
+    "scale_1_to_10": 4,
+    "reasoning_for_assessment": "Patient has some concern about being stir crazy and losing weight but no significant anxiety."
+  },
+  "Mania": {
+    "scale_1_to_10": 1,
+    "reasoning_for_assessment": "There are no apparent symptoms of mania in the patient."
+  },
+  "PromptsForCognativeReframes": [
+    "How can you turn your time in bed while sick into a positive experience?",
+    "What small steps can you take towards your weight loss goals?",
+    "How can you balance work and rest during your recovery from COVID?",
+    "What can you do to prevent feeling stir crazy while at home?"
+  ],
+  "PeopleInEntry": [
+    {
+      "Name": "Tori",
+      "Relationship": "wife",
+      "Sentiment": "neutral",
+      "SummarizeInteraction": "Patient mentioned Tori working, found work as a good distraction."
+    }
+  ],
+  "Recommendations": [
+    {
+      "ThingToDoDifferently": "Consider setting small, achievable goals for weight loss during your recovery.",
+      "ReframeToTellYourself": "Resting and taking care of my health now will enable me to return to my normal activities faster and stronger.",
+      "PromptToUseDuringReflection": "What are some activities I can do at home that will keep me engaged and prevent feeling stir crazy?",
+      "ReasonIncluded": "The patient is recovering from an illness and may be feeling frustrated about their health and weight. They also mentioned feeling stir crazy."
+    },
+    {
+      "ThingToDoDifferently": "Explore indoor hobbies like learning new magic tricks or writing to keep yourself engaged during recovery.",
+      "ReframeToTellYourself": "This is a great opportunity to indulge in my interests and hobbies that I usually don't have time for.",
+      "PromptToUseDuringReflection": "What are some other hobbies I could explore during this time?",
+      "ReasonIncluded": "The patient seems to have an interest in learning new things and this could be a productive and enjoyable way to spend time during recovery."
+    }
+  ],
+  "CategorySummaries": [
+    {
+      "TheCategory": "physical_health",
+      "Observations": [
+        "The patient is currently experiencing COVID symptoms and has been sick for 5 days.",
+        "The patient has a desire to lose weight."
+      ]
+    },
+    {
+      "TheCategory": "mental_health",
+      "Observations": [
+        "There is a mild level of dissatisfaction and boredom, and a desire to avoid feeling stir crazy."
+      ]
+    },
+    {
+      "TheCategory": "being_a_manager",
+      "Observations": [
+        "Patient is considering taking a day off from work due to illness."
+      ]
+    },
+    {
+      "TheCategory": "entertainer",
+      "Observations": [
+        "Patient expresses a desire to learn a new magic trick."
+      ]
+    }
+  ]
+}
+
