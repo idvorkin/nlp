@@ -26,6 +26,7 @@ from openai_wrapper import choose_model, setup_gpt
 
 console = Console()
 
+
 # By default, when you hit C-C in a pipe, the pipe is stopped
 # with this, pipe continues
 def keep_pipe_alive_on_control_c(__, _):
@@ -44,6 +45,7 @@ is_from_console = False
 
 gpt_model = setup_gpt()
 app = typer.Typer()
+
 
 # Todo consider converting to a class
 class SimpleNamespace:
@@ -184,7 +186,7 @@ def journal_report(
 
     report = openai_func(GetPychiatristReport)
 
-    system_prompt = f""" You are an expert psychologist named Dr. {{model}} who writes reports after reading patient's journal entries
+    system_prompt = f""" You are an expert psychologist named Dr {{model}} who writes reports after reading patient's journal entries
 
 You task it to write a report based on the journal entry that is going to be passed in
 
@@ -214,12 +216,15 @@ You task it to write a report based on the journal entry that is going to be pas
         | model.bind(function_call={"name": report["name"]}, functions=[report])
         | JsonOutputFunctionsParser()
     )
-    # JsonKeyOutputFunctionsParser(key_name="jokes")
+
     response = chain.invoke({"model": model_name})
     with open(os.path.expanduser("~/tmp/journal_report/latest.json"), "w") as f:
         json.dump(response, f, indent=2)
+
     perma_path = os.path.expanduser(
-        f"~/tmp/journal_report/{response['Date']}_{response['DoctorName']}.json"
+        f"~/tmp/journal_report/{response['Date']}_{response['DoctorName']}.json".replace(
+            " ", "_"
+        )
     )
     with open(perma_path, "w") as f:
         json.dump(response, f, indent=2)
