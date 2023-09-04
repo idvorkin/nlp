@@ -68,7 +68,7 @@ class SimpleNamespace:
 @app.callback()
 def load_options(
     ctx: typer.Context,
-    attach: bool = Annotated[bool, typer.Option(prompt="Attach to existing process")],
+    attach: Annotated[bool, typer.Option(prompt="Attach to existing process")],
 ):
     ctx.obj = SimpleNamespace(attach=attach)
 
