@@ -57,14 +57,13 @@ class SimpleNamespace:
 @app.callback()
 def load_options(
     ctx: typer.Context,
-    attach: Annotated[bool, typer.Option(prompt="Attach to existing process")],
+    u4: Annotated[bool, typer.Option] = typer.Option(False),
 ):
-    ctx.obj = SimpleNamespace(attach=attach)
+    ctx.obj = SimpleNamespace(u4=u4)
 
 
 def process_shared_app_options(ctx: typer.Context):
-    if ctx.obj.attach:
-        pudb.set_trace()
+    return ctx
 
 
 # GPT performs poorly with trailing spaces (wow this function was writting by gpt)
