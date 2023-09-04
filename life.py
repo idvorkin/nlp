@@ -75,11 +75,6 @@ def remove_trailing_spaces(str):
 @app.command()
 def group(
     ctx: typer.Context,
-    responses: int = typer.Option(1),
-    to_fzf: bool = typer.Option(False),
-    debug: bool = typer.Option(False),
-    prompt: str = typer.Option("*"),
-    stream: bool = typer.Option(True),
     u4: Annotated[bool, typer.Option(prompt="use gpt4")] = False,
 ):
     process_shared_app_options(ctx)
@@ -124,7 +119,6 @@ def journal_report(
         datetime.now().date(), help="Pass a date or int for days ago"
     ),
 ):
-    ic(u4)
     process_shared_app_options(ctx)
 
     # Get my closest journal for the day:
@@ -200,8 +194,8 @@ You task it to write a report based on the journal entry that is going to be pas
 """
 
     process_shared_app_options(ctx)
-    prompt = ChatPromptTemplate(
-        messages=[
+    prompt = ChatPromptTemplate.from_messages(
+        [
             SystemMessagePromptTemplate.from_template(system_prompt),
             HumanMessagePromptTemplate.from_template(user_text),
         ],
