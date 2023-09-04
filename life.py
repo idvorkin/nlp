@@ -10,7 +10,6 @@ from enum import Enum
 from typing import Annotated, List
 
 import subprocess
-import pudb
 import typer
 from icecream import ic
 from langchain.chat_models import ChatOpenAI
@@ -123,8 +122,8 @@ def journal_report(
         datetime.now().date(), help="Pass a date or int for days ago"
     ),
 ):
+    ic(u4)
     process_shared_app_options(ctx)
-    text_model_best, tokens = choose_model(u4, tokens)
 
     # Get my closest journal for the day:
     completed_process = subprocess.run(
@@ -200,7 +199,6 @@ You task it to write a report based on the journal entry that is going to be pas
 
     process_shared_app_options(ctx)
     prompt = ChatPromptTemplate(
-        input_variables=[],
         messages=[
             SystemMessagePromptTemplate.from_template(system_prompt),
             HumanMessagePromptTemplate.from_template(user_text),
