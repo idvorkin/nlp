@@ -29,7 +29,8 @@ console = Console()
 
 # By default, when you hit C-C in a pipe, the pipe is stopped
 # with this, pipe continues
-def keep_pipe_alive_on_control_c(__, _):
+def keep_pipe_alive_on_control_c(signum, frame):
+    del signum, frame # unused variables
     sys.stdout.write(
         "\nInterrupted with Control+C, but I'm still writing to stdout...\n"
     )
