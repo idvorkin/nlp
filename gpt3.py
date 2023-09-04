@@ -59,14 +59,13 @@ class SimpleNamespace:
 @app.callback()
 def load_options(
     ctx: typer.Context,
-    attach: Annotated[bool, typer.Option(prompt="Attach to existing process")],
+    u4: Annotated[bool, typer.Option] = typer.Option(False),
 ):
-    ctx.obj = SimpleNamespace(attach=attach)
+    ctx.obj = SimpleNamespace(u4=u4)
 
 
 def process_shared_app_options(ctx: typer.Context):
-    if ctx.obj.attach:
-        pudb.set_trace()
+    return ctx
 
 
 # GPT performs poorly with trailing spaces (wow this function was writting by gpt)
@@ -581,7 +580,7 @@ def commit_message(
     to_fzf: bool = typer.Option(False),
     debug: bool = typer.Option(False),
     stream: bool = typer.Option(False),
-    u4: bool = typer.Option(False),
+    u4: bool = typer.Option(True),
 ):
     process_shared_app_options(ctx)
     text_model_best, tokens = choose_model(u4)
@@ -589,7 +588,6 @@ def commit_message(
     system_prompt = """
     You are an AI trained to write effective and concise Git commit messages.
     You have been presented with a diff from a recent system change.
-    The diff shows that additional context lines have been added to improve the clarity of the changes.
     Your task is  to write a meaningful commit message .
     Start with a 1 line summary,  and then have the body of the commit message be point form for all the changes
     If it seems like there are multiple disjoint commits, then you can write multiple commit messages
