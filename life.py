@@ -5,42 +5,31 @@ import os
 import re
 import signal
 import sys
-import time
 from datetime import datetime
-from enum import Enum, IntEnum, auto
+from enum import Enum
 from typing import Annotated, List
 
 import subprocess
-import openai
 import pudb
-import rich
-import tiktoken
 import typer
 from icecream import ic
 from langchain.chat_models import ChatOpenAI
 from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
-from langchain.prompts import PromptTemplate
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
-from langchain.schema.output_parser import StrOutputParser
-from langchain.schema.runnable import RunnablePassthrough
-from langchain.utilities import PythonREPL
 from pydantic import BaseModel
-from rich import print as rich_print
 from rich.console import Console
-from rich.text import Text
-from typeguard import typechecked
 
-from openai_wrapper import ask_gpt, choose_model, setup_gpt
+from openai_wrapper import choose_model, setup_gpt
 
 console = Console()
 
 # By default, when you hit C-C in a pipe, the pipe is stopped
 # with this, pipe continues
-def keep_pipe_alive_on_control_c(sig, frame):
+def keep_pipe_alive_on_control_c(__, _):
     sys.stdout.write(
         "\nInterrupted with Control+C, but I'm still writing to stdout...\n"
     )
@@ -212,10 +201,11 @@ You task it to write a report based on the journal entry that is going to be pas
 
     process_shared_app_options(ctx)
     prompt = ChatPromptTemplate(
+        input_variables=[],
         messages=[
             SystemMessagePromptTemplate.from_template(system_prompt),
             HumanMessagePromptTemplate.from_template(user_text),
-        ]
+        ],
     )
     model_name = "gpt-4" if u4 else "gpt-3.5-turbo"
     model = ChatOpenAI(
