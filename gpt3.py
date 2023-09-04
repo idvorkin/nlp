@@ -2,19 +2,15 @@
 
 import os
 import openai
-import json
 from icecream import ic
 import typer
 import sys
 from rich import print as rich_print
 from rich.console import Console
-from rich.text import Text
 import rich
 import re
-from typeguard import typechecked
 import tiktoken
 import time
-from typing import List
 from openai_wrapper import choose_model, setup_gpt, ask_gpt
 import pudb
 from typing_extensions import Annotated
@@ -63,7 +59,7 @@ class SimpleNamespace:
 @app.callback()
 def load_options(
     ctx: typer.Context,
-    attach: bool = Annotated[bool, typer.Option(prompt="Attach to existing process")],
+    attach: Annotated[bool, typer.Option(prompt="Attach to existing process")],
 ):
     ctx.obj = SimpleNamespace(attach=attach)
 
@@ -893,7 +889,8 @@ def transcribe(
         print(transcript)
         return
 
-    paginate_internal(transcript, u4, debug)
+    ic(transcript)
+    paginate_internal(str(transcript), u4, debug)
 
 
 def configure_width_for_rich():

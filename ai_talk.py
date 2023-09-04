@@ -221,7 +221,9 @@ def talk_5(
 
     model = ChatOpenAI()
     # model = ChatOpenAI(model="gpt-4")
-    model = model.bind(functions=[model_to_function(Jokes), model_to_function(GetCurrentSeason)])
+    model = model.bind(
+        functions=[model_to_function(Jokes), model_to_function(GetCurrentSeason)]
+    )
 
     prompt = ChatPromptTemplate(
         messages=[
@@ -289,19 +291,21 @@ def moderation(ctx: typer.Context, user_input: str = "You are stupid"):
     response = moderated_chain.invoke({"user_input": user_input})
     print(response)
 
+
 @app.command()
 def talk_91(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
-    """Input to output: Get  a joke, on device! """
+    """Input to output: Get  a joke, on device!"""
     process_shared_app_options(ctx)
     tell_our_task()
 
-    model = GPT4All( model="./falcon.bin")
+    model = GPT4All(model="./falcon.bin")
     prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
     print(prompt.messages)
     chain = prompt | model
     response = chain.invoke({"topic": topic, "count": count})
     tell_model_ready()
     print(response)
+
 
 @app.command()
 def docs():
@@ -315,8 +319,10 @@ def docs():
     answer = index.query("What should a manager do")
     ic(answer)
 
+
 import ast
 import sys
+
 
 def get_func(filename, funcname):
     with open(filename, "r") as source:
@@ -325,6 +331,7 @@ def get_func(filename, funcname):
         if isinstance(node, ast.FunctionDef) and node.name == funcname:
             return ast.unparse(node)
     return None
+
 
 @app.command()
 def dump(funcname1):
@@ -336,12 +343,15 @@ def dump(funcname1):
         print(f"Function {funcname1} not found in {filename}")
         return
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f1:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f1:
         f1.write(func1)
         f1.write("\n")
         f1.flush()
         import subprocess
-        x = subprocess.run(["rich",'-n',f"{f1.name}"], capture_output=False)
+
+        subprocess.run(["rich", "-n", f"{f1.name}"], capture_output=False)
+
 
 @app.command()
 def diff(funcname1, funcname2):
@@ -349,7 +359,7 @@ def diff(funcname1, funcname2):
     ic(filename)
     funcname1 = funcname1.replace("-", "_")
     funcname2 = funcname2.replace("-", "_")
-    ic (funcname1, funcname2)
+    ic(funcname1, funcname2)
     func1 = get_func(filename, funcname1)
     func2 = get_func(filename, funcname2)
 
@@ -361,8 +371,10 @@ def diff(funcname1, funcname2):
         return
 
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f1, \
-        tempfile.NamedTemporaryFile(mode='w', delete=False) as f2:
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", delete=False
+    ) as f1, tempfile.NamedTemporaryFile(mode="w", delete=False) as f2:
 
         f1.write(func1)
         f1.write("\n")
@@ -372,7 +384,9 @@ def diff(funcname1, funcname2):
         f2.write("\n")
 
     import subprocess
-    subprocess.run(["delta", '--line-numbers', f1_name, f2_name])
+
+    subprocess.run(["delta", "--line-numbers", f1_name, f2_name])
+
 
 if __name__ == "__main__":
     app_wrap_loguru()
