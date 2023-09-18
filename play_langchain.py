@@ -14,7 +14,6 @@ from rich.text import Text
 import rich
 from rich import print
 import re
-from typeguard import typechecked
 import tiktoken
 import time
 from typing import List, Callable
@@ -34,6 +33,12 @@ from langchain.schema.output_parser import StrOutputParser
 from operator import itemgetter
 import pudb
 from typing_extensions import Annotated
+from langchain.chat_loaders.imessage import IMessageChatLoader
+from langchain.chat_loaders.base import ChatSession
+from langchain.chat_loaders.utils import (
+        map_ai_messages,
+        merge_chat_runs,
+        )
 
 console = Console()
 app = typer.Typer()
@@ -481,14 +486,17 @@ def dnd(protagonist_name="Donald Trump", quest="Find all the social security spe
         print("\n")
         n += 1
 
-
 @app.command()
-def docs():
-    from langchain.document_loaders import DirectoryLoader
-
-    loader = DirectoryLoader(os.path.expanduser("~/blog/_d"), glob="**/*.md")
-    # docs = loader.load()
-    from langchain.indexes import VectorstoreIndexCreator
+def messages():
+    chat_path=os.path.expanduser("~/imessage/chat.db")
+    loader = IMessageChatLoader( path=chat_path)
+    raw_messages = loader.lazy_load()
+    # Merge consecutive messages from the same sender into a single message
+    # merged_messages = merge_chat_runs(raw_messages)
+    for i, message in enumerate(raw_messages):
+        ic (message)
+        if i > 50:
+            break
 
     index = VectorstoreIndexCreator().from_loaders([loader])
     answer = index.query("What should a manager do")
