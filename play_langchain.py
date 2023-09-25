@@ -1,40 +1,20 @@
 #!python3
 
 import os
-import asyncio
-import openai
 import json
 from icecream import ic
-import typer
-import sys
-import random
-import psutil
-from rich.console import Console
-from rich.text import Text
-import rich
-from rich import print
-import re
-import tiktoken
-import time
-from typing import List, Callable
-import signal
-import ast
-from pydantic import BaseModel
-import aiohttp
-import datetime
-from io import BytesIO
-from asyncer import asyncify
-from loguru import logger
-from rich import print as rich_print
-from langchain.prompts import PromptTemplate
-from langchain.schema.runnable import RunnablePassthrough
-from langchain.utilities import PythonREPL
 from langchain.schema.output_parser import StrOutputParser
-from operator import itemgetter
+import typer
+from rich.console import Console
+from rich import print
+from typing import List, Callable
+from pydantic import BaseModel
+from loguru import logger
 import pudb
+# import pickle module
+import pickle
 from typing_extensions import Annotated
 from langchain.chat_loaders.imessage import IMessageChatLoader
-from langchain.chat_loaders.base import ChatSession
 from langchain.chat_loaders.utils import (
         map_ai_messages,
         merge_chat_runs,
@@ -44,26 +24,21 @@ console = Console()
 app = typer.Typer()
 from langchain.llms import OpenAI
 from langchain.chat_models import ChatOpenAI
-from langchain.chains import LLMChain
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
 from langchain.agents import AgentType, initialize_agent, load_tools
-from langchain.tools import BraveSearch
 from typing import Any
 from langchain.schema import (
     HumanMessage,
     SystemMessage,
 )
-from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
-from langchain.output_parsers.openai_functions import JsonKeyOutputFunctionsParser
 from langchain.output_parsers.openai_functions import OutputFunctionsParser
 
 
 from langchain.schema import (
-    ChatGeneration,
     Generation,
     OutputParserException,
 )
@@ -163,111 +138,6 @@ def latest_xkcd():
     )
     response = chain.invoke("What is today's comic ")
     ic(response)
-
-
-@app.command()
-def talk_1(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
-    """Tell me a joke"""
-    process_shared_app_options(ctx)
-    model = ChatOpenAI()
-    prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
-    chain = prompt | model
-    response = chain.invoke({"topic": topic, "count": count})
-    ic(response.content)
-
-
-@app.command()
-def talk_2(ctx: typer.Context, topic: str = "software engineers", count: int = 2):
-    """Tell me a joke, but with structured output"""
-
-    process_shared_app_options(ctx)
-
-    print("Use structured output, to make it easier to parse")
-    print("FYI: Very handy to include reasoning")
-
-    class Joke(BaseModel):
-        setup: str
-        punch_line: str
-        reasoning_for_joke: str
-
-    class Jokes(BaseModel):
-        count: int
-        jokes: List[Joke]
-
-    get_joke = {"name": "jokes", "parameters": Jokes.model_json_schema()}
-
-    process_shared_app_options(ctx)
-    model = ChatOpenAI()
-    prompt = ChatPromptTemplate.from_template("tell me {count} jokes about {topic}")
-    chain = (
-        prompt
-        | model.bind(function_call={"name": get_joke["name"]}, functions=[get_joke])
-        | JsonOutputFunctionsParser2()
-    )
-
-    # JsonKeyOutputFunctionsParser(key_name="jokes")
-
-    response = chain.invoke({"topic": topic, "count": count})
-    ic(response)
-
-
-@app.command()
-def talk_3(ctx: typer.Context, n: int = 20234, count: int = 4):
-    """Ask for the n-th prime"""
-    process_shared_app_options(ctx)
-
-    print("FYI: Like humans, models hallucinate ")
-    prompt = ChatPromptTemplate.from_template(f"What is the {n}th prime")
-    model = ChatOpenAI()
-    chain = prompt | model
-
-    for _ in range(count):
-        response = chain.invoke({})
-        ic(response)
-
-
-@app.command()
-def talk_4(ctx: typer.Context, n: int = 20234, count: int = 4):
-    """Ask for the nth prime, but use tools"""
-    process_shared_app_options(ctx)
-    model = ChatOpenAI(
-        model="gpt-4-0613"
-    )  # code generation on gpt-3.5 isn't strong enough
-    prompt = ChatPromptTemplate(
-        messages=[
-            SystemMessagePromptTemplate.from_template(
-                "Write code to solve the users problem. the last line of the python  program should print the answer. Do not use sympy"
-            ),
-            HumanMessagePromptTemplate.from_template(f"What is the {n}th prime"),
-        ]
-    )
-
-    class PythonExecutionEnvironment(BaseModel):
-        valid_python: str
-        code_explanation: str
-
-    python_repl = {
-        "name": "python_repl",
-        "parameters": PythonExecutionEnvironment.model_json_schema(),
-    }
-
-    chain = (
-        prompt
-        | model.bind(
-            function_call={"name": python_repl["name"]}, functions=[python_repl]
-        )
-        | JsonOutputFunctionsParser2()
-    )
-    response = chain.invoke({})
-
-    valid_python = response["valid_python"]
-    print(valid_python)
-    print("----")
-    print(response["code_explanation"])
-    print("----")
-    input("Are you sure you want to run this code??")
-    exec(valid_python)
-
 
 class DialogueAgent:
     def __init__(
@@ -486,6 +356,37 @@ def dnd(protagonist_name="Donald Trump", quest="Find all the social security spe
         print("\n")
         n += 1
 
+
+def load_cached_prompt(prompt_name):
+    from langchain import hub
+    prompt_cache = os.path.expanduser("~/tmp/pickle/prompts")
+    # if prompt_cache directory doesn't exist, create it
+    if not os.path.exists(prompt_cache):
+        os.makedirs(prompt_cache)
+    prompt_maker_filename = f"{prompt_name.replace('/','_')}.pickle"
+    prompt_maker_path = os.path.join(prompt_cache, prompt_maker_filename)
+
+    if not os.path.exists(prompt_maker_path):
+        prompt_maker_template = hub.pull(prompt_name)
+        with open(prompt_maker_path, "wb") as f:
+            pickle.dump(prompt_maker_template, f)
+    else:
+        with open(prompt_maker_path, "rb") as f:
+            prompt_maker_template = pickle.load(f)
+
+    return prompt_maker_template
+
+@app.command()
+def great_prompt(prompt):
+    prompt_maker_template = load_cached_prompt("hardkothari/prompt-maker")
+    model = ChatOpenAI(temperature=0.9)
+    chain = prompt_maker_template | model
+    result = chain.invoke({"lazy_prompt":prompt, "task":prompt})
+    print(result.content)
+
+
+
+
 @app.command()
 def messages():
     chat_path=os.path.expanduser("~/imessage/chat.db")
@@ -504,4 +405,5 @@ def messages():
 
 
 if __name__ == "__main__":
+    ic("main")
     app_wrap_loguru()
