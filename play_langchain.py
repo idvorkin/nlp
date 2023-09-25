@@ -3,6 +3,7 @@
 import os
 import json
 from icecream import ic
+import sys
 from langchain.schema.output_parser import StrOutputParser
 import typer
 from rich.console import Console
@@ -386,6 +387,14 @@ def great_prompt(prompt):
 
 
 
+@app.command()
+def summarize():
+    prompt_maker_template = load_cached_prompt("langchain-ai/chain-of-density:ba34ae10")
+    user_text = "".join(sys.stdin.readlines())
+    model = ChatOpenAI(temperature=0.9, model="gpt-4")
+    chain = prompt_maker_template | model
+    result = chain.invoke({"ARTICLE":user_text})
+    print(result.content)
 
 @app.command()
 def messages():
