@@ -30,7 +30,7 @@ console = Console()
 # By default, when you hit C-C in a pipe, the pipe is stopped
 # with this, pipe continues
 def keep_pipe_alive_on_control_c(signum, frame):
-    del signum, frame # unused variables
+    del signum, frame  # unused variables
     sys.stdout.write(
         "\nInterrupted with Control+C, but I'm still writing to stdout...\n"
     )
@@ -224,7 +224,7 @@ You task it to write a report based on the journal entry that is going to be pas
     with open(perma_path, "w") as f:
         json.dump(response, f, indent=2)
     print(json.dumps(response, indent=2))
-    ic(perma_path)
+    print(perma_path)
 
 
 if __name__ == "__main__":
