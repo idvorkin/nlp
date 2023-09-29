@@ -19,6 +19,7 @@ import signal
 
 console = Console()
 
+
 # By default, when you hit C-C in a pipe, the pipe is stopped
 # with this, pipe continues
 def keep_pipe_alive_on_control_c(sig, frame):
@@ -47,6 +48,7 @@ def bold_console(s):
 
 gpt_model = setup_gpt()
 app = typer.Typer()
+
 
 # Todo consider converting to a class
 class SimpleNamespace:
@@ -366,7 +368,6 @@ def query_no_print(
             continue
 
         for elem in chunk["choices"]:  # type: ignore
-
             delta = elem["delta"]
             delta_content = delta.get("content", "")
             response_contents[elem["index"]] += delta_content
@@ -427,7 +428,6 @@ def base_query(
             continue
 
         for elem in chunk["choices"]:  # type: ignore
-
             if first_chunk:
                 if debug:
                     out = f"First Chunk took: {int((time.time() - start)*1000)} ms"
@@ -586,11 +586,24 @@ def commit_message(
     text_model_best, tokens = choose_model(u4)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     system_prompt = """
-    You are an AI trained to write effective and concise Git commit messages.
-    You have been presented with a diff from a recent system change.
-    Your task is  to write a meaningful commit message .
-    Start with a 1 line summary,  and then have the body of the commit message be point form for all the changes
-    If it seems like there are multiple disjoint commits, then you can write multiple commit messages
+As an expert in version control with Git, write a descriptive and informative commit message for a recent code change, which is presented as the output of git diff --staged
+
+### Instructions:
+
+1. Start the commit message with a concise summary of the change (e.g., "Fix bug in login functionality").
+
+2. Provide context for the change, explaining why it was necessary and what problem it solves (e.g., "The login process was failing for users with special characters in their passwords,
+causing authentication issues").
+
+3. Include any relevant details about the implementation or approach used to address the issue (e.g., "Modified the password validation regex pattern to allow special characters and updated
+the authentication logic accordingly").
+
+4. If applicable, mention any related issues or tickets that are being addressed by this commit (e.g., "Fixes #123").
+
+5. Keep the commit message concise and to the point, using clear and specific language.
+
+Remember, a well-crafted commit message helps other developers understand the purpose and impact of the code change, making collaboration and debugging easier in the future.
+
 
     """
     prompt_to_gpt = f"""{user_text}"""
@@ -828,7 +841,6 @@ def paginate_internal(
     u4: bool,
     debug: bool,
 ):
-
     transcript = text
     prompt = f""" You are a superb editor.
 
@@ -862,7 +874,6 @@ def transcribe(
     u4: bool = typer.Option(True),
     debug: bool = typer.Option(1),
 ):
-
     """
     Transcribe an audio file using openai's API
 
