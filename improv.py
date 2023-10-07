@@ -10,21 +10,10 @@ import re
 import signal
 import sys
 import time
-from io import BytesIO
 from typing import List
 
-import aiohttp
-import discord
-import fastapi
 import openai
-import psutil
-import rich
-import tiktoken
 import typer
-import uvicorn
-from asyncer import asyncify
-from discord.ext import commands
-from discord.ui import Button, Modal, View
 from icecream import ic
 
 # import OpenAI exceptiions
@@ -33,13 +22,12 @@ from pydantic import BaseModel
 from rich import print as rich_print
 from rich.console import Console
 from rich.text import Text
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_random_exponential,
+
+from langchain.prompts.chat import (
+    ChatPromptTemplate,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
 )
-from typeguard import typechecked
 
 from openai_wrapper import choose_model, num_tokens_from_string, setup_gpt
 
@@ -47,7 +35,6 @@ from openai_wrapper import choose_model, num_tokens_from_string, setup_gpt
 
 
 # make a fastapi app called server
-service = fastapi.FastAPI()
 
 console = Console()
 
@@ -62,7 +49,6 @@ def keep_pipe_alive_on_control_c(sig, frame):
 
 # Load your API key from an environment variable or secret management service
 
-
 gpt_model = setup_gpt()
 app = typer.Typer()
 
@@ -73,6 +59,8 @@ def ask_gpt(
     u4=True,
     debug=False,
 ):
+    import langchain
+
     return ask_gpt_n(prompt_to_gpt, tokens=tokens, u4=u4, debug=debug, n=1)[0]
 
 
@@ -327,37 +315,6 @@ def json_objects(
 
 
 @app.command()
-def server():
-    # uvicorn.run("improv:server")
-    import subprocess
-
-    subprocess.run("uvicorn improv:service --reload")
-
-
-# add a fastapi endpoint that takes the story so far as json, and returns the story with the coach fragment added
-# you load the server on the command line by running uvicorn improv:server --reload
-@service.get("/improv")
-async def extend_story(story_so_far: List[Fragment]) -> List[Fragment]:
-    # create the prompt
-    prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
-        story_so_far
-    )
-
-    # call gpt
-    json_version_of_a_story = ask_gpt(
-        prompt_to_gpt=prompt,
-        debug=False,
-        u4=False,
-    )
-
-    # convert json_version_of_a_story to a list of fragments
-    # Damn - Copilot wrote this code, and it's right (or so I think)
-    story = json.loads(json_version_of_a_story, object_hook=lambda d: Fragment(**d))
-
-    return story
-
-
-@app.command()
 def text(
     debug: bool = typer.Option(False),
     u4: bool = typer.Option(True),
@@ -398,13 +355,13 @@ now add your words to the story (NEVER ADD MORE THEN 5 WORDS):
             ic(prompt)
 
         coach_says = ask_gpt(prompt_to_gpt=prompt, debug=debug, u4=u4)
-        story += [Fragment("coach", coach_says)]
+        story += [Fragment.Pos("coach", coach_says)]
         prompt += coach_says
         print_story(story, show_story=False)
 
         user_says = get_user_input()
         prompt += f" {user_says} "
-        story += [Fragment("student", user_says)]
+        story += [Fragment.Pos("student", user_says)]
 
 
 if __name__ == "__main__":
