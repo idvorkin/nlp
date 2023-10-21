@@ -22,6 +22,7 @@ jupyterlab-lsp = "*"
 langchainhub = "*"
 typer = "*"
 tiktoken = "*"
+jupyter = "*"
 
 [dev-packages]
 # I'm not sure why, but when I put some of the packges in dev packages
