@@ -12,7 +12,7 @@ import re
 import tiktoken
 import time
 from dump_grateful import week
-from openai_wrapper import choose_model, get_remaining_output_tokens, setup_gpt, ask_gpt, get_model, get_model_type
+from openai_wrapper import choose_model, get_remaining_output_tokens, setup_gpt, ask_gpt,  get_model_type
 import pudb
 from typing_extensions import Annotated
 
@@ -395,12 +395,6 @@ def base_query(
     model  = get_model_type(u4)
     output_tokens = get_remaining_output_tokens(model,prompt_to_gpt+system_prompt)
     text_model_best = model.name
-
-
-    text_model_best, tokens = choose_model(u4, tokens)
-
-    # encoding = tiktoken.get_encoding("cl100k_base")
-    # encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
 
     # Define the messages for the chat
     messages = [
