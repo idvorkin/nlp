@@ -201,7 +201,7 @@ You task it to write a report based on the journal entry that is going to be pas
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
-    model_name = "gpt-4" if u4 else "gpt-3.5-turbo"
+    model_name = "gpt-4-1106-preview" if u4 else "gpt-3.5-turbo-1106"
     model = ChatOpenAI(
         model=model_name
     )  # Note, not yet using GPT-4 that could make the output much stronger ...
