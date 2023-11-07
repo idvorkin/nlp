@@ -16,7 +16,7 @@ jupyterlab = "*"
 black = "*"
 jupytext = "*"
 python-lsp-server  = "*"
-jupyterlab-lsp = "==5.0.0rc0"
+jupyterlab-lsp = "*"
 # jupyter-ai hasn't been much fun :(
 # jupyter-ai = "*"
 langchainhub = "*"
@@ -29,7 +29,7 @@ tiktoken = "*"
 # since I'm not creating a module
 
 [requires]
-python_version = "3.10"
+python_version = "3.11"
 
 [scripts]
 start = "jupyter-lab"
