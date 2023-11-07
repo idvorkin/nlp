@@ -11,9 +11,11 @@ import rich
 import re
 import tiktoken
 import time
-from openai_wrapper import choose_model, setup_gpt, ask_gpt
+from dump_grateful import week
+from openai_wrapper import choose_model, get_remaining_output_tokens, setup_gpt, ask_gpt, get_model, get_model_type
 import pudb
 from typing_extensions import Annotated
+
 
 import signal
 
@@ -388,6 +390,13 @@ def base_query(
     stream=False,
     u4=False,
 ):
+
+
+    model  = get_model_type(u4)
+    output_tokens = get_remaining_output_tokens(model,prompt_to_gpt+system_prompt)
+    text_model_best = model.name
+
+
     text_model_best, tokens = choose_model(u4, tokens)
 
     # encoding = tiktoken.get_encoding("cl100k_base")
@@ -399,22 +408,17 @@ def base_query(
         {"role": "user", "content": prompt_to_gpt},
     ]
 
-    input_tokens = (
-        num_tokens_from_string(prompt_to_gpt, "cl100k_base") + 100
-    )  # too lazy to count the messages stuf
-    output_tokens = tokens - input_tokens
 
     if debug:
         ic(system_prompt)
         # ic(prompt_to_gpt)
         ic(text_model_best)
         ic(tokens)
-        ic(input_tokens)
         ic(output_tokens)
         ic(stream)
 
     start = time.time()
-    response_contents = ["" for x in range(responses)]
+    response_contents = ["" for _ in range(responses)]
     first_chunk = True
     for chunk in openai.ChatCompletion.create(
         model=text_model_best,
