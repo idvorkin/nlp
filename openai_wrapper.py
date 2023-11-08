@@ -59,12 +59,8 @@ def get_model(u4):
 
 def get_remaining_output_tokens(model:CompletionModel,prompt:str):
 
-    # For symetric models, max_input_only_tokens= 0 and output_model_max  = the full size window
-    # For asymmetrics models, max_output_tokens = what's not consumed by the input model, minus the output_model_max
-
-
-    # max_input_only_tokens # = 0 on FCW models
-    # output_model_max # when free_input_context_max is 0, then  output_model_maxj
+    # For symetric models, max_input_only_tokens= 0 and max_output_tokens  = the full context window
+    # For asymmetrics models, max_output_tokens = full context_window - max_input_only_tokens
 
     input_tokens = num_tokens_from_string(prompt, "cl100k_base")
     # If you only used input_context only tokens, don't remove anything f+ 100
