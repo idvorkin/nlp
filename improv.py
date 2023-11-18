@@ -13,6 +13,9 @@ import time
 from typing import List
 
 import openai
+from openai import OpenAI
+
+client = OpenAI()
 import typer
 from icecream import ic
 
@@ -68,8 +71,8 @@ def ask_gpt(
     wait=wait_random_exponential(min=1, max=60),
     stop=stop_after_attempt(3),
     retry=(
-        retry_if_exception_type(openai.error.RateLimitError)
-        | retry_if_exception_type(openai.error.RateLimitError)
+        retry_if_exception_type(openai.RateLimitError)
+        | retry_if_exception_type(openai.RateLimitError)
     ),
 )
 def ask_gpt_n(
@@ -97,14 +100,12 @@ def ask_gpt_n(
     start = time.time()
     responses = n
     response_contents = ["" for x in range(responses)]
-    for chunk in openai.ChatCompletion.create(
-        model=text_model_best,
-        messages=messages,
-        max_tokens=output_tokens,
-        n=responses,
-        temperature=0.7,
-        stream=True,
-    ):
+    for chunk in client.chat.completions.create(model=text_model_best,
+    messages=messages,
+    max_tokens=output_tokens,
+    n=responses,
+    temperature=0.7,
+    stream=True):
         if not "choices" in chunk:
             continue
 

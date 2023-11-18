@@ -2,7 +2,9 @@
 from typing import Iterable, List, Dict
 from dataclasses import dataclass
 import json
-import openai
+from openai import OpenAI
+
+client = OpenAI(api_key=PASSWORD)
 
 import glob
 import os
@@ -597,13 +599,13 @@ def setup_gpt():
     with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
         SECRETS = json.load(json_data)
         PASSWORD = SECRETS["openai"]
-    openai.api_key = PASSWORD
+    
     return openai
 
 
 def get_embedding(text, model="text-embedding-ada-002"):
     text = text.replace("\n", " ")
-    return openai.Embedding.create(input=[text], model=model)["data"][0]["embedding"]
+    return client.embeddings.create(input=[text], model=model)["data"][0]["embedding"]
     # return "hello"
 
 
@@ -637,7 +639,9 @@ def files_with_word(word):
 
 @app.command()
 def build_embed():
-    import openai
+    from openai import OpenAI
+    
+    client = OpenAI(api_key=PASSWORD)
     import pandas as pd
 
     setup_gpt()

@@ -1,7 +1,9 @@
 #!python3
 
 import os
-import openai
+from openai import OpenAI
+
+client = OpenAI()
 from icecream import ic
 import typer
 import sys
@@ -358,14 +360,12 @@ def query_no_print(
     start = time.time()
     responses = 1
     response_contents = ["" for x in range(responses)]
-    for chunk in openai.ChatCompletion.create(
-        model=text_model_best,
-        messages=messages,
-        max_tokens=output_tokens,
-        n=responses,
-        temperature=0.7,
-        stream=True,
-    ):
+    for chunk in client.chat.completions.create(model=text_model_best,
+    messages=messages,
+    max_tokens=output_tokens,
+    n=responses,
+    temperature=0.7,
+    stream=True):
         if not "choices" in chunk:
             continue
 
@@ -414,14 +414,12 @@ def base_query(
     start = time.time()
     response_contents = ["" for _ in range(responses)]
     first_chunk = True
-    for chunk in openai.ChatCompletion.create(
-        model=text_model_best,
-        messages=messages,
-        max_tokens=output_tokens,
-        n=responses,
-        temperature=0.7,
-        stream=True,
-    ):
+    for chunk in client.chat.completions.create(model=text_model_best,
+    messages=messages,
+    max_tokens=output_tokens,
+    n=responses,
+    temperature=0.7,
+    stream=True):
         if not "choices" in chunk:
             continue
 
@@ -730,7 +728,7 @@ def book(
 
 def get_embedding(text, model="text-embedding-ada-002"):
     text = text.replace("\n", " ")
-    embedding_response = openai.Embedding.create(input=[text], model=model)
+    embedding_response = client.embeddings.create(input=[text], model=model)
     return embedding_response["data"][0]["embedding"]  # type: ignore
 
 
@@ -888,9 +886,7 @@ def transcribe(
     file_path = os.path.expanduser(file_path)
     transcript = "None"
     with open(file_path, "rb") as audio_file:
-        transcript = openai.Audio.transcribe(
-            file=audio_file, model="whisper-1", response_format="text", language="en"
-        )
+        transcript = client.audio.transcribe(file=audio_file, model="whisper-1", response_format="text", language="en")
 
     if not cleanup:
         print(transcript)
