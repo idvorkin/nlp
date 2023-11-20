@@ -119,6 +119,22 @@ def stdin(
 
     base_query_from_dict(locals())
 
+@app.command()
+def sanity(
+    ctx: typer.Context,
+    tokens: int = typer.Option(0),
+    responses: int = typer.Option(1),
+    to_fzf: bool = typer.Option(False),
+    debug: bool = typer.Option(True),
+    prompt: str = typer.Option("*"),
+    stream: bool = typer.Option(True),
+    u4: bool = typer.Option(False),
+):
+    process_shared_app_options(ctx)
+    prompt_to_gpt = "Hello world. Tell me a fun story"
+
+    base_query_from_dict(locals())
+
 
 @app.command()
 def compress(
@@ -384,22 +400,21 @@ def base_query(
         temperature=0.7,
         stream=True,
     ):
-        if not "choices" in chunk:
-            continue
-
-        for elem in chunk["choices"]:  # type: ignore
+        for elem in chunk.choices:
             if first_chunk:
                 if debug:
                     out = f"First Chunk took: {int((time.time() - start)*1000)} ms"
                     ic(out)
                 first_chunk = False
-            delta = elem["delta"]
-            delta_content = delta.get("content", "")
-            response_contents[elem["index"]] += delta_content
+
+            if elem.delta.content == None:
+                continue
+
+            response_contents[elem.index] += elem.delta.content
 
             if stream:
                 # when streaming output, since it's interleaved, only output the first stream
-                sys.stdout.write(delta_content)
+                sys.stdout.write(elem.delta.content)
                 sys.stdout.flush()
 
     if stream:
