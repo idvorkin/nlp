@@ -2,7 +2,15 @@ import os
 import json
 from openai import OpenAI
 
-client = OpenAI(api_key=PASSWORD)
+def setup_gpt():
+    PASSWORD = "replaced_from_secret_box"
+    with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
+        SECRETS = json.load(json_data)
+        PASSWORD = SECRETS["openai"]
+
+    return  OpenAI(api_key=PASSWORD)
+client = setup_gpt()
+
 import tiktoken
 from icecream import ic
 import time
@@ -88,13 +96,6 @@ def remaining_response_tokens(model, system_prompt, user_prompt):
     return output_tokens
 
 
-def setup_gpt():
-    PASSWORD = "replaced_from_secret_box"
-    with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
-        SECRETS = json.load(json_data)
-        PASSWORD = SECRETS["openai"]
-    
-    return openai
 
 
 def num_tokens_from_string(string: str, encoding_name: str = "") -> int:
@@ -117,8 +118,6 @@ def ask_gpt(
 @retry(
     wait=wait_random_exponential(min=1, max=60),
     stop=stop_after_attempt(3),
-    retry=(
-    ),
 )
 def ask_gpt_n(
     prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
