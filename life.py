@@ -8,12 +8,16 @@ import sys
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, List
+from rich.console import Console
+from rich.markdown import Markdown
+
 
 import subprocess
 import typer
 from icecream import ic
 from langchain.chat_models import ChatOpenAI
 from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
+from langchain.schema.output_parser import StrOutputParser
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
@@ -76,16 +80,50 @@ def remove_trailing_spaces(str):
 @app.command()
 def group(
     ctx: typer.Context,
-    u4: Annotated[bool, typer.Option(prompt="use gpt4")] = False,
+    markdown: Annotated[bool, typer.Option()] = True,
 ):
     process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
-    prompt_to_gpt = f"""Group the following:
------
-{user_text}
 
-"""
-    # base_query_from_dict(locals())
+    system_prompt = f"""You help group similar items into categories.  Exclude any linnes that are markdown headers. Output the category headers as markdown, and list the line items as list eelemnts below. Eg.
+
+# Grouping A
+* line 1
+* line 2
+
+IF possible, categories should match the following
+
+- [Dealer of smiles and wonder](#dealer-of-smiles-and-wonder)
+- [Mostly car free spirit](#mostly-car-free-spirit)
+- [Disciple of the 7 habits of highly effective people](#disciple-of-the-7-habits-of-highly-effective-people)
+- [Fit fellow](#fit-fellow)
+- [Emotionally healthy human](#emotionally-healthy-human)
+- [Husband to Tori - his life long partner](#husband-to-tori---his-life-long-partner)
+- [Technologist](#technologist)
+- [Professional](#professional)
+- [Family man](#family-man)
+- [Father to Amelia - an incredible girl](#father-to-amelia---an-incredible-girl)
+- [Father to Zach - a wonderful boy](#father-to-zach---a-wonderful-boy)
+
+     """
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            SystemMessagePromptTemplate.from_template(system_prompt),
+            HumanMessagePromptTemplate.from_template(user_text),
+        ],
+    )
+    model_name = "gpt-4-1106-preview"
+    model = ChatOpenAI(model=model_name)
+
+    ic(model_name)
+    chain = prompt | model | StrOutputParser()
+    response = chain.invoke({})
+    if markdown:
+        console = Console()
+        md = Markdown(response)
+        console.print(md)
+    else:
+        print(response)
 
 
 def patient_facts():
@@ -115,7 +153,7 @@ def journal_report(
     tokens: int = typer.Option(0),
     responses: int = typer.Option(1),
     debug: bool = False,
-    u4: Annotated[bool, typer.Option()] = False,
+    u4: Annotated[bool, typer.Option()] = True,
     journal_for: str = typer.Argument(
         datetime.now().date(), help="Pass a date or int for days ago"
     ),
@@ -202,9 +240,7 @@ You task it to write a report based on the journal entry that is going to be pas
         ],
     )
     model_name = "gpt-4-1106-preview" if u4 else "gpt-3.5-turbo-1106"
-    model = ChatOpenAI(
-        model=model_name
-    )  # Note, not yet using GPT-4 that could make the output much stronger ...
+    model = ChatOpenAI(model=model_name)
     ic(model_name)
     chain = (
         prompt
