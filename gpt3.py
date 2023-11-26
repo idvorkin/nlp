@@ -12,7 +12,6 @@ import rich
 import re
 import tiktoken
 import time
-from dump_grateful import week
 from openai_wrapper import (
     choose_model,
     get_remaining_output_tokens,
@@ -20,9 +19,7 @@ from openai_wrapper import (
     ask_gpt,
     get_model_type,
 )
-import pudb
 from typing_extensions import Annotated
-
 
 import signal
 
@@ -118,6 +115,7 @@ def stdin(
     prompt_to_gpt = prompt.replace("*", user_text)
 
     base_query_from_dict(locals())
+
 
 @app.command()
 def sanity(
@@ -358,7 +356,6 @@ def base_query_from_dict(kwargs):
     )
 
 
-
 def base_query(
     tokens: int = 300,
     responses: int = 1,
@@ -385,7 +382,7 @@ def base_query(
         # ic(prompt_to_gpt)
         ic(text_model_best)
         ic(tokens)
-        ic (len(prompt_to_gpt))
+        ic(len(prompt_to_gpt))
         ic(output_tokens)
         ic(stream)
 
