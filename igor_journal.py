@@ -4,8 +4,6 @@ from dataclasses import dataclass
 import json
 from openai import OpenAI
 
-client = OpenAI(api_key=PASSWORD)
-
 import glob
 import os
 from pathlib import Path
@@ -201,7 +199,6 @@ class JournalEntry:
         )
 
     def init_from_date(self, for_date: date):
-
         errors = []
 
         base_path = Path("~/gits/igor2").expanduser()
@@ -243,12 +240,10 @@ class JournalEntry:
         return out
 
     def todo(self):
-
         # 2019-01 version has Journal section
         return self.sections_with_list["Day awesome if:"]
 
     def body(self):
-
         # 2019-01 version has Journal section
         if "Journal" in self.sections:
             return self.sections["Journal"]
@@ -574,7 +569,6 @@ def all_body():
 
 @app.command()
 def sanity():
-
     # Load simple corpus for my journal
 
     corpus_path, corpus_path_months_trailing = build_corpus_paths()
@@ -599,14 +593,8 @@ def setup_gpt():
     with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
         SECRETS = json.load(json_data)
         PASSWORD = SECRETS["openai"]
-    
+
     return openai
-
-
-def get_embedding(text, model="text-embedding-ada-002"):
-    text = text.replace("\n", " ")
-    return client.embeddings.create(input=[text], model=model)["data"][0]["embedding"]
-    # return "hello"
 
 
 @app.command()
@@ -640,32 +628,10 @@ def files_with_word(word):
 @app.command()
 def build_embed():
     from openai import OpenAI
-    
-    client = OpenAI(api_key=PASSWORD)
+
     import pandas as pd
 
-    setup_gpt()
-
-    # create a df contianing
-    today = datetime.now().date()
-    rows = []
-    for i in range(10000 * 1):
-        journal_for = today - timedelta(days=i)
-        entry = JournalEntry(journal_for)
-        if not entry.is_valid():
-            continue
-
-        body = " ".join(entry.body())
-        if i % 30 == 0:
-            print(journal_for)
-
-        rows += [(journal_for, body, get_embedding(body))]
-
-    print(len(rows))
-    z = pd.DataFrame(rows, columns=["date", "body", "embeddings"])
-    z.to_pickle("~/journal.gz")
-    print(rows[15])
-    print(z)
+    # Todo rebuild this using langchain and RAG
 
 
 if __name__ == "__main__":
