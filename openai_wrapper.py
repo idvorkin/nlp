@@ -2,13 +2,16 @@ import os
 import json
 from openai import OpenAI
 
+
 def setup_gpt():
     PASSWORD = "replaced_from_secret_box"
     with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
         SECRETS = json.load(json_data)
         PASSWORD = SECRETS["openai"]
 
-    return  OpenAI(api_key=PASSWORD)
+    return OpenAI(api_key=PASSWORD)
+
+
 client = setup_gpt()
 
 import tiktoken
@@ -25,24 +28,34 @@ from pydantic import BaseModel
 
 
 class CompletionModel(BaseModel):
-    max_input_only_tokens:int
-    max_output_tokens:int
-    name:str
+    max_input_only_tokens: int
+    max_output_tokens: int
+    name: str
 
 
-gpt4 = CompletionModel(max_input_only_tokens=100*1000, max_output_tokens=4*1000, name="gpt-4-1106-preview")
-gpt35 = CompletionModel(max_input_only_tokens=12*1000, max_output_tokens=4*1000, name="gpt-3.5-turbo-1106")
+gpt4 = CompletionModel(
+    max_input_only_tokens=100 * 1000,
+    max_output_tokens=4 * 1000,
+    name="gpt-4-1106-preview",
+)
+gpt35 = CompletionModel(
+    max_input_only_tokens=12 * 1000,
+    max_output_tokens=4 * 1000,
+    name="gpt-3.5-turbo-1106",
+)
 
-def get_model_type(u4:bool)->CompletionModel:
+
+def get_model_type(u4: bool) -> CompletionModel:
     if u4:
         return gpt4
     else:
         return gpt35
 
+
 text_model_gpt_4 = "gpt-4-1106-preview"
 gpt_4_tokens = 100000
-gpt_4_input_tokens = 100*1000
-gpt_4_output_tokens = 100*1000
+gpt_4_input_tokens = 100 * 1000
+gpt_4_output_tokens = 100 * 1000
 text_model_gpt35 = "gpt-3.5-turbo-1106"
 gpt_3_5_tokens = 16000
 code_model_best = "code-davinci-003"
@@ -54,23 +67,22 @@ def model_to_max_tokens(model):
 
 
 def get_model(u4):
-    model =""
+    model = ""
     if u4:
         model = text_model_gpt_4
     else:
         model = text_model_gpt35
     return model
 
-def get_remaining_output_tokens(model:CompletionModel,prompt:str):
 
+def get_remaining_output_tokens(model: CompletionModel, prompt: str):
     # For symetric models, max_input_only_tokens= 0 and max_output_tokens  = the full context window
     # For asymmetrics models, max_output_tokens = full context_window - max_input_only_tokens
 
     input_tokens = num_tokens_from_string(prompt, "cl100k_base")
     # If you only used input_context only tokens, don't remove anything f+ 100
-    output_tokens_consumed =  max((input_tokens - model.max_input_only_tokens),0)
+    output_tokens_consumed = max((input_tokens - model.max_input_only_tokens), 0)
     return model.max_output_tokens - output_tokens_consumed
-
 
 
 def choose_model(u4, tokens=0):
@@ -96,9 +108,7 @@ def remaining_response_tokens(model, system_prompt, user_prompt):
     return output_tokens
 
 
-
-
-def num_tokens_from_string(string: str, encoding_name: str = "") -> int:
+def num_tokens_from_string(string: str, encoding_name: str = "cl100k_base") -> int:
     """Returns the number of tokens in a text string."""
     encoding = tiktoken.get_encoding(encoding_name)
     num_tokens = len(encoding.encode(string))
@@ -144,17 +154,18 @@ def ask_gpt_n(
     start = time.time()
     responses = n
     response_contents = ["" for x in range(responses)]
-    for chunk in client.chat.completions.create(model=text_model_best,
-    messages=messages,
-    max_tokens=output_tokens,
-    n=responses,
-    temperature=0.7,
-    stream=True):
+    for chunk in client.chat.completions.create(
+        model=text_model_best,
+        messages=messages,
+        max_tokens=output_tokens,
+        n=responses,
+        temperature=0.7,
+        stream=True,
+    ):
         if not "choices" in chunk:
             continue
 
         for elem in chunk["choices"]:  # type: ignore
-
             delta = elem["delta"]
             delta_content = delta.get("content", "")
             response_contents[elem["index"]] += delta_content

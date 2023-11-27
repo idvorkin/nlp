@@ -18,6 +18,7 @@ from openai_wrapper import (
     setup_gpt,
     ask_gpt,
     get_model_type,
+    num_tokens_from_string,
 )
 from typing_extensions import Annotated
 
@@ -94,7 +95,7 @@ def prep_for_fzf(s):
 @app.command(help="Count the tokens passed via stdin")
 def tokens():
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
-    tokens = num_tokens_from_string(user_text, "cl100k_base")
+    tokens = num_tokens_from_string(user_text)
     print(tokens)
 
 
@@ -334,13 +335,6 @@ def tldr(
     base_query_from_dict(locals())
 
 
-def num_tokens_from_string(string: str, encoding_name: str = "") -> int:
-    """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding(encoding_name)
-    num_tokens = len(encoding.encode(string))
-    return num_tokens
-
-
 def base_query_from_dict(kwargs):
     a = kwargs
     return base_query(
@@ -382,7 +376,7 @@ def base_query(
         # ic(prompt_to_gpt)
         ic(text_model_best)
         ic(tokens)
-        ic(len(prompt_to_gpt))
+        ic(num_tokens_from_string(prompt_to_gpt))
         ic(output_tokens)
         ic(stream)
 
@@ -777,6 +771,8 @@ def fix(
     system_prompt = """You are an advanced AI with superior spelling correction abilities.
 Your task is to correct any spelling errors you encounter in the text provided below.
 The text is markdown, don't change the markdown formatting.
+Don't add a markdown block around the entire text
+Don't change any meanings
     """
     gpt_start_with = ""
     prompt = f"""{user_text}"""
