@@ -11,6 +11,10 @@ from typing import Annotated, List
 from rich.console import Console
 from rich.markdown import Markdown
 
+import time
+import asyncio
+from rich.progress import track
+
 
 import subprocess
 import typer
@@ -143,6 +147,57 @@ def patient_facts():
 """
 
 
+# Interesting we can specify in the prompt or in the "models" via text or type annotations
+class Person(BaseModel):
+    Name: str
+    Relationship: str
+    Sentiment: str
+    SummarizeInteraction: str
+
+
+class Category(str, Enum):
+    Husband = ("husband",)
+    Father = ("father",)
+    Entertainer = ("entertainer",)
+    PhysicalHealth = "physical_health"
+    MentalHealth = "mental_health"
+    Sleep = "sleep"
+    Bicycle = "bicycle"
+    Balloon = "balloon_artist"
+    BeingAManager = "being_a_manager"
+    BeingATechnologist = "being_a_technologist"
+
+
+class CategorySummary(BaseModel):
+    TheCategory: Category
+    Observations: List[str]
+
+
+class Recommendation(BaseModel):
+    ThingToDoDifferently: str
+    ReframeToTellYourself: str
+    PromptToUseDuringReflection: str
+    ReasonIncluded: str
+
+
+class AssessmentWithReason(BaseModel):
+    scale_1_to_10: int  # Todo see if can move scale to type annotation (condint
+    reasoning_for_assessment: str
+
+
+class GetPychiatristReport(BaseModel):
+    Date: datetime
+    DoctorName: str
+    PointFormSummaryOfEntry: List[str]
+    Depression: AssessmentWithReason
+    Anxiety: AssessmentWithReason
+    Mania: AssessmentWithReason
+    PromptsForCognativeReframes: List[str]
+    PeopleInEntry: List[Person]
+    Recommendations: List[Recommendation]
+    CategorySummaries: List[CategorySummary]
+
+
 def openai_func(cls):
     return {"name": cls.__name__, "parameters": cls.model_json_schema()}
 
@@ -150,16 +205,18 @@ def openai_func(cls):
 @app.command()
 def journal_report(
     ctx: typer.Context,
-    tokens: int = typer.Option(0),
-    responses: int = typer.Option(1),
-    debug: bool = False,
     u4: Annotated[bool, typer.Option()] = True,
+    debug: Annotated[bool, typer.Option()] = True,
     journal_for: str = typer.Argument(
         datetime.now().date(), help="Pass a date or int for days ago"
     ),
+    launch_fx: Annotated[bool, typer.Option()] = True,
 ):
     process_shared_app_options(ctx)
+    asyncio.run(async_journal_report(ctx, u4, journal_for, launch_fx))
 
+
+async def async_journal_report(ctx, u4, journal_for, launch_fx):
     # Get my closest journal for the day:
     completed_process = subprocess.run(
         f"python3 ~/gits/nlp/igor_journal.py body {journal_for} --close",
@@ -171,51 +228,6 @@ def journal_report(
     user_text = completed_process.stdout
 
     # remove_trailing_spaces("".join(sys.stdin.readlines()))
-
-    # Interesting we can specify in the prompt or in the "models" via text or type annotations
-    class Person(BaseModel):
-        Name: str
-        Relationship: str
-        Sentiment: str
-        SummarizeInteraction: str
-
-    class Category(str, Enum):
-        Husband = ("husband",)
-        Father = ("father",)
-        Entertainer = ("entertainer",)
-        PhysicalHealth = "physical_health"
-        MentalHealth = "mental_health"
-        Sleep = "sleep"
-        Bicycle = "bicycle"
-        Balloon = "balloon_artist"
-        BeingAManager = "being_a_manager"
-        BeingATechnologist = "being_a_technologist"
-
-    class CategorySummary(BaseModel):
-        TheCategory: Category
-        Observations: List[str]
-
-    class Recommendation(BaseModel):
-        ThingToDoDifferently: str
-        ReframeToTellYourself: str
-        PromptToUseDuringReflection: str
-        ReasonIncluded: str
-
-    class AssessmentWithReason(BaseModel):
-        scale_1_to_10: int  # Todo see if can move scale to type annotation (condint
-        reasoning_for_assessment: str
-
-    class GetPychiatristReport(BaseModel):
-        Date: datetime
-        DoctorName: str
-        PointFormSummaryOfEntry: List[str]
-        Depression: AssessmentWithReason
-        Anxiety: AssessmentWithReason
-        Mania: AssessmentWithReason
-        PromptsForCognativeReframes: List[str]
-        PeopleInEntry: List[Person]
-        Recommendations: List[Recommendation]
-        CategorySummaries: List[CategorySummary]
 
     report = openai_func(GetPychiatristReport)
 
@@ -239,6 +251,7 @@ You task it to write a report based on the journal entry that is going to be pas
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
+    u4 = False
     model_name = "gpt-4-1106-preview" if u4 else "gpt-3.5-turbo-1106"
     model = ChatOpenAI(model=model_name)
     ic(model_name)
@@ -248,7 +261,15 @@ You task it to write a report based on the journal entry that is going to be pas
         | JsonOutputFunctionsParser()
     )
 
-    response = chain.invoke({"model": model_name})
+    corourtine = chain.ainvoke({"model": model_name})
+    do_invoke = asyncio.create_task(corourtine)
+    for i in track(range(100), description="Processing..."):
+        if do_invoke.done():
+            break
+        await asyncio.sleep(1)  # Simulate work being done
+
+    # should now be done!
+    response = await do_invoke
     with open(os.path.expanduser("~/tmp/journal_report/latest.json"), "w") as f:
         json.dump(response, f, indent=2)
 
@@ -261,6 +282,9 @@ You task it to write a report based on the journal entry that is going to be pas
         json.dump(response, f, indent=2)
     print(json.dumps(response, indent=2))
     print(perma_path)
+
+    if launch_fx:
+        subprocess.run(f"fx {perma_path}", shell=True)
 
 
 if __name__ == "__main__":
