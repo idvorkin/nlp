@@ -185,6 +185,12 @@ class AssessmentWithReason(BaseModel):
     reasoning_for_assessment: str
 
 
+class Causes(BaseModel):
+    reason: str
+    emotion: str
+    scale_1_to_10: int  # Todo see if can move scale to type annotation (condint
+
+
 class GetPychiatristReport(BaseModel):
     Date: datetime
     DoctorName: str
@@ -192,6 +198,10 @@ class GetPychiatristReport(BaseModel):
     Depression: AssessmentWithReason
     Anxiety: AssessmentWithReason
     Mania: AssessmentWithReason
+    Happiness: AssessmentWithReason
+    PostiveEmotionCause: List[Causes]
+    NegativeEmotionCause: List[Causes]
+    Satisfication: AssessmentWithReason
     PromptsForCognativeReframes: List[str]
     PeopleInEntry: List[Person]
     Recommendations: List[Recommendation]
@@ -212,10 +222,30 @@ def journal_report(
     ),
     launch_fx: Annotated[bool, typer.Option()] = True,
 ):
-    asyncio.run(async_journal_report(ctx, u4, journal_for, launch_fx))
+    asyncio.run(async_journal_report(u4, journal_for, launch_fx))
 
 
-async def async_journal_report(ctx, u4, journal_for, launch_fx):
+@app.command()
+def journal_for_year(
+    year: int,
+    u4: Annotated[bool, typer.Option()] = False,
+):
+    asyncio.run(async_journal_for_year(u4=u4, year=year))
+
+    range(5)
+
+
+async def async_journal_for_year(u4, year):
+    for x in reversed(range(365)):
+        ic(x)
+        try:
+            await async_journal_report(u4, x, launch_fx=False)
+        except Exception as e:
+            # swallow exeception and keep going
+            ic(x, e)
+
+
+async def async_journal_report(u4, journal_for, launch_fx):
     # Get my closest journal for the day:
     completed_process = subprocess.run(
         f"python3 ~/gits/nlp/igor_journal.py body {journal_for} --close",
@@ -244,7 +274,6 @@ You task it to write a report based on the journal entry that is going to be pas
 """
 
     start = time.time()
-    process_shared_app_options(ctx)
     prompt = ChatPromptTemplate.from_messages(
         [
             SystemMessagePromptTemplate.from_template(system_prompt),
@@ -262,20 +291,25 @@ You task it to write a report based on the journal entry that is going to be pas
 
     corourtine = chain.ainvoke({"model": model_name})
     do_invoke = asyncio.create_task(corourtine)
-    for _ in track(range(120), description="2 minutes"):
-        if do_invoke.done():
-            break
-        await asyncio.sleep(1)  # Simulate work being done
+
+    if launch_fx:
+        for _ in track(range(120), description="2 minutes"):
+            if do_invoke.done():
+                break
+            await asyncio.sleep(1)  # Simulate work being done
 
     # should now be done!
     response = await do_invoke
     with open(os.path.expanduser("~/tmp/journal_report/latest.json"), "w") as f:
         json.dump(response, f, indent=2)
 
+    # Sometimes date had a time on it, starting with T, remove that.
+    report_date = response["Date"].split("T")[0]
+
     perma_path = os.path.expanduser(
-        f"~/tmp/journal_report/{response['Date']}_{response['DoctorName']}.json".replace(
+        f"~/tmp/journal_report/{report_date}_{response['DoctorName']}.json".replace(
             " ", "_"
-        )
+        ).lower()
     )
     with open(perma_path, "w") as f:
         json.dump(response, f, indent=2)
