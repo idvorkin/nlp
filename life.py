@@ -212,7 +212,6 @@ def journal_report(
     ),
     launch_fx: Annotated[bool, typer.Option()] = True,
 ):
-    process_shared_app_options(ctx)
     asyncio.run(async_journal_report(ctx, u4, journal_for, launch_fx))
 
 
@@ -244,6 +243,7 @@ You task it to write a report based on the journal entry that is going to be pas
 * Don't include Category Summaries for Categories where you have no data
 """
 
+    start = time.time()
     process_shared_app_options(ctx)
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -251,7 +251,6 @@ You task it to write a report based on the journal entry that is going to be pas
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
-    u4 = False
     model_name = "gpt-4-1106-preview" if u4 else "gpt-3.5-turbo-1106"
     model = ChatOpenAI(model=model_name)
     ic(model_name)
@@ -263,7 +262,7 @@ You task it to write a report based on the journal entry that is going to be pas
 
     corourtine = chain.ainvoke({"model": model_name})
     do_invoke = asyncio.create_task(corourtine)
-    for i in track(range(100), description="Processing..."):
+    for _ in track(range(120), description="2 minutes"):
         if do_invoke.done():
             break
         await asyncio.sleep(1)  # Simulate work being done
@@ -285,6 +284,8 @@ You task it to write a report based on the journal entry that is going to be pas
 
     if launch_fx:
         subprocess.run(f"fx {perma_path}", shell=True)
+    total = time.time() - start
+    print(f"Total time: {total} seconds")
 
 
 if __name__ == "__main__":
