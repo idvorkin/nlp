@@ -472,7 +472,7 @@ def entries_for_month(corpus_for: datetime) -> Iterable[date]:
     possible_paths = ["~/gits/igor2/750words_new_archive/", "~/gits/igor2/750words/"]
     for path in possible_paths:
         corpus_files = glob.glob(
-            os.path.expanduser(f"{path}/{corpus_for.year}-{corpus_for.month}-*")
+            os.path.expanduser(f"{path}/{corpus_for.year}-{corpus_for.month:02d}-*")
         )
         for file_name in sorted(corpus_files):
             yield date.fromisoformat(file_name.split("/")[-1].replace(".md", ""))
