@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, date
 
 from rich.console import Console
 import re
+import pudb
 
 console = Console()
 app = typer.Typer()
@@ -375,66 +376,6 @@ def DocForCorpus(nlp, corpus: Corpus):
     return doc, doc_all
 
 
-def build_corpus_paths():
-    def glob750_latest(year, month):
-        assert month in range(1, 13)
-        base750 = "~/gits/igor2/750words/"
-        return f"{base750}/{year}-{month:02}-*.md"
-
-    def glob750_new_archive(year, month):
-        assert month in range(1, 13)
-        base750 = "~/gits/igor2/750words_new_archive/"
-        return f"{base750}/{year}-{month:02}-*.md"
-
-    def glob750_old_archive(year, month):
-        assert month in range(1, 13)
-        base750archive = "~/gits/igor2/750words_archive/"
-        return f"{base750archive}/750 Words-export-{year}-{month:02}-01.txt"
-
-    def corpus_paths_months_for_year(year):
-        return [glob750_old_archive(year, month) for month in range(1, 13)]
-
-    # Corpus in "old archieve"  from 2012-2017.
-    corpus_path_months = {
-        year: corpus_paths_months_for_year(year) for year in range(2012, 2018)
-    }
-
-    # 2018 Changes from old archive to new_archieve.
-    # 2018 Jan/Feb/October don't have enough data for analysis
-    corpus_path_months[2018] = [
-        glob750_old_archive(2018, month) for month in range(1, 9)
-    ] + [glob750_new_archive(2018, month) for month in (9, 11, 12)]
-
-    corpus_path_months[2019] = [
-        glob750_new_archive(2019, month) for month in range(1, 13)
-    ]
-    corpus_path_months[2020] = [
-        glob750_new_archive(2020, month) for month in range(1, 13)
-    ]
-    corpus_path_months[2021] = [
-        glob750_new_archive(2021, month) for month in range(1, 13)
-    ]
-    corpus_path_months[2022] = [
-        glob750_new_archive(2022, month) for month in range(1, 13)
-    ]
-
-    corpus_path_months_trailing = (
-        [glob750_new_archive(2018, month) for month in (9, 11, 12)]
-        + corpus_path_months[2019]
-        + corpus_path_months[2020]
-        + corpus_path_months[2021]
-        + corpus_path_months[2022]
-    )
-    corpus_path_months_trailing
-    return corpus_path_months, corpus_path_months_trailing
-
-
-# Make today be the default date.
-
-
-# Yuk, this is a lot of complexity, refactor it with the todo command
-
-
 @app.command()
 def todo(
     journal_for: str = typer.Argument(
@@ -515,8 +456,7 @@ def body(
 
 
 def entries_for_month(corpus_for: datetime) -> Iterable[date]:
-    corpus_path, corpus_path_months_trailing = build_corpus_paths()
-
+    # Used to be, entries are stored in these exported files 1 per month
     old_export_path = Path(
         f"~/gits/igor2/750words_archive/750 Words-export-{corpus_for.year}-{corpus_for.month:02d}-01.txt"
     ).expanduser()
@@ -527,16 +467,24 @@ def entries_for_month(corpus_for: datetime) -> Iterable[date]:
             yield k
         return
 
-    # try new path
-    the_path = os.path.expanduser(corpus_path[corpus_for.year][corpus_for.month - 1])
-    corpus_files = glob.glob(the_path)
-    for file_name in sorted(corpus_files):
-        yield date.fromisoformat(file_name.split("/")[-1].replace(".md", ""))
+    # After that, moved to this new archive path, and then the working path
+
+    possible_paths = ["~/gits/igor2/750words_new_archive/", "~/gits/igor2/750words/"]
+    for path in possible_paths:
+        corpus_files = glob.glob(
+            os.path.expanduser(f"{path}/{corpus_for.year}-{corpus_for.month}-*")
+        )
+        for file_name in sorted(corpus_files):
+            yield date.fromisoformat(file_name.split("/")[-1].replace(".md", ""))
 
 
 @app.command()
-def entries(corpus_for: datetime = typer.Argument("2021-01-08")):
-    for e in entries_for_month(corpus_for):
+def entries(
+    for_month: datetime = typer.Argument(
+        datetime.now(), help="Pass a date or int for days ago"
+    )
+):
+    for e in entries_for_month(for_month):
         print(e)
 
 
@@ -570,8 +518,6 @@ def all_body():
 @app.command()
 def sanity():
     # Load simple corpus for my journal
-
-    corpus_path, corpus_path_months_trailing = build_corpus_paths()
     corpus = LoadCorpus(
         datetime.now().date() - timedelta(days=180)
     )  # NOQA  - see if it loads
@@ -586,15 +532,6 @@ def sanity():
     old_archive_date = date(2012, 4, 8)
     test_journal_entry = JournalEntry(old_archive_date)
     print(old_archive_date, test_journal_entry.body()[0:2])
-
-
-def setup_gpt():
-    PASSWORD = "replaced_from_secret_box"
-    with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
-        SECRETS = json.load(json_data)
-        PASSWORD = SECRETS["openai"]
-
-    return openai
 
 
 @app.command()
