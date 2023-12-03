@@ -28,6 +28,8 @@ from langchain.prompts.chat import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
+
+import pydantic
 from pydantic import BaseModel, field_validator
 from rich.console import Console
 
@@ -178,7 +180,6 @@ class CategorySummary(BaseModel):
     @field_validator("TheCategory", mode="before")
     @classmethod
     def parse_category(cls, value):
-        ic("Parse_Category")
         if value in Category.__members__:
             return Category(value)
         return Category("unknown")
@@ -262,17 +263,37 @@ def journal_for_year(
 
 
 @app.command()
-def scratch():
-    do_scratch()
+def insights():
+    get_reports()
 
 
-def do_scratch():
-    reports = glob.glob(os.path.expanduser("~/tmp/journal_report/*4-1106-preview.json"))
-    for filename in reports:
-        ic(filename)
-        json_text = open(filename, "r").read()
-        report = GetPychiatristReport.model_validate(json.loads(json_text))
-        ic(report)
+def get_reports():
+    path_reports = glob.glob(
+        os.path.expanduser("~/tmp/journal_report/*4-1106-preview.json")
+    )
+    reports = []
+    validation_errors = {}
+    for path_report in path_reports:
+        text_report = open(path_report, "r").read()
+        try:
+            # Odd, often I don't have recommendations, lets manually add them to
+            # avoid a validation error
+            json_report = json.loads(text_report)
+            if not "CategorySummaries" in json_report:
+                json_report["CategorySummaries"] = []
+            report = GetPychiatristReport.model_validate(json_report)
+            reports += [report]
+        except pydantic.ValidationError as ve:
+            ic(f"Validation Error {path_report}")
+            for e in ve.errors():
+                error = e["type"], e["loc"]
+                validation_errors[error] = validation_errors.get(error, 0) + 1
+                # ic(error)
+        except Exception as e:
+            ic("Exception", path_report, e)
+    ic(validation_errors)
+    ic(len(path_reports), len(reports))
+    return reports
 
 
 def journal_report_path(date: str, model: str):
