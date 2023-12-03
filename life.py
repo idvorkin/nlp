@@ -7,13 +7,14 @@ import signal
 import sys
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 from rich.console import Console
 from rich.markdown import Markdown
 
 import time
 import asyncio
 from rich.progress import track
+import glob
 
 
 import subprocess
@@ -27,7 +28,7 @@ from langchain.prompts.chat import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from rich.console import Console
 
 from openai_wrapper import choose_model, setup_gpt
@@ -156,9 +157,9 @@ class Person(BaseModel):
 
 
 class Category(str, Enum):
-    Husband = ("husband",)
-    Father = ("father",)
-    Entertainer = ("entertainer",)
+    Husband = "husband"
+    Father = "father"
+    Entertainer = "entertainer"
     PhysicalHealth = "physical_health"
     MentalHealth = "mental_health"
     Sleep = "sleep"
@@ -166,11 +167,20 @@ class Category(str, Enum):
     Balloon = "balloon_artist"
     BeingAManager = "being_a_manager"
     BeingATechnologist = "being_a_technologist"
+    Unknown = "unknown"
 
 
 class CategorySummary(BaseModel):
     TheCategory: Category
     Observations: List[str]
+
+    @field_validator("TheCategory", mode="before")
+    @classmethod
+    def parse_category(cls, value):
+        ic("Parse_Category")
+        if value in Category.__members__:
+            return Category(value)
+        return Category("unknown")
 
 
 class Recommendation(BaseModel):
@@ -193,19 +203,32 @@ class Causes(BaseModel):
 
 class GetPychiatristReport(BaseModel):
     Date: datetime
+
+    @field_validator("Date", mode="before")
+    @classmethod
+    def parse_date(cls, value):
+        date_formats = ["%m-%d-%Y", "%Y/%m/%d", "%d %b, %Y", "%d/%m/%Y", "%Y-%m-%d"]
+
+        for date_format in date_formats:
+            try:
+                return datetime.strptime(value, date_format).date()
+            except ValueError:
+                continue
+        raise ValueError(f"Date {value} is not a valid date format")
+
     DoctorName: str
     PointFormSummaryOfEntry: List[str]
     Depression: AssessmentWithReason
     Anxiety: AssessmentWithReason
     Mania: AssessmentWithReason
     Happiness: AssessmentWithReason
-    PostiveEmotionCause: List[Causes]
-    NegativeEmotionCause: List[Causes]
+    PostiveEmotionCause: List[Causes] = []
+    NegativeEmotionCause: List[Causes] = []
     Satisfication: AssessmentWithReason
-    PromptsForCognativeReframes: List[str]
-    PeopleInEntry: List[Person]
-    Recommendations: List[Recommendation]
-    CategorySummaries: List[CategorySummary]
+    PromptsForCognativeReframes: List[str] = []
+    PeopleInEntry: List[Person] = []
+    Recommendations: List[Recommendation] = []
+    CategorySummaries: List[CategorySummary] = []
 
 
 def openai_func(cls):
@@ -214,9 +237,7 @@ def openai_func(cls):
 
 @app.command()
 def journal_report(
-    ctx: typer.Context,
     u4: Annotated[bool, typer.Option()] = True,
-    debug: Annotated[bool, typer.Option()] = True,
     journal_for: str = typer.Argument(
         datetime.now().date(), help="Pass a date or int for days ago"
     ),
@@ -232,11 +253,24 @@ def journal_for_year(
 ):
     asyncio.run(async_journal_for_year(u4=u4, year=year))
 
-    range(5)
+
+@app.command()
+def scratch():
+    do_scratch()
+
+
+def do_scratch():
+    reports = glob.glob(os.path.expanduser("~/tmp/journal_report/*3.5-turbo-1106.json"))
+    for filename in reports:
+        ic(filename)
+        json_text = open(filename, "r").read()
+        report = GetPychiatristReport.model_validate(json.loads(json_text))
+        ic(report)
 
 
 async def async_journal_for_year(u4, year):
-    for x in reversed(range(365)):
+    # pick a random 30 to do
+    for x in reversed(range(70, 100)):
         ic(x)
         try:
             await async_journal_report(u4, x, launch_fx=False)
