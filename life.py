@@ -32,6 +32,7 @@ from pydantic import BaseModel, field_validator
 from rich.console import Console
 
 from openai_wrapper import choose_model, setup_gpt
+import igor_journal
 
 console = Console()
 
@@ -255,10 +256,9 @@ def journal_report(
 
 @app.command()
 def journal_for_year(
-    year: int,
     u4: Annotated[bool, typer.Option()] = False,
 ):
-    asyncio.run(async_journal_for_year(u4=u4, year=year))
+    asyncio.run(async_journal_for_year(u4=u4))
 
 
 @app.command()
@@ -275,15 +275,25 @@ def do_scratch():
         ic(report)
 
 
-async def async_journal_for_year(u4, year):
-    # pick a random 30 to do
-    for x in reversed(range(70, 100)):
-        ic(x)
+def journal_report_path(date: str, model: str):
+    return os.path.expanduser(
+        f"~/tmp/journal_report/{date}_{model}.json".replace(" ", "_").lower()
+    )
+
+
+async def async_journal_for_year(u4):
+    for entry_date in igor_journal.all_entries():
+        ic(entry_date)
+        model_name = "gpt-4-1106-preview" if u4 else "gpt-3.5-turbo-1106"
+        journal_path = journal_report_path(date=entry_date, model=model_name)
+        if os.path.exists(journal_path):
+            ic("Exists", journal_path)
+            continue
         try:
-            await async_journal_report(u4, x, launch_fx=False)
+            await async_journal_report(u4=u4, journal_for=entry_date, launch_fx=False)
         except Exception as e:
             # swallow exeception and keep going
-            ic(x, e)
+            ic(entry_date, e)
 
 
 async def async_journal_report(u4, journal_for, launch_fx):
@@ -347,11 +357,7 @@ You task it to write a report based on the journal entry that is going to be pas
     # Sometimes date had a time on it, starting with T, remove that.
     report_date = response["Date"].split("T")[0]
 
-    perma_path = os.path.expanduser(
-        f"~/tmp/journal_report/{report_date}_{response['DoctorName']}.json".replace(
-            " ", "_"
-        ).lower()
-    )
+    perma_path = journal_report_path(report_date, model=model_name)
     with open(perma_path, "w") as f:
         json.dump(response, f, indent=2)
     print(json.dumps(response, indent=2))
