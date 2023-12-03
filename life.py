@@ -207,7 +207,14 @@ class GetPychiatristReport(BaseModel):
     @field_validator("Date", mode="before")
     @classmethod
     def parse_date(cls, value):
-        date_formats = ["%m-%d-%Y", "%Y/%m/%d", "%d %b, %Y", "%d/%m/%Y", "%Y-%m-%d"]
+        date_formats = [
+            "%m-%d-%Y",
+            "%Y/%m/%d",
+            "%d %b, %Y",
+            "%d/%m/%Y",
+            "%Y-%m-%d",
+            "%Y-%m-%dT%H:%M:%SZ",
+        ]
 
         for date_format in date_formats:
             try:
@@ -222,13 +229,13 @@ class GetPychiatristReport(BaseModel):
     Anxiety: AssessmentWithReason
     Mania: AssessmentWithReason
     Happiness: AssessmentWithReason
-    PostiveEmotionCause: List[Causes] = []
-    NegativeEmotionCause: List[Causes] = []
+    PostiveEmotionCause: List[Causes]
+    NegativeEmotionCause: List[Causes]
     Satisfication: AssessmentWithReason
-    PromptsForCognativeReframes: List[str] = []
-    PeopleInEntry: List[Person] = []
-    Recommendations: List[Recommendation] = []
-    CategorySummaries: List[CategorySummary] = []
+    PromptsForCognativeReframes: List[str]
+    PeopleInEntry: List[Person]
+    Recommendations: List[Recommendation]
+    CategorySummaries: List[CategorySummary]
 
 
 def openai_func(cls):
@@ -260,7 +267,7 @@ def scratch():
 
 
 def do_scratch():
-    reports = glob.glob(os.path.expanduser("~/tmp/journal_report/*3.5-turbo-1106.json"))
+    reports = glob.glob(os.path.expanduser("~/tmp/journal_report/*4-1106-preview.json"))
     for filename in reports:
         ic(filename)
         json_text = open(filename, "r").read()
