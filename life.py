@@ -384,10 +384,10 @@ You task it to write a report based on the journal entry that is going to be pas
     print(json.dumps(response, indent=2))
     print(perma_path)
 
-    if launch_fx:
-        subprocess.run(f"fx {perma_path}", shell=True)
     total = time.time() - start
     print(f"Total time: {total} seconds")
+    if launch_fx:
+        subprocess.run(f"fx {perma_path}", shell=True)
 
 
 if __name__ == "__main__":
