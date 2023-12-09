@@ -7,9 +7,13 @@ import signal
 import sys
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, List, Optional
+from typing import Annotated, List
 from rich.console import Console
 from rich.markdown import Markdown
+from openai_wrapper import (
+    setup_gpt,
+    num_tokens_from_string,
+)
 
 import time
 import asyncio
@@ -84,6 +88,57 @@ def process_shared_app_options(ctx: typer.Context):
 def remove_trailing_spaces(str):
     return re.sub(r"\s+$", "", str)
 
+@app.command()
+def group2(
+    ctx: typer.Context,
+    markdown: Annotated[bool, typer.Option()] = False,
+):
+    process_shared_app_options(ctx)
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+
+    valence="negative"
+    system_prompt = f"""
+
+You are given a csv of waht makes a person {valence} every day. Please give a monthly summary of what makes the person {valence}, with relative weigths of what makes them {valence}.
+
+* Output in markdown, for each thing, include 3-6 sub bullets
+* Provide data for each month
+* Do not stop summarizing until you've summarized every month in the input document
+
+E.g.
+
+### January 2019
+
+* Physical Health (40%) Upset because injured
+    * Skipped going to gym
+    * Hurt back doing deadlifts
+
+
+     """
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            SystemMessagePromptTemplate.from_template(system_prompt),
+            HumanMessagePromptTemplate.from_template(user_text),
+        ],
+    )
+    model_name = "gpt-4-1106-preview"
+    # model_name = "gpt-3.5-turbo-1106"
+    model = ChatOpenAI(model=model_name)
+
+    ic(model_name)
+    ic(num_tokens_from_string(user_text))
+
+    start = time.time()
+    chain = prompt | model | StrOutputParser()
+    response = chain.invoke({})
+    if markdown:
+        console = Console()
+        md = Markdown(response)
+        console.print(md)
+    else:
+        print(response)
+    total = time.time() - start
+    ic(f"Total time: {total} seconds")
 
 @app.command()
 def group(
@@ -205,7 +260,19 @@ class Causes(BaseModel):
 
 class GetPychiatristReport(BaseModel):
     Date: datetime
-
+    DoctorName: str
+    PointFormSummaryOfEntry: List[str]
+    Depression: AssessmentWithReason
+    Anxiety: AssessmentWithReason
+    Mania: AssessmentWithReason
+    Happiness: AssessmentWithReason
+    PostiveEmotionCause: List[Causes]
+    NegativeEmotionCause: List[Causes]
+    Satisfication: AssessmentWithReason
+    PromptsForCognativeReframes: List[str]
+    PeopleInEntry: List[Person]
+    Recommendations: List[Recommendation]
+    CategorySummaries: List[CategorySummary]
     @field_validator("Date", mode="before")
     @classmethod
     def parse_date(cls, value):
@@ -224,20 +291,6 @@ class GetPychiatristReport(BaseModel):
             except ValueError:
                 continue
         raise ValueError(f"Date {value} is not a valid date format")
-
-    DoctorName: str
-    PointFormSummaryOfEntry: List[str]
-    Depression: AssessmentWithReason
-    Anxiety: AssessmentWithReason
-    Mania: AssessmentWithReason
-    Happiness: AssessmentWithReason
-    PostiveEmotionCause: List[Causes]
-    NegativeEmotionCause: List[Causes]
-    Satisfication: AssessmentWithReason
-    PromptsForCognativeReframes: List[str]
-    PeopleInEntry: List[Person]
-    Recommendations: List[Recommendation]
-    CategorySummaries: List[CategorySummary]
 
 
 def openai_func(cls):
@@ -388,6 +441,10 @@ You task it to write a report based on the journal entry that is going to be pas
     print(f"Total time: {total} seconds")
     if launch_fx:
         subprocess.run(f"fx {perma_path}", shell=True)
+
+def serialize_model():
+    ic("Hello")
+    print ("hello")
 
 
 if __name__ == "__main__":
