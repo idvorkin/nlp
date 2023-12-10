@@ -19,6 +19,7 @@ import time
 import asyncio
 from rich.progress import track
 import glob
+import pickle
 
 
 import subprocess
@@ -320,6 +321,7 @@ def insights():
     get_reports()
 
 
+tmp = os.path.expanduser("~/tmp")
 def get_reports():
     path_reports = glob.glob(
         os.path.expanduser("~/tmp/journal_report/*4-1106-preview.json")
@@ -347,6 +349,13 @@ def get_reports():
     ic(validation_errors)
     ic(len(path_reports), len(reports))
     return reports
+
+def get_reports_cached():
+    # load from pickle file
+    return pickle.load(open(f"{tmp}/reports.pkl", "rb"))
+
+# pickle.dump(get_reports(), open(f"{tmp}/reports.pkl", "wb"))
+# reports =  load_all_reports()
 
 
 def journal_report_path(date: str, model: str):
