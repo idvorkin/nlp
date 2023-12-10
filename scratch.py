@@ -6,6 +6,7 @@ import glob
 import pickle
 tmp = os.path.expanduser("~/tmp")
 from life import GetPychiatristReport
+import life
 
 def load_all_reports():
     # load from pickle file
@@ -26,29 +27,24 @@ def load_raw_reports():
     return reports
 
 
-# pickle.dump(reports, open(f"{tmp}/reports.pkl", "wb"))
-reports =  load_all_reports()
+# pickle.dump(load_raw_reports(), open(f"{tmp}/reports.pkl", "wb"))
+# reports =  load_all_reports()
 print(len(reports))
 
 import pandas as pd
 
-def report_to_people(r:GetPychiatristReport):
-    row:Dict = {"date": r.Date}
-    for p in r.PeopleInEntry:
-        sentiment = p.Sentiment.lower()
-        if sentiment in ["not mentioned", "unmentioned"]:
-            continue
-        if sentiment == "concerned":
-            sentiment = "concern"
-        row[p.Name.lower()] = sentiment
 
-    return row
-
-df = pd.DataFrame([report_to_people(r) for r in reports])
-df = df.set_index("date")
+df = pd.DataFrame([to_people_sentiment_dict(r) for r in reports]).set_index("date")
 df["tori"].value_counts()
-
 df["clive"].value_counts()
+
+# group df by month, and then do the valueconts for Tori
+
+def t():
+    m = df.groupby(pd.Grouper(freq="Y"))["tori"].value_counts()
+    for t in m:
+        print(t)
+t()
 
 
 def report_to_positive(r:GetPychiatristReport):

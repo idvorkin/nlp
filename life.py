@@ -14,6 +14,7 @@ from openai_wrapper import (
     setup_gpt,
     num_tokens_from_string,
 )
+from typing import Dict
 
 import time
 import asyncio
@@ -486,6 +487,17 @@ def serialize_model():
     ic("Hello")
     print("hello")
 
+def to_people_sentiment_dict(r:GetPychiatristReport):
+    row:Dict = {"date": r.Date}
+    for p in r.PeopleInEntry:
+        sentiment = p.Sentiment.lower()
+        if sentiment in ["not mentioned", "unmentioned"]:
+            continue
+        if sentiment == "concerned":
+            sentiment = "concern"
+        row[p.Name.lower()] = sentiment
+
+    return row
 
 if __name__ == "__main__":
     app()
