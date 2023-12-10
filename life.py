@@ -5,7 +5,7 @@ import os
 import re
 import signal
 import sys
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from enum import Enum
 from typing import Annotated, List
 from rich.console import Console
@@ -37,6 +37,7 @@ from langchain.prompts.chat import (
 import pydantic
 from pydantic import BaseModel, field_validator
 from rich.console import Console
+import igor_journal
 
 from openai_wrapper import choose_model, setup_gpt
 import igor_journal
@@ -89,6 +90,7 @@ def process_shared_app_options(ctx: typer.Context):
 def remove_trailing_spaces(str):
     return re.sub(r"\s+$", "", str)
 
+
 @app.command()
 def group2(
     ctx: typer.Context,
@@ -97,7 +99,7 @@ def group2(
     process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
 
-    valence="negative"
+    valence = "negative"
     system_prompt = f"""
 
 You are given a csv of waht makes a person {valence} every day. Please give a monthly summary of what makes the person {valence}, with relative weigths of what makes them {valence}.
@@ -140,6 +142,7 @@ E.g.
         print(response)
     total = time.time() - start
     ic(f"Total time: {total} seconds")
+
 
 @app.command()
 def group(
@@ -274,6 +277,7 @@ class GetPychiatristReport(BaseModel):
     PeopleInEntry: List[Person]
     Recommendations: List[Recommendation]
     CategorySummaries: List[CategorySummary]
+
     @field_validator("Date", mode="before")
     @classmethod
     def parse_date(cls, value):
@@ -310,6 +314,28 @@ def journal_report(
 
 
 @app.command()
+def stats(
+    u4: Annotated[bool, typer.Option()] = True,
+    days: int = 7,
+    journal_for: str = typer.Argument(
+        datetime.now().date(), help="Pass a date or int for days ago"
+    ),
+):
+    cEntries = 0
+    reports = []
+    for i in range(days):
+        day = date.fromisoformat(journal_for) - timedelta(days=i)
+        try:
+            entry = igor_journal.JournalEntry(day)
+            if not entry.is_valid():
+                continue
+            cEntries += 1
+        except FileNotFoundError:
+            continue
+    ic(cEntries)
+
+
+@app.command()
 def journal_for_year(
     u4: Annotated[bool, typer.Option()] = False,
 ):
@@ -322,6 +348,8 @@ def insights():
 
 
 tmp = os.path.expanduser("~/tmp")
+
+
 def get_reports():
     path_reports = glob.glob(
         os.path.expanduser("~/tmp/journal_report/*4-1106-preview.json")
@@ -350,9 +378,11 @@ def get_reports():
     ic(len(path_reports), len(reports))
     return reports
 
+
 def get_reports_cached():
     # load from pickle file
     return pickle.load(open(f"{tmp}/reports.pkl", "rb"))
+
 
 # pickle.dump(get_reports(), open(f"{tmp}/reports.pkl", "wb"))
 # reports =  load_all_reports()
@@ -451,9 +481,10 @@ You task it to write a report based on the journal entry that is going to be pas
     if launch_fx:
         subprocess.run(f"fx {perma_path}", shell=True)
 
+
 def serialize_model():
     ic("Hello")
-    print ("hello")
+    print("hello")
 
 
 if __name__ == "__main__":
