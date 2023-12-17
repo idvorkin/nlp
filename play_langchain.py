@@ -1,5 +1,8 @@
 #!python3
 
+
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
 import os
 import json
 from icecream import ic
@@ -15,7 +18,6 @@ from typing_extensions import Annotated
 from langchain.chat_loaders.imessage import IMessageChatLoader
 
 from langchain.llms import OpenAI
-from langchain.chat_models import ChatOpenAI
 from langchain.agents import AgentType, initialize_agent, load_tools
 from typing import Any
 from langchain.schema import (
@@ -29,6 +31,7 @@ from langchain.schema import (
     Generation,
     OutputParserException,
 )
+import openai_wrapper
 
 console = Console()
 app = typer.Typer()
@@ -62,7 +65,7 @@ class SimpleNamespace:
 @app.callback()
 def load_options(
     ctx: typer.Context,
-    attach: bool = Annotated[bool, typer.Option(prompt="Attach to existing process")],
+    attach: Annotated[bool, typer.Option(prompt="Attach to existing process")],
 ):
     ctx.obj = SimpleNamespace(attach=attach)
 
@@ -445,6 +448,43 @@ def im2df():
 
     df = pd.DataFrame(output)
     return df
+
+
+@app.command()
+def q_for_doc():
+    from langchain.output_parsers.openai_functions import JsonKeyOutputFunctionsParser
+
+    functions = [
+        {
+            "name": "hypothetical_questions",
+            "description": "Generate hypothetical questions",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "questions": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+                "required": ["questions"],
+            },
+        }
+    ]
+
+    chain = (
+        {"doc": lambda x: x}
+        # Only asking for 3 hypothetical questions, but this could be adjusted
+        | ChatPromptTemplate.from_template(
+            "Generate a list of exactly 3 hypothetical questions that the below document could be used to answer:\n\n{doc}"
+        )
+        | ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name).bind(
+            functions=functions, function_call={"name": "hypothetical_questions"}
+        )
+        | JsonKeyOutputFunctionsParser(key_name="questions")
+    )
+    user_text = "".join(sys.stdin.readlines())
+    r = chain.invoke({"doc": user_text})
+    ic(r)
 
 
 @app.command()
