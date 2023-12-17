@@ -397,10 +397,69 @@ def summarize():
     print(result.content)
 
 @app.command()
+def m2df():
+    df = im2df()
+    # make compatible with archive
+    df.sort_values("date", inplace=True)
+    df.date = df.date.dt.strftime('%Y-%m-%d %H:%M:%S')
+    df.to_csv("big_dump.txt", index=False, sep="\t")
+
+@app.command()
+def scratch():
+    # I'm the opposite, I told my boss
+    # I’m the opposite I told my boss I’m really struggling and getting depression medication
+
+    df = im2df()
+    ammon_from_me = df[(df.to_phone.str.contains("7091")) & (df.is_from_me)]
+    ic(ammon_from_me)
+
+    tori_from_me = df[(df.to_phone.str.contains("8909755")) & (df.is_from_me)]
+    ic(tori_from_me)
+
+    # df.to_csv("messages.csv", index=False)
+    ic(df[df.is_from_me == True])
+
+
+def im2df():
+    # date	text	is_from_me	to_phone
+    ic("start load")
+    chats = pickle.load(open("raw_messages.pickle", "rb"))
+    ic(f"done load {len(chats)}")
+
+    output = []
+
+    # transform to csv
+    for c in chats:
+        messages = c["messages"]
+        if not len(messages):
+            continue
+
+        for m in messages:
+            row = {
+                    "date":m.additional_kwargs["message_time_as_datetime"],
+                    "text":m.content,
+                    "is_from_me":m.additional_kwargs["is_from_me"],
+                    "to_phone":m.role,
+                }
+            output.append(row)
+    import pandas as pd
+    ic(len(output))
+
+    df = pd.DataFrame(output)
+    return df
+
+
+
+@app.command()
 def messages():
     chat_path=os.path.expanduser("~/imessage/chat.db")
     loader = IMessageChatLoader( path=chat_path)
-    raw_messages = loader.lazy_load()
+    ic("loading messages")
+    raw_messages = loader.load()
+    ic("pickling")
+    import pickle
+    pickle.dump(raw_messages, open("raw_messages.pickle", "wb"))
+
     # Merge consecutive messages from the same sender into a single message
     # merged_messages = merge_chat_runs(raw_messages)
     for i, message in enumerate(raw_messages):
@@ -408,9 +467,9 @@ def messages():
         if i > 50:
             break
 
-    index = VectorstoreIndexCreator().from_loaders([loader])
-    answer = index.query("What should a manager do")
-    ic(answer)
+    # index = VectorstoreIndexCreator().from_loaders([loader])
+    #  answer = index.query("What should a manager do")
+    # ic(answer)
 
 
 if __name__ == "__main__":
