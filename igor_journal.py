@@ -458,7 +458,7 @@ def entries_for_month(corpus_for: datetime) -> Iterable[date]:
 
     if old_export_path.exists():
         archive = S50Export(old_export_path)
-        for k, v in archive.entries.items():
+        for k, _ in archive.entries.items():
             yield k
         return
 
