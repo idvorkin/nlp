@@ -4,32 +4,18 @@ import os
 import json
 from icecream import ic
 import sys
-from langchain.schema.output_parser import StrOutputParser
 import typer
 from rich.console import Console
 from rich import print
 from typing import List, Callable
-from pydantic import BaseModel
 from loguru import logger
 import pudb
-# import pickle module
 import pickle
 from typing_extensions import Annotated
 from langchain.chat_loaders.imessage import IMessageChatLoader
-from langchain.chat_loaders.utils import (
-        map_ai_messages,
-        merge_chat_runs,
-        )
 
-console = Console()
-app = typer.Typer()
 from langchain.llms import OpenAI
 from langchain.chat_models import ChatOpenAI
-from langchain.prompts.chat import (
-    ChatPromptTemplate,
-    SystemMessagePromptTemplate,
-    HumanMessagePromptTemplate,
-)
 from langchain.agents import AgentType, initialize_agent, load_tools
 from typing import Any
 from langchain.schema import (
@@ -43,6 +29,9 @@ from langchain.schema import (
     Generation,
     OutputParserException,
 )
+
+console = Console()
+app = typer.Typer()
 
 
 class JsonOutputFunctionsParser2(OutputFunctionsParser):
@@ -139,6 +128,7 @@ def latest_xkcd():
     )
     response = chain.invoke("What is today's comic ")
     ic(response)
+
 
 class DialogueAgent:
     def __init__(
@@ -360,6 +350,7 @@ def dnd(protagonist_name="Donald Trump", quest="Find all the social security spe
 
 def load_cached_prompt(prompt_name):
     from langchain import hub
+
     prompt_cache = os.path.expanduser("~/tmp/pickle/prompts")
     # if prompt_cache directory doesn't exist, create it
     if not os.path.exists(prompt_cache):
@@ -377,14 +368,14 @@ def load_cached_prompt(prompt_name):
 
     return prompt_maker_template
 
+
 @app.command()
 def great_prompt(prompt):
     prompt_maker_template = load_cached_prompt("hardkothari/prompt-maker")
     model = ChatOpenAI(temperature=0.9)
     chain = prompt_maker_template | model
-    result = chain.invoke({"lazy_prompt":prompt, "task":prompt})
+    result = chain.invoke({"lazy_prompt": prompt, "task": prompt})
     print(result.content)
-
 
 
 @app.command()
@@ -393,8 +384,9 @@ def summarize():
     user_text = "".join(sys.stdin.readlines())
     model = ChatOpenAI(temperature=0.9, model="gpt-4")
     chain = prompt_maker_template | model
-    result = chain.invoke({"ARTICLE":user_text})
+    result = chain.invoke({"ARTICLE": user_text})
     print(result.content)
+
 
 @app.command()
 def m2df():
@@ -405,8 +397,9 @@ def m2df():
     ic("-- pickle df")
     # make compatible with archive
     df.sort_values("date", inplace=True)
-    df.date = df.date.dt.strftime('%Y-%m-%d %H:%M:%S')
+    df.date = df.date.dt.strftime("%Y-%m-%d %H:%M:%S")
     df.to_csv("big_dump.txt", index=False, sep="\t")
+
 
 @app.command()
 def scratch():
@@ -421,7 +414,7 @@ def scratch():
     ic(tori_from_me)
 
     # df.to_csv("messages.csv", index=False)
-    ic(df[df.is_from_me == True])
+    ic(df[df.is_from_me])
 
 
 def im2df():
@@ -440,34 +433,35 @@ def im2df():
 
         for m in messages:
             row = {
-                    "date":m.additional_kwargs["message_time_as_datetime"],
-                    "text":m.content,
-                    "is_from_me":m.additional_kwargs["is_from_me"],
-                    "to_phone":m.role,
-                }
+                "date": m.additional_kwargs["message_time_as_datetime"],
+                "text": m.content,
+                "is_from_me": m.additional_kwargs["is_from_me"],
+                "to_phone": m.role,
+            }
             output.append(row)
     import pandas as pd
+
     ic(len(output))
 
     df = pd.DataFrame(output)
     return df
 
 
-
 @app.command()
 def messages():
-    chat_path=os.path.expanduser("~/imessage/chat.db")
-    loader = IMessageChatLoader( path=chat_path)
+    chat_path = os.path.expanduser("~/imessage/chat.db")
+    loader = IMessageChatLoader(path=chat_path)
     ic("loading messages")
     raw_messages = loader.load()
     ic("pickling")
     import pickle
+
     pickle.dump(raw_messages, open("raw_messages.pickle", "wb"))
 
     # Merge consecutive messages from the same sender into a single message
     # merged_messages = merge_chat_runs(raw_messages)
     for i, message in enumerate(raw_messages):
-        ic (message)
+        ic(message)
         if i > 50:
             break
 
