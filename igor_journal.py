@@ -1,8 +1,6 @@
 #!python3
 from typing import Iterable, List, Dict
 from dataclasses import dataclass
-import json
-from openai import OpenAI
 
 import glob
 import os
@@ -11,13 +9,11 @@ from pathlib import Path
 
 from functools import lru_cache
 from collections import defaultdict
-from icecream import ic
 import typer
 from datetime import datetime, timedelta, date
 
 from rich.console import Console
 import re
-import pudb
 
 console = Console()
 app = typer.Typer()
@@ -446,7 +442,7 @@ def body(
 
     entry = JournalEntry(journal_for)
     if not entry.is_valid():
-        raise Exception(f"No Entry for {journal_for} ")
+        raise FileNotFoundError(f"No Entry for {journal_for} ")
 
     if close or date_header:
         console.print(f"[blue]Using Date:{journal_for}")
@@ -482,7 +478,7 @@ def entries_for_month(corpus_for: datetime) -> Iterable[date]:
 def entries(
     for_month: datetime = typer.Argument(
         datetime.now(), help="Pass a date or int for days ago"
-    )
+    ),
 ):
     for e in entries_for_month(for_month):
         print(e)
@@ -564,9 +560,7 @@ def files_with_word(word):
 
 @app.command()
 def build_embed():
-    from openai import OpenAI
-
-    import pandas as pd
+    pass
 
     # Todo rebuild this using langchain and RAG
 

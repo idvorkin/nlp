@@ -1,3 +1,5 @@
+#!python3
+
 from icecream import ic
 
 import os

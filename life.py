@@ -40,7 +40,7 @@ from pydantic import BaseModel, field_validator
 from rich.console import Console
 import igor_journal
 
-from openai_wrapper import choose_model, setup_gpt
+from openai_wrapper import setup_gpt
 import igor_journal
 
 console = Console()
@@ -153,7 +153,7 @@ def group(
     process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
 
-    system_prompt = f"""You help group similar items into categories.  Exclude any linnes that are markdown headers. Output the category headers as markdown, and list the line items as list eelemnts below. Eg.
+    system_prompt = """You help group similar items into categories.  Exclude any linnes that are markdown headers. Output the category headers as markdown, and list the line items as list eelemnts below. Eg.
 
 # Grouping A
 * line 1
@@ -314,6 +314,22 @@ def journal_report(
     asyncio.run(async_journal_report(u4, journal_for, launch_fx))
 
 
+def spark_df(df):
+    from rich.table import Table
+    from rich import print
+    from sparklines import sparklines
+
+    rich_table = Table()
+    rich_table.add_column("Category")
+    for col in df.columns:
+        clean = df[col]
+        spark = sparklines(clean, minimum=0, maximum=10)
+        spark_str = "".join(spark)
+        # reverse the string
+        col = col.ljust(max([len(c) for c in df.columns]) + 1)
+        print(f"{col}[blue]{spark_str}[/blue]")
+
+
 @app.command()
 def stats(
     u4: Annotated[bool, typer.Option()] = True,
@@ -363,7 +379,7 @@ def get_reports():
             # Odd, often I don't have recommendations, lets manually add them to
             # avoid a validation error
             json_report = json.loads(text_report)
-            if not "CategorySummaries" in json_report:
+            if "CategorySummaries" not in json_report:
                 json_report["CategorySummaries"] = []
             report = GetPychiatristReport.model_validate(json_report)
             reports += [report]
@@ -487,8 +503,9 @@ def serialize_model():
     ic("Hello")
     print("hello")
 
-def to_people_sentiment_dict(r:GetPychiatristReport):
-    row:Dict = {"date": r.Date}
+
+def to_people_sentiment_dict(r: GetPychiatristReport):
+    row: Dict = {"date": r.Date}
     for p in r.PeopleInEntry:
         sentiment = p.Sentiment.lower()
         if sentiment in ["not mentioned", "unmentioned"]:
@@ -498,6 +515,7 @@ def to_people_sentiment_dict(r:GetPychiatristReport):
         row[p.Name.lower()] = sentiment
 
     return row
+
 
 if __name__ == "__main__":
     app()
