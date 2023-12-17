@@ -399,6 +399,10 @@ def summarize():
 @app.command()
 def m2df():
     df = im2df()
+    # pickle the dataframe
+    ic("++ pickle df")
+    df.to_pickle("df_messages.pickle.zip")
+    ic("-- pickle df")
     # make compatible with archive
     df.sort_values("date", inplace=True)
     df.date = df.date.dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -466,10 +470,6 @@ def messages():
         ic (message)
         if i > 50:
             break
-
-    # index = VectorstoreIndexCreator().from_loaders([loader])
-    #  answer = index.query("What should a manager do")
-    # ic(answer)
 
 
 if __name__ == "__main__":
