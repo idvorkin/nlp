@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import glob
 import os
 from pathlib import Path
+import sys
 
 
 from functools import lru_cache
@@ -384,32 +385,31 @@ def todo(
     # Make first parameter
     # If is a date == parse it
     # If an int, take that.
+    date_journal_for = datetime.now.date()
     if journal_for.isdigit():
         days_ago = int(journal_for)
-        journal_for = datetime.now().date() - timedelta(days=days_ago)
+        date_journal_for = datetime.now().date() - timedelta(days=days_ago)
     else:
-        journal_for = date.fromisoformat(journal_for)
+        date_journal_for = date.fromisoformat(journal_for)
 
     if close:
         for i in range(1000):
-            entry = JournalEntry(journal_for)
-            if not entry.is_valid():
-                journal_for -= timedelta(days=1)
-                continue
-            break
+            entry = JournalEntry(date_journal_for - timedelta(days=i))
+            if entry.is_valid():
+                break
 
-    entry = JournalEntry(journal_for)
+    entry = JournalEntry(date_journal_for)
     if not entry.is_valid():
         raise Exception(f"No Entry for {journal_for} ")
 
     if close:
         console.print(f"[blue]Using Date:{journal_for}")
 
-    for l in entry.todo():
+    for todo_line in entry.todo():
         # Safely remove these symbols
-        l = l.replace("☑ ", "")
-        l = l.replace("☐ ", "")
-        print(l)
+        todo_line = todo_line.replace("☑ ", "")
+        todo_line = todo_line.replace("☐ ", "")
+        print(todo_line)
     return
 
 
@@ -426,29 +426,28 @@ def body(
     # Make first parameter
     # If is a date == parse it
     # If an int, take that.
+    date_journal_for = datetime.now.date()
     if journal_for.isdigit():
         days_ago = int(journal_for)
-        journal_for = datetime.now().date() - timedelta(days=days_ago)
+        date_journal_for = datetime.now().date() - timedelta(days=days_ago)
     else:
-        journal_for = date.fromisoformat(journal_for)
+        date_journal_for = date.fromisoformat(journal_for)
 
     if close:
         for i in range(1000):
-            entry = JournalEntry(journal_for)
-            if not entry.is_valid():
-                journal_for -= timedelta(days=1)
-                continue
-            break
+            entry = JournalEntry(date_journal_for - timedelta(days=i))
+            if entry.is_valid():
+                break
 
-    entry = JournalEntry(journal_for)
+    entry = JournalEntry(date_journal_for)
     if not entry.is_valid():
-        raise FileNotFoundError(f"No Entry for {journal_for} ")
+        raise FileNotFoundError(f"No Entry for {date_journal_for} ")
 
     if close or date_header:
-        console.print(f"[blue]Using Date:{journal_for}")
+        console.print(f"[blue]Using Date:{date_journal_for}")
 
-    for l in entry.body():
-        print(l)
+    for line in entry.body():
+        print(line)
 
 
 def entries_for_month(corpus_for: datetime) -> Iterable[date]:
@@ -514,9 +513,7 @@ def all_body():
 @app.command()
 def sanity():
     # Load simple corpus for my journal
-    corpus = LoadCorpus(
-        datetime.now().date() - timedelta(days=180)
-    )  # NOQA  - see if it loads
+    corpus = LoadCorpus(datetime.now().date() - timedelta(days=180))  # NOQA  - see if it loads
     print(
         f"Initial words {len(corpus.initial_words)} remaining words {len(corpus.words)}"
     )
