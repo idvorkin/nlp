@@ -17,12 +17,14 @@ black = "*"
 jupytext = "*"
 python-lsp-server  = "*"
 jupyterlab-lsp = "*"
+jupyter-lsp = "*"
 # jupyter-ai hasn't been much fun :(
 # jupyter-ai = "*"
 langchainhub = "*"
 typer = "*"
 tiktoken = "*"
 jupyter = "*"
+ruff = "*"
 
 [dev-packages]
 # I'm not sure why, but when I put some of the packges in dev packages
