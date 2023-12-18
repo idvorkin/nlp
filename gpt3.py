@@ -1,7 +1,6 @@
 #!python3
 
 import os
-from openai import OpenAI
 
 from icecream import ic
 import typer
@@ -10,7 +9,6 @@ from rich import print as rich_print
 from rich.console import Console
 import rich
 import re
-import tiktoken
 import time
 from openai_wrapper import (
     choose_model,
@@ -398,7 +396,7 @@ def base_query(
                     ic(out)
                 first_chunk = False
 
-            if elem.delta.content == None:
+            if elem.delta.content is None:
                 continue
 
             response_contents[elem.index] += elem.delta.content
