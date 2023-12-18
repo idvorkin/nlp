@@ -65,7 +65,7 @@ class SimpleNamespace:
 @app.callback()
 def load_options(
     ctx: typer.Context,
-    attach: Annotated[bool, typer.Option(prompt="Attach to existing process")],
+    attach: Annotated[bool, typer.Option(help="Attach to existing process")] = False,
 ):
     ctx.obj = SimpleNamespace(attach=attach)
 
@@ -485,6 +485,11 @@ def q_for_doc():
     user_text = "".join(sys.stdin.readlines())
     r = chain.invoke({"doc": user_text})
     ic(r)
+
+
+@app.command()
+def debug():
+    ic("debug")
 
 
 @app.command()
