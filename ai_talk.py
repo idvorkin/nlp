@@ -11,9 +11,9 @@ from pydantic import BaseModel
 from loguru import logger
 import pudb
 from typing_extensions import Annotated
+import ast
+import sys
 
-console = Console()
-app = typer.Typer()
 from langchain.llms import GPT4All
 from langchain.llms import OpenAI
 from langchain.chat_models import ChatOpenAI
@@ -22,7 +22,7 @@ from langchain.prompts.chat import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
-from typing import Any, Optional
+from typing import Any
 from langchain.output_parsers.openai_functions import OutputFunctionsParser
 from langchain.schema import FunctionMessage
 
@@ -31,6 +31,9 @@ from langchain.schema import (
     Generation,
     OutputParserException,
 )
+
+console = Console()
+app = typer.Typer()
 
 
 def model_to_function(cls):
@@ -320,10 +323,6 @@ def docs():
     ic(answer)
 
 
-import ast
-import sys
-
-
 def get_func(filename, funcname):
     with open(filename, "r") as source:
         tree = ast.parse(source.read())
@@ -375,7 +374,6 @@ def diff(funcname1, funcname2):
     with tempfile.NamedTemporaryFile(
         mode="w", delete=False
     ) as f1, tempfile.NamedTemporaryFile(mode="w", delete=False) as f2:
-
         f1.write(func1)
         f1.write("\n")
         f1_name = f1.name
