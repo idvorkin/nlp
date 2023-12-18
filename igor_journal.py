@@ -1,5 +1,5 @@
 #!python3
-from typing import Iterable, List, Dict
+from typing import Iterable, List, Dict, Annotated
 from dataclasses import dataclass
 
 import glob
@@ -272,6 +272,7 @@ class JournalEntry:
         sections = defaultdict(list)
         sections_as_list = defaultdict(list)
         _file = path.open()
+        re_markdown_list_item = re.compile(r"^(\d+)\.")
         while line := _file.readline():
             is_blank_line = line.strip() == ""
             line = clean_string(line).strip("\n")
@@ -292,9 +293,9 @@ class JournalEntry:
             output.append(line)
             sections[current_section].append(line)
 
-            is_list_item = line.startswith("1.")
+            is_list_item = re_markdown_list_item.match(line)
             if is_list_item:
-                list_item = line.replace("1. ", "")
+                list_item = line.replace(is_list_item.group(0), "").strip()
                 sections_as_list[current_section].append(list_item)
                 continue
 
@@ -378,14 +379,18 @@ def todo(
     journal_for: str = typer.Argument(
         datetime.now().date(), help="Pass a date or int for days ago"
     ),
-    close: bool = typer.Option(
-        False, help="Keep going back in days till you find the closest valid one"
-    ),
+    close: Annotated[
+        bool,
+        typer.Option(
+            help="Keep going back in days till you find the closest valid one"
+        ),
+    ] = False,
 ):
     # Make first parameter
     # If is a date == parse it
     # If an int, take that.
-    date_journal_for = datetime.now.date()
+    date_journal_for = datetime.now().date()
+    entry = None
     if journal_for.isdigit():
         days_ago = int(journal_for)
         date_journal_for = datetime.now().date() - timedelta(days=days_ago)
@@ -398,12 +403,13 @@ def todo(
             if entry.is_valid():
                 break
 
-    entry = JournalEntry(date_journal_for)
+    if not entry:
+        entry = JournalEntry(date_journal_for)
     if not entry.is_valid():
         raise Exception(f"No Entry for {journal_for} ")
 
     if close:
-        console.print(f"[blue]Using Date:{journal_for}")
+        console.print(f"[blue]Using Date:{entry.date}")
 
     for todo_line in entry.todo():
         # Safely remove these symbols
@@ -415,18 +421,24 @@ def todo(
 
 @app.command()
 def body(
-    journal_for: str = typer.Argument(
-        datetime.now().date(), help="Pass a date or int for days ago"
-    ),
-    close: bool = typer.Option(
-        False, help="Keep going back in days till you find the closest valid one"
-    ),
-    date_header: bool = typer.Option(False, help="Always include the date header"),
+    journal_for: Annotated[
+        str, typer.Argument(help="Pass a date or int for days ago")
+    ] = datetime.now().date(),
+    close: Annotated[
+        bool,
+        typer.Option(
+            help="Keep going back in days till you find the closest valid one"
+        ),
+    ] = False,
+    date_header: Annotated[
+        bool, typer.Option(help="Always include the date header")
+    ] = False,
 ):
     # Make first parameter
     # If is a date == parse it
     # If an int, take that.
-    date_journal_for = datetime.now.date()
+    entry = None
+    date_journal_for = datetime.now().date()
     if journal_for.isdigit():
         days_ago = int(journal_for)
         date_journal_for = datetime.now().date() - timedelta(days=days_ago)
@@ -439,12 +451,14 @@ def body(
             if entry.is_valid():
                 break
 
-    entry = JournalEntry(date_journal_for)
+    if not entry:
+        entry = JournalEntry(date_journal_for)
+
     if not entry.is_valid():
         raise FileNotFoundError(f"No Entry for {date_journal_for} ")
 
     if close or date_header:
-        console.print(f"[blue]Using Date:{date_journal_for}")
+        console.print(f"[blue]Using Date:[/blue] {entry.date}")
 
     for line in entry.body():
         print(line)
