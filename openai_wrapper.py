@@ -3,6 +3,17 @@ import json
 from openai import OpenAI
 
 
+import tiktoken
+from icecream import ic
+import time
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+)
+from pydantic import BaseModel
+
+
 def setup_gpt():
     PASSWORD = "replaced_from_secret_box"
     with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
@@ -13,18 +24,6 @@ def setup_gpt():
 
 
 client = setup_gpt()
-
-import tiktoken
-from icecream import ic
-import time
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_random_exponential,
-    retry_if_exception_type,
-)
-
-from pydantic import BaseModel
 
 
 class CompletionModel(BaseModel):
@@ -162,7 +161,7 @@ def ask_gpt_n(
         temperature=0.7,
         stream=True,
     ):
-        if not "choices" in chunk:
+        if "choices" not in chunk:
             continue
 
         for elem in chunk["choices"]:  # type: ignore
@@ -175,3 +174,7 @@ def ask_gpt_n(
 
     # hard code to only return first response
     return response_contents
+
+
+def openai_func(cls):
+    return {"name": cls.__name__, "parameters": cls.model_json_schema()}
