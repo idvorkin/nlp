@@ -6,7 +6,6 @@ import os
 import typer
 from datetime import datetime, timedelta
 from loguru import logger
-from icecream import ic
 
 app = typer.Typer()
 
@@ -16,35 +15,35 @@ app = typer.Typer()
 # copy all lines till hit  ## affirmations
 
 
-def extractListItem(l):
+def extractListItem(listItem):
     # find numbered lists
-    matches = re.findall("\\d\\.\\s*(.*)", l)
+    matches = re.findall("\\d\\.\\s*(.*)", listItem)
 
     # only find the first - item
-    matches += re.findall("^\\s*-\\s*(.*)", l)
+    matches += re.findall("^\\s*-\\s*(.*)", listItem)
     return matches
 
 
-def isSectionStart(l, section):
-    return re.match(f"^##.*{section}.*", l) is not None
+def isSectionStart(line, section):
+    return re.match(f"^##.*{section}.*", line) is not None
 
 
 def extractListInSection(f, section):
     fp = open(f)
     inSection = False
-    for l in fp.readlines():
+    for line in fp.readlines():
         if inSection:
-            isSectionEnd = l.startswith("#")
+            isSectionEnd = line.startswith("#")
             if isSectionEnd:
                 return
 
-        if isSectionStart(l, section):
+        if isSectionStart(line, section):
             inSection = True
 
         if not inSection:
             continue
 
-        yield from extractListItem(l)
+        yield from extractListItem(line)
 
     return
 
@@ -75,7 +74,7 @@ def makeCategoryMap():
     # todo figure out how to stem
     categories_flat = "psc;essential;appreciate;daily;offer;bike;interview".split(";")
 
-    for (category, words) in category_map_data.items():
+    for category, words in category_map_data.items():
         category_map_i[category] = words.split(";")
     for c in categories_flat:
         category_map_i[c] = [c]
@@ -83,7 +82,7 @@ def makeCategoryMap():
     # do some super stemming - probably more effiient way
     suffixes = "d;ed;s;ing".split(";")
     # print(suffixes)
-    for (c, words) in category_map_i.items():
+    for c, words in category_map_i.items():
         words = words[:]  # force a copy
         # print (words)
         for w in words:
@@ -105,12 +104,12 @@ category_map = makeCategoryMap()
 categories = category_map.keys()
 
 
-def lineToCategory(l):
+def lineToCategory(line):
     # NLP tokenizing remove punctuation.
     punctuation = "/.,;'"
     for p in punctuation:
-        l = l.replace(p, " ")
-    words = l.lower().split()
+        line = line.replace(p, " ")
+    words = line.lower().split()
 
     for c, words_in_category in category_map.items():
         for w in words:
@@ -140,14 +139,14 @@ def printCategory(grouped, markdown=False, text_only=False):
             return s
         return s.replace("1.", "").replace("☑", "").replace("☐", "").strip()
 
-    for l in grouped:
-        is_category = l[0] != None
-        category = l[0] if is_category else "general"
+    for line in grouped:
+        is_category = line[0] is not None
+        category = line[0] if is_category else "general"
 
         if not markdown and not text_only:
             print(f"#### {category.capitalize()}")
 
-        for m in l[1]:
+        for m in line[1]:
             m = strip_if_text_only(m, text_only)
             if markdown:
                 print(f"1. {m}")
@@ -216,7 +215,7 @@ def dumpSectionDefaultDirectory(
 ):
     # assert section in   "Grateful Yesterday if".split()
 
-    printHeader = markdown == False and text_only == False
+    printHeader = markdown is False and text_only is False
 
     if printHeader:
         print(f"## ----- Section:{section}, days={days} ----- ")
