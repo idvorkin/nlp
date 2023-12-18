@@ -1,6 +1,7 @@
 #!python3
 
 
+from pydantic import BaseModel
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 import os
@@ -16,6 +17,7 @@ import pudb
 import pickle
 from typing_extensions import Annotated
 from langchain.chat_loaders.imessage import IMessageChatLoader
+from langchain.output_parsers.openai_functions import JsonKeyOutputFunctionsParser
 
 from langchain.llms import OpenAI
 from langchain.agents import AgentType, initialize_agent, load_tools
@@ -450,40 +452,25 @@ def im2df():
     return df
 
 
-@app.command()
-def q_for_doc():
-    from langchain.output_parsers.openai_functions import JsonKeyOutputFunctionsParser
+class GetHypotheticalQuestionsFromDoc(BaseModel):
+    Questions: List[str]
 
-    functions = [
-        {
-            "name": "hypothetical_questions",
-            "description": "Generate hypothetical questions",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "questions": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                    },
-                },
-                "required": ["questions"],
-            },
-        }
-    ]
+
+@app.command()
+def q_for_doc(questions: int = 10):
+    get_questions = openai_wrapper.openai_func(GetHypotheticalQuestionsFromDoc)
 
     chain = (
-        {"doc": lambda x: x}
-        # Only asking for 3 hypothetical questions, but this could be adjusted
-        | ChatPromptTemplate.from_template(
-            "Generate a list of exactly 3 hypothetical questions that the below document could be used to answer:\n\n{doc}"
+        ChatPromptTemplate.from_template(
+            "Generate a list of exactly {count} hypothetical questions that the below document could be used to answer:\n\n{doc}"
         )
         | ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name).bind(
-            functions=functions, function_call={"name": "hypothetical_questions"}
+            functions=[get_questions], function_call={"name": get_questions["name"]}
         )
-        | JsonKeyOutputFunctionsParser(key_name="questions")
+        | JsonKeyOutputFunctionsParser(key_name="Questions")
     )
     user_text = "".join(sys.stdin.readlines())
-    r = chain.invoke({"doc": user_text})
+    r = chain.invoke({"doc": user_text, "count": questions})
     ic(r)
 
 
