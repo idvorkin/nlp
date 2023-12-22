@@ -1,38 +1,19 @@
 #!python3
 
-import ast
-import asyncio
-import datetime
 import json
-import os
-import random
-import re
-import signal
 import sys
 import time
 from typing import List
-
-import openai
-from openai import OpenAI
-
-client = OpenAI()
 import typer
 from icecream import ic
-
-# import OpenAI exceptiions
-from openai.error import APIError, AuthenticationError, InvalidRequestError
+from openai import OpenAI
 from pydantic import BaseModel
-from rich import print as rich_print
 from rich.console import Console
 from rich.text import Text
 
-from langchain.prompts.chat import (
-    ChatPromptTemplate,
-    SystemMessagePromptTemplate,
-    HumanMessagePromptTemplate,
-)
-
 from openai_wrapper import choose_model, num_tokens_from_string, setup_gpt
+
+client = OpenAI()
 
 # TODO consider moving this to openai_wrapper
 
@@ -40,6 +21,7 @@ from openai_wrapper import choose_model, num_tokens_from_string, setup_gpt
 # make a fastapi app called server
 
 console = Console()
+
 
 # By default, when you hit C-C in a pipe, the pipe is stopped
 # with this, pipe continues
@@ -62,19 +44,9 @@ def ask_gpt(
     u4=True,
     debug=False,
 ):
-    import langchain
-
     return ask_gpt_n(prompt_to_gpt, tokens=tokens, u4=u4, debug=debug, n=1)[0]
 
 
-@retry(
-    wait=wait_random_exponential(min=1, max=60),
-    stop=stop_after_attempt(3),
-    retry=(
-        retry_if_exception_type(openai.RateLimitError)
-        | retry_if_exception_type(openai.RateLimitError)
-    ),
-)
 def ask_gpt_n(
     prompt_to_gpt="Make a rhyme about Dr. Seuss forgetting to pass a default paramater",
     tokens: int = 0,
@@ -100,17 +72,18 @@ def ask_gpt_n(
     start = time.time()
     responses = n
     response_contents = ["" for x in range(responses)]
-    for chunk in client.chat.completions.create(model=text_model_best,
-    messages=messages,
-    max_tokens=output_tokens,
-    n=responses,
-    temperature=0.7,
-    stream=True):
-        if not "choices" in chunk:
+    for chunk in client.chat.completions.create(
+        model=text_model_best,
+        messages=messages,
+        max_tokens=output_tokens,
+        n=responses,
+        temperature=0.7,
+        stream=True,
+    ):
+        if "choices" not in chunk:
             continue
 
         for elem in chunk["choices"]:  # type: ignore
-
             delta = elem["delta"]
             delta_content = delta.get("content", "")
             response_contents[elem["index"]] += delta_content
