@@ -33,7 +33,9 @@ from rich import print
 from rich.console import Console
 from typing_extensions import Annotated
 
+import openai
 import openai_wrapper
+import backoff
 
 console = Console()
 app = typer.Typer()
@@ -443,8 +445,15 @@ def create_fine_tune(df):
 
     # create a finetune file for every day
 
-    traindata_set = []
     df["date_window"] = df.date.dt.strftime("%Y-%V")
+    # df["date_window"] = df.date.dt.strftime("%Y-%m-%d")
+
+    # images are uffc - remove those
+    # make ''' ascii to be more pleasant to look at
+    df.text = df.text.apply(
+        lambda t: t.replace("\ufffc", "").replace("\u2019", "'").strip()
+    )
+    df = df[df.text.str.len() > 0]
 
     def to_message(row):
         role = "user" if row.is_from_me else "assistant"
@@ -452,6 +461,7 @@ def create_fine_tune(df):
 
     df["message"] = df.apply(to_message, axis=1)
 
+    traindata_set = []
     for date_window in df.date_window.unique():
         df_day = df[df.date_window == date_window]
         df_from_assistent = df_day[df_day.is_from_me == False]  # noqa - need this syntax for Pandas
@@ -473,6 +483,19 @@ def create_fine_tune(df):
     validation = [t for i, t in enumerate(traindata_set) if i % ratio == 0]
     write_jsonl(training, ft_path / "train.jsonl")
     write_jsonl(validation, ft_path / "validate.jsonl")
+
+    ic(len(training))
+    for i, t in enumerate(training[:1000]):
+        output = moderate(json.dumps(t))
+        if output.flagged:
+            ic(i, output)
+
+
+@backoff.on_exception(backoff.expo, openai.RateLimitError)
+def moderate(text):
+    client = openai.OpenAI()
+    response = client.moderations.create(input=text)
+    return response.results[0]
 
 
 def im2df():
@@ -529,6 +552,27 @@ def q_for_doc(questions: int = 10):
 @app.command()
 def debug():
     ic("debug")
+
+
+@app.command()
+def bestie():
+    from langchain.memory import ChatMessageHistory
+
+    memory = ChatMessageHistory()
+    memory.add_message(
+        SystemMessage(content="You are an imessage best friend converation simulator.")
+    )
+    model = ChatOpenAI(model="ft:gpt-3.5-turbo-1106:idvorkinteam::8YgPRpMB")
+
+    while True:
+        user_input = input(">")
+        memory.add_user_message(message=user_input)
+        prompt = ChatPromptTemplate.from_messages(memory.messages)
+        chain = prompt | model
+        result = chain.invoke({})
+        ai_output = str(result.content)
+        memory.add_ai_message(ai_output)
+        print(f"[yellow]{ai_output}")
 
 
 @app.command()
