@@ -433,7 +433,7 @@ def write_jsonl(data_list: list, filename: Path) -> None:
 
 
 def create_fine_tune(df):
-    ft_path = Path.home() / "tmp/fine_tune"
+    ft_path = Path.home() / "tmp/fine-tune"
     system_prompt = "You are an imessage best friend converation simulator."
     system_message = make_message("system", system_prompt)
 
@@ -458,7 +458,7 @@ def create_fine_tune(df):
         if df_from_assistent.empty:
             continue
 
-        train_data = [system_message] + df_from_assistent.message.tolist()
+        train_data = [system_message] + df_day.message.tolist()
         # count tokens
         if (
             tokens := openai_wrapper.num_tokens_from_string(json.dumps(train_data))
