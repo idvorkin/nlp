@@ -1,17 +1,12 @@
-import os
 import json
-from openai import OpenAI
-
+import os
+import time
 
 import tiktoken
 from icecream import ic
-import time
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_random_exponential,
-)
+from openai import OpenAI
 from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 
 def setup_gpt():

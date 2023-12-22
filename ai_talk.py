@@ -1,36 +1,28 @@
 #!python3
 
-import os
-import json
-from icecream import ic
-import typer
-from rich.console import Console
-from rich import print
-from typing import List
-from pydantic import BaseModel
-from loguru import logger
-import pudb
-from typing_extensions import Annotated
 import ast
+import json
+import os
 import sys
+from typing import Any, List
 
-from langchain.llms import GPT4All
-from langchain.llms import OpenAI
+import pudb
+import typer
+from icecream import ic
 from langchain.chat_models import ChatOpenAI
+from langchain.llms import GPT4All, OpenAI
+from langchain.output_parsers.openai_functions import OutputFunctionsParser
 from langchain.prompts.chat import (
     ChatPromptTemplate,
-    SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
+    SystemMessagePromptTemplate,
 )
-from typing import Any
-from langchain.output_parsers.openai_functions import OutputFunctionsParser
-from langchain.schema import FunctionMessage
-
-
-from langchain.schema import (
-    Generation,
-    OutputParserException,
-)
+from langchain.schema import FunctionMessage, Generation, OutputParserException
+from loguru import logger
+from pydantic import BaseModel
+from rich import print
+from rich.console import Console
+from typing_extensions import Annotated
 
 console = Console()
 app = typer.Typer()

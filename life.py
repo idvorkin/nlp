@@ -1,47 +1,37 @@
 #!python3
 
+import asyncio
+import glob
 import json
 import os
+import pickle
 import re
 import signal
-import sys
-from datetime import datetime, date, timedelta
-from enum import Enum
-from typing import Annotated, List
-from rich.console import Console
-from rich.markdown import Markdown
-from openai_wrapper import (
-    setup_gpt,
-    num_tokens_from_string,
-)
-from typing import Dict
-
-import time
-import asyncio
-from rich.progress import track
-import glob
-import pickle
-
-
 import subprocess
+import sys
+import time
+from datetime import date, datetime, timedelta
+from enum import Enum
+from typing import Annotated, Dict, List
+
+import pydantic
 import typer
 from icecream import ic
 from langchain.chat_models import ChatOpenAI
 from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
-from langchain.schema.output_parser import StrOutputParser
 from langchain.prompts.chat import (
     ChatPromptTemplate,
-    SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
+    SystemMessagePromptTemplate,
 )
-
-import pydantic
+from langchain.schema.output_parser import StrOutputParser
 from pydantic import BaseModel, field_validator
 from rich.console import Console
-import igor_journal
+from rich.markdown import Markdown
+from rich.progress import track
 
-from openai_wrapper import setup_gpt
 import igor_journal
+from openai_wrapper import num_tokens_from_string, setup_gpt
 
 console = Console()
 
@@ -315,8 +305,8 @@ def journal_report(
 
 
 def spark_df(df):
-    from rich.table import Table
     from rich import print
+    from rich.table import Table
     from sparklines import sparklines
 
     rich_table = Table()
@@ -339,7 +329,6 @@ def stats(
     ),
 ):
     cEntries = 0
-    reports = []
     for i in range(days):
         day = date.fromisoformat(journal_for) - timedelta(days=i)
         try:

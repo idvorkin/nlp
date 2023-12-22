@@ -1,20 +1,17 @@
 #!python3
-from typing import Iterable, List, Dict, Annotated
-from dataclasses import dataclass
-
 import glob
 import os
-from pathlib import Path
-import sys
-
-
-from functools import lru_cache
-from collections import defaultdict
-import typer
-from datetime import datetime, timedelta, date
-
-from rich.console import Console
 import re
+import sys
+from collections import defaultdict
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+from functools import lru_cache
+from pathlib import Path
+from typing import Annotated, Dict, Iterable, List
+
+import typer
+from rich.console import Console
 
 console = Console()
 app = typer.Typer()

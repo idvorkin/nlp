@@ -1,41 +1,39 @@
 #!python3
 
 
-from pydantic import BaseModel
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-import os
 import json
-from icecream import ic
-import sys
-import typer
-from rich.console import Console
-from rich import print
-from typing import List, Callable
-from loguru import logger
-import pudb
+import os
 import pickle
-from typing_extensions import Annotated
-from langchain.chat_loaders.imessage import IMessageChatLoader
-from langchain.output_parsers.openai_functions import JsonKeyOutputFunctionsParser
-
-from langchain.llms import OpenAI
-from langchain.agents import AgentType, initialize_agent, load_tools
-from typing import Any
-from langchain.schema import (
-    HumanMessage,
-    SystemMessage,
-)
-from langchain.output_parsers.openai_functions import OutputFunctionsParser
+import sys
 from pathlib import Path
+from typing import Any, Callable, List
 
-
+import pandas as pd
+import pudb
+import typer
+from icecream import ic
+from langchain.agents import AgentType, initialize_agent, load_tools
+from langchain.chat_loaders.imessage import IMessageChatLoader
+from langchain.chat_models import ChatOpenAI
+from langchain.llms import OpenAI
+from langchain.output_parsers.openai_functions import (
+    JsonKeyOutputFunctionsParser,
+    OutputFunctionsParser,
+)
+from langchain.prompts import ChatPromptTemplate
 from langchain.schema import (
     Generation,
+    HumanMessage,
     OutputParserException,
+    SystemMessage,
 )
+from loguru import logger
+from pydantic import BaseModel
+from rich import print
+from rich.console import Console
+from typing_extensions import Annotated
+
 import openai_wrapper
-import pandas as pd
 
 console = Console()
 app = typer.Typer()
@@ -123,18 +121,6 @@ Price goes down because:
 - Point 3
 """
     )
-
-
-@app.command()
-def latest_xkcd():
-    from langchain.chains.openai_functions.openapi import get_openapi_chain
-
-    chain = get_openapi_chain(
-        "https://gist.githubusercontent.com/roaldnefs/053e505b2b7a807290908fe9aa3e1f00/raw/0a212622ebfef501163f91e23803552411ed00e4/openapi.yaml",
-        verbose=True,
-    )
-    response = chain.invoke("What is today's comic ")
-    ic(response)
 
 
 class DialogueAgent:

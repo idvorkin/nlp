@@ -1,26 +1,26 @@
 #!python3
 
 import os
-
-from icecream import ic
-import typer
+import re
+import signal
 import sys
+import time
+
+import rich
+import typer
+from icecream import ic
 from rich import print as rich_print
 from rich.console import Console
-import rich
-import re
-import time
-from openai_wrapper import (
-    choose_model,
-    get_remaining_output_tokens,
-    setup_gpt,
-    ask_gpt,
-    get_model_type,
-    num_tokens_from_string,
-)
 from typing_extensions import Annotated
 
-import signal
+from openai_wrapper import (
+    ask_gpt,
+    choose_model,
+    get_model_type,
+    get_remaining_output_tokens,
+    num_tokens_from_string,
+    setup_gpt,
+)
 
 console = Console()
 

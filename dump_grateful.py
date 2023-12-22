@@ -1,10 +1,11 @@
 #!python3
-from collections import defaultdict
-import re
 import glob
 import os
-import typer
+import re
+from collections import defaultdict
 from datetime import datetime, timedelta
+
+import typer
 from loguru import logger
 
 app = typer.Typer()

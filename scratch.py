@@ -1,15 +1,14 @@
 #!python3
 
+import glob
+import os
+import pickle
+from typing import Dict, List
+
 from icecream import ic
 
-import os
-from typing import List, Dict
-import glob
-import pickle
-
-
-from life import GetPychiatristReport
 import life
+from life import GetPychiatristReport
 
 tmp = os.path.expanduser("~/tmp")
 
@@ -39,7 +38,6 @@ reports = load_all_reports()
 print(len(reports))
 
 import pandas as pd  # noqa: E402, performance
-
 
 # df = pd.DataFrame([to_people_sentiment_dict(r) for r in reports]).set_index("date")
 # df["tori"].value_counts()

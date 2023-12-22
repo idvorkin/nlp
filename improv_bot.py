@@ -1,15 +1,10 @@
 #!python3
 
-import ast
 import asyncio
 import datetime
 import json
 import os
 import random
-import re
-import signal
-import sys
-import time
 from io import BytesIO
 from typing import List
 
@@ -17,29 +12,19 @@ import aiohttp
 import discord
 import openai
 import psutil
-import rich
-import tiktoken
 import typer
 from asyncer import asyncify
 from discord.ext import commands
-from discord.ui import Button, Modal, View
+from discord.ui import View
 from icecream import ic
 
 # import OpenAI exceptiions
 from openai.error import InvalidRequestError
 from pydantic import BaseModel
-from rich import print as rich_print
 from rich.console import Console
 from rich.text import Text
-from typeguard import typechecked
 
-from openai_wrapper import (
-    ask_gpt,
-    ask_gpt_n,
-    choose_model,
-    num_tokens_from_string,
-    setup_gpt,
-)
+from openai_wrapper import ask_gpt, ask_gpt_n, setup_gpt
 
 console = Console()
 
