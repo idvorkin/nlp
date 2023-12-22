@@ -27,6 +27,7 @@ from langchain.schema import (
     SystemMessage,
 )
 from langchain.output_parsers.openai_functions import OutputFunctionsParser
+from pathlib import Path
 
 
 from langchain.schema import (
@@ -34,6 +35,7 @@ from langchain.schema import (
     OutputParserException,
 )
 import openai_wrapper
+import pandas as pd
 
 console = Console()
 app = typer.Typer()
@@ -415,11 +417,76 @@ def scratch():
     ammon_from_me = df[(df.to_phone.str.contains("7091")) & (df.is_from_me)]
     ic(ammon_from_me)
 
-    tori_from_me = df[(df.to_phone.str.contains("8909755")) & (df.is_from_me)]
+    tori_from_me = df[(df.to_phone.str.contains("755")) & (df.is_from_me)]
     ic(tori_from_me)
 
     # df.to_csv("messages.csv", index=False)
     ic(df[df.is_from_me])
+
+
+@app.command()
+def fine_tune():
+    df = im2df()
+    df_ammon = df[(df.to_phone.str.contains("7091"))]
+    create_fine_tune(df_ammon)
+
+
+# date	text	is_from_me	to_phone
+
+
+def make_message(role, content):
+    return {"role": role, "content": content}
+
+
+def write_jsonl(data_list: list, filename: Path) -> None:
+    with open(filename, "w") as out:
+        for ddict in data_list:
+            messages = {"messages": ddict}
+            jout = json.dumps(messages) + "\n"
+            out.write(jout)
+
+
+def create_fine_tune(df):
+    ft_path = Path.home() / "tmp/fine_tune"
+    system_prompt = "You are an imessage best friend converation simulator."
+    system_message = make_message("system", system_prompt)
+
+    # messages
+
+    # messages =  [{role:, content}]
+
+    # create a finetune file for every day
+
+    traindata_set = []
+    df["date_window"] = df.date.dt.strftime("%Y-%V")
+
+    def to_message(row):
+        role = "user" if row.is_from_me else "assistant"
+        return make_message(role, row["text"])
+
+    df["message"] = df.apply(to_message, axis=1)
+
+    for date_window in df.date_window.unique():
+        df_day = df[df.date_window == date_window]
+        df_from_assistent = df_day[df_day.is_from_me == False]  # noqa - need this syntax for Pandas
+        if df_from_assistent.empty:
+            continue
+
+        train_data = [system_message] + df_from_assistent.message.tolist()
+        # count tokens
+        if (
+            tokens := openai_wrapper.num_tokens_from_string(json.dumps(train_data))
+            > 15000
+        ):
+            ic(date_window, tokens)
+            continue
+        traindata_set.append(train_data)
+
+    ratio = 20
+    training = [t for i, t in enumerate(traindata_set) if i % ratio != 0]
+    validation = [t for i, t in enumerate(traindata_set) if i % ratio == 0]
+    write_jsonl(training, ft_path / "train.jsonl")
+    write_jsonl(validation, ft_path / "validate.jsonl")
 
 
 def im2df():
@@ -444,7 +511,6 @@ def im2df():
                 "to_phone": m.role,
             }
             output.append(row)
-    import pandas as pd
 
     ic(len(output))
 
