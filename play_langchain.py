@@ -6,7 +6,7 @@ import os
 import pickle
 import sys
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
 import backoff
 import numpy as np
@@ -22,51 +22,16 @@ from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 from langchain.output_parsers.openai_functions import (
     JsonKeyOutputFunctionsParser,
-    OutputFunctionsParser,
 )
 from langchain.prompts import ChatPromptTemplate
-from langchain.schema import Generation, OutputParserException, SystemMessage
+from langchain.schema import SystemMessage
 from loguru import logger
 from pydantic import BaseModel
 from rich import print
 from rich.console import Console
-from typing_extensions import Annotated
 
 console = Console()
 app = typer.Typer()
-
-
-class JsonOutputFunctionsParser2(OutputFunctionsParser):
-    """Parse an output as the Json object."""
-
-    def parse_result(self, result: List[Generation]) -> Any:
-        function_call_info = super().parse_result(result)
-        if self.args_only:
-            try:
-                # Waiting for this to merge upstream
-                return json.loads(function_call_info, strict=False)
-            except (json.JSONDecodeError, TypeError) as exc:
-                raise OutputParserException(
-                    f"Could not parse function call data: {exc}"
-                )
-        function_call_info["arguments"] = json.loads(function_call_info["arguments"])
-        return function_call_info
-
-
-# Todo consider converting to a class
-class SimpleNamespace:
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-
-
-# Shared command line arguments
-# https://jacobian.org/til/common-arguments-with-typer/
-@app.callback()
-def load_options(
-    ctx: typer.Context,
-    attach: Annotated[bool, typer.Option(help="Attach to existing process")] = False,
-):
-    ctx.obj = SimpleNamespace(attach=attach)
 
 
 def process_shared_app_options(ctx: typer.Context):
