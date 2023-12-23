@@ -86,9 +86,10 @@ def create_fine_tune(df):
     # So probably need some RAG to help with this.
     df = df[df.date.dt.year > 2020]
 
-    run_name = "2020_up_3d"
-    df["group"] = 1e3 * df.date.dt.year + np.floor(df.date.dt.day_of_year / 3)
-    # df["group"] = df.date.dt.strftime("%Y-%m-%d")
+    run_name = "2020_up_1d"
+    df["group"] = 1e3 * df.date.dt.year + np.floor(df.date.dt.day_of_year / 1)
+    # invert is_from_me if you want to train for Igor.
+    # df.is_from_me = ~df.is_from_me
 
     # images are uffc - remove those
     # make ''' ascii to be more pleasant to look at
@@ -107,8 +108,9 @@ def create_fine_tune(df):
     ic(len(df.group.unique()))
     for group in df.group.unique():
         df_group = df[df.group == group]
-        df_from_assistent = df_group[df_group.is_from_me == False]  # noqa - need this syntax for Pandas
-        if df_from_assistent.empty:
+
+        # Not an interesting group if all from the same person
+        if len(df_group.is_from_me.unique()) == 1:
             continue
 
         train_data = [system_message] + df_group.message.tolist()
