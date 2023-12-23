@@ -20,6 +20,7 @@ from langchain.schema import SystemMessage
 from loguru import logger
 from rich import print
 from rich.console import Console
+from typing import Annotated
 
 console = Console()
 app = typer.Typer()
@@ -86,10 +87,10 @@ def create_fine_tune(df):
     # So probably need some RAG to help with this.
     df = df[df.date.dt.year > 2020]
 
-    run_name = "2020_up_1d"
+    run_name = "igor_2020_up_1d"
     df["group"] = 1e3 * df.date.dt.year + np.floor(df.date.dt.day_of_year / 1)
     # invert is_from_me if you want to train for Igor.
-    # df.is_from_me = ~df.is_from_me
+    df.is_from_me = ~df.is_from_me
 
     # images are uffc - remove those
     # make ''' ascii to be more pleasant to look at
@@ -171,20 +172,31 @@ def im2df():
     return df
 
 
+models = {
+    "2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YkPgWs2",
+    "2015+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YgPRpMB",
+    "2021+3d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Yz10hf9",
+    "2021+2d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Yys2osB",
+}
+models_list = "\n".join(models.keys())
+
+
 @app.command()
-def bestie():
+def convo(
+    model_name: Annotated[
+        str, typer.Option(help=f"Model any of: {models_list}")
+    ] = "2021+3d",
+):
     from langchain.memory import ChatMessageHistory
 
     system_prompt_base = "You are an imessage best friend converation simulator."
-    custom_instructions = "When you answer use atleast 6 words, or ask a question"
+    custom_instructions = """
+        * When you answer use atleast 6 words, or ask a question
+        * Keep the conversation going if I anwer with the letter x
+        """
     system_prompt = f"{system_prompt_base}\n {custom_instructions}"
     memory = ChatMessageHistory()
     memory.add_message(SystemMessage(content=system_prompt))
-    models = {
-        "2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YkPgWs2",
-        "2015+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YgPRpMB",
-    }
-    model_name = "2021+1d"
     model = ChatOpenAI(model=models[model_name])
     ic(model_name)
     ic(custom_instructions)
