@@ -6,8 +6,12 @@ import os
 import pickle
 import sys
 from pathlib import Path
-from typing import Any, Callable, List
+from typing import Any, List
 
+import backoff
+import numpy as np
+import openai
+import openai_wrapper
 import pandas as pd
 import pudb
 import typer
@@ -21,21 +25,12 @@ from langchain.output_parsers.openai_functions import (
     OutputFunctionsParser,
 )
 from langchain.prompts import ChatPromptTemplate
-from langchain.schema import (
-    Generation,
-    HumanMessage,
-    OutputParserException,
-    SystemMessage,
-)
+from langchain.schema import Generation, OutputParserException, SystemMessage
 from loguru import logger
 from pydantic import BaseModel
 from rich import print
 from rich.console import Console
 from typing_extensions import Annotated
-
-import openai
-import openai_wrapper
-import backoff
 
 console = Console()
 app = typer.Typer()
@@ -123,224 +118,6 @@ Price goes down because:
 - Point 3
 """
     )
-
-
-class DialogueAgent:
-    def __init__(
-        self,
-        name: str,
-        system_message: SystemMessage,
-        model: ChatOpenAI,
-    ) -> None:
-        self.name = name
-        self.system_message = system_message
-        self.model = model
-        self.prefix = f"{self.name}: "
-        self.reset()
-
-    def reset(self):
-        self.message_history = ["Here is the conversation so far."]
-
-    def send(self) -> str:
-        """
-        Applies the chatmodel to the message history
-        and returns the message string
-        """
-        # NOTE: Not sure why doing it merged?
-        # I guess this saves tokens (??)
-        message = self.model(
-            [
-                self.system_message,
-                HumanMessage(content="\n".join(self.message_history + [self.prefix])),
-            ]
-        )
-        return message.content
-
-    def receive(self, name: str, message: str) -> None:
-        """
-        Concatenates {message} spoken by {name} into message history
-        """
-        self.message_history.append(f"{name}: {message}")
-
-
-class DialogueSimulator:
-    def __init__(
-        self,
-        agents: List[DialogueAgent],
-        selection_function: Callable[[int, List[DialogueAgent]], int],
-    ) -> None:
-        self.agents = agents
-        self._step = 0
-        self.select_next_speaker = selection_function
-
-    def reset(self):
-        for agent in self.agents:
-            agent.reset()
-
-    def inject(self, name: str, message: str):
-        """
-        Initiates the conversation with a {message} from {name}
-        """
-        for agent in self.agents:
-            agent.receive(name, message)
-
-        # increment time
-        self._step += 1
-
-    def step(self) -> tuple[str, str]:
-        # 1. choose the next speaker
-        speaker_idx = self.select_next_speaker(self._step, self.agents)
-        speaker = self.agents[speaker_idx]
-
-        # 2. next speaker sends message
-        message = speaker.send()
-
-        # 3. everyone receives message
-        for receiver in self.agents:
-            receiver.receive(speaker.name, message)
-
-        # 4. increment time
-        self._step += 1
-
-        return speaker.name, message
-
-
-@app.command()
-def dnd(protagonist_name="Donald Trump", quest="Find all the social security spending"):
-    storyteller_name = "Dungeon Master"
-    ic(quest)
-    ic(protagonist_name)
-
-    word_limit = 50  # word limit for task brainstorming
-
-    game_description = f"""Here is the topic for a Dungeons & Dragons game: {quest}.
-    There is one player in this game: the protagonist, {protagonist_name}.
-    The story is narrated by the storyteller, {storyteller_name}."""
-
-    def make_player_description(role: str, name: str):
-        player_descriptor_system_message = SystemMessage(
-            content="You can add detail to the description of a Dungeons & Dragons player."
-        )
-
-        make_player_description_prompt = [
-            player_descriptor_system_message,
-            HumanMessage(
-                content=f"""{game_description}
-                Please reply with a creative description of the {role}, {name}, in {word_limit} words or less.
-                Speak directly to {name}.
-                Do not add anything else."""
-            ),
-        ]
-
-        return ChatOpenAI(temperature=1.0)(make_player_description_prompt).content
-
-    protagonist_description = make_player_description("protagonist", protagonist_name)
-    storyteller_description = make_player_description("story teller", storyteller_name)
-
-    ic(protagonist_description)
-    ic(storyteller_description)
-
-    # TODO, I should be able to remove duplication between system messages
-    # Notice how I'm instructing the stop message to speak to the next agent.
-    # That's an example of moving content from the AI to the Code
-    # Anything that you want to be simple/deterministic keep as much as possible in the code
-    # So intead of having end w/it's your turn next. Put tha tin the dialgo simulator
-
-    protagonist_system_message = SystemMessage(
-        content=(
-            f"""{game_description}
-                Never forget you are the protagonist, {protagonist_name}, and I am the storyteller, {storyteller_name}.
-                Your character description is as follows: {protagonist_description}.
-                You will propose actions you plan to take and I will explain what happens when you take those actions.
-                Speak in the first person from the perspective of {protagonist_name}.
-                For describing your own body movements, wrap your description in '*'.
-                Do not change roles!
-                Do not speak from the perspective of {storyteller_name}.
-                Do not forget to finish speaking by saying, 'It is your turn, {storyteller_name}.'
-                Do not add anything else.
-                Remember you are the protagonist, {protagonist_name}.
-                Stop speaking the moment you finish speaking from your perspective.
-                """
-        )
-    )
-
-    storyteller_system_message = SystemMessage(
-        content=(
-            f"""{game_description}
-            Never forget you are the storyteller, {storyteller_name}, and I am the protagonist, {protagonist_name}.
-            Your character description is as follows: {storyteller_description}.
-            I will propose actions I plan to take and you will explain what happens when I take those actions.
-            Speak in the first person from the perspective of {storyteller_name}.
-            For describing your own body movements, wrap your description in '*'.
-            Do not change roles!
-            Do not speak from the perspective of {protagonist_name}.
-            Do not forget to finish speaking by saying, 'It is your turn, {protagonist_name}.'
-            Do not add anything else.
-            Remember you are the storyteller, {storyteller_name}.
-            Stop speaking the moment you finish speaking from your perspective.
-            """
-        )
-    )
-
-    make_detailed_quest_prompt = [
-        SystemMessage(content="You can make a task more specific."),
-        HumanMessage(
-            content=f"""{game_description}
-
-            You are the storyteller, {storyteller_name}.
-            Please make the quest more specific. Be creative and imaginative.
-            Please reply with the specified quest in {word_limit} words or less.
-            Speak directly to the protagonist {protagonist_name}.
-            Do not add anything else."""
-        ),
-    ]
-    specified_quest = ChatOpenAI(temperature=1.0)(make_detailed_quest_prompt).content
-    ic(f"Original quest:\n{quest}\n")
-    ic(f"Detailed quest:\n{specified_quest}\n")
-
-    protagonist = DialogueAgent(
-        name=protagonist_name,
-        system_message=protagonist_system_message,
-        model=ChatOpenAI(temperature=0.2),
-    )
-
-    storyteller = DialogueAgent(
-        name=storyteller_name,
-        system_message=storyteller_system_message,
-        model=ChatOpenAI(temperature=0.2),
-    )
-
-    def select_next_speaker(step: int, agents: List[DialogueAgent]) -> int:
-        idx = step % len(agents)
-        return idx
-
-    max_iters = 6
-    n = 0
-
-    name_cache = []
-
-    def colorize_name(name):
-        colors = ["red", "yellow", "blue", "yellow", "magenta", "cyan"]
-        if name not in name_cache:
-            name_cache.append(name)
-        # get index of name in name_cache
-        name_idx = name_cache.index(name)
-        color = colors[name_idx % len(colors)]
-        return f"[{color}]{name}[/{color}]"
-
-    simulator = DialogueSimulator(
-        agents=[storyteller, protagonist], selection_function=select_next_speaker
-    )
-    simulator.reset()
-    simulator.inject(storyteller_name, specified_quest)
-    print(f"{colorize_name(storyteller_name)}: {specified_quest}")
-    print("\n")
-
-    while n < max_iters:
-        name, message = simulator.step()
-        print(f"{colorize_name(name)}: {message}")
-        print("\n")
-        n += 1
 
 
 def load_cached_prompt(prompt_name):
@@ -443,10 +220,13 @@ def create_fine_tune(df):
 
     # messages =  [{role:, content}]
 
-    # create a finetune file for every day
+    # I think model is getting confused as too much knowledge about us, and what's been happenign has evolved.
+    # So probably need some RAG to help with this.
+    df = df[df.date.dt.year > 2020]
 
-    df["date_window"] = df.date.dt.strftime("%Y-%V")
-    # df["date_window"] = df.date.dt.strftime("%Y-%m-%d")
+    run_name = "2020_up_4d"
+    df["group"] = 1e3 * df.date.dt.year + np.floor(df.date.dt.day_of_year / 4)
+    # df["group"] = df.date.dt.strftime("%Y-%m-%d")
 
     # images are uffc - remove those
     # make ''' ascii to be more pleasant to look at
@@ -462,30 +242,30 @@ def create_fine_tune(df):
     df["message"] = df.apply(to_message, axis=1)
 
     traindata_set = []
-    for date_window in df.date_window.unique():
-        df_day = df[df.date_window == date_window]
-        df_from_assistent = df_day[df_day.is_from_me == False]  # noqa - need this syntax for Pandas
+    ic(len(df.group.unique()))
+    for group in df.group.unique():
+        df_group = df[df.group == group]
+        df_from_assistent = df_group[df_group.is_from_me == False]  # noqa - need this syntax for Pandas
         if df_from_assistent.empty:
             continue
 
-        train_data = [system_message] + df_day.message.tolist()
+        train_data = [system_message] + df_group.message.tolist()
         # count tokens
         if (
             tokens := openai_wrapper.num_tokens_from_string(json.dumps(train_data))
-            > 15000
-        ):
-            ic(date_window, tokens)
+        ) > 15000:
+            ic(group, tokens)
             continue
         traindata_set.append(train_data)
 
     ratio = 20
     training = [t for i, t in enumerate(traindata_set) if i % ratio != 0]
     validation = [t for i, t in enumerate(traindata_set) if i % ratio == 0]
-    write_jsonl(training, ft_path / "train.jsonl")
-    write_jsonl(validation, ft_path / "validate.jsonl")
+    write_jsonl(training, ft_path / f"train.{run_name}.jsonl")
+    write_jsonl(validation, ft_path / f"validate.{run_name}.jsonl")
 
     ic(len(training))
-    for i, t in enumerate(training[:1000]):
+    for i, t in enumerate(training[:100]):
         output = moderate(json.dumps(t))
         if output.flagged:
             ic(i, output)
@@ -558,14 +338,25 @@ def debug():
 def bestie():
     from langchain.memory import ChatMessageHistory
 
+    system_prompt_base = "You are an imessage best friend converation simulator."
+    custom_instructions = "When you answer use atleast 6 words, or ask a question"
+    system_prompt = f"{system_prompt_base}\n {custom_instructions}"
     memory = ChatMessageHistory()
-    memory.add_message(
-        SystemMessage(content="You are an imessage best friend converation simulator.")
-    )
-    model = ChatOpenAI(model="ft:gpt-3.5-turbo-1106:idvorkinteam::8YgPRpMB")
+    memory.add_message(SystemMessage(content=system_prompt))
+    models = {
+        "2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YkPgWs2",
+        "2015+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YgPRpMB",
+    }
+    model_name = "2021+1d"
+    model = ChatOpenAI(model=models[model_name])
+    ic(model_name)
+    ic(custom_instructions)
 
     while True:
         user_input = input(">")
+        if user_input == "debug":
+            ic(model_name)
+            ic(custom_instructions)
         memory.add_user_message(message=user_input)
         prompt = ChatPromptTemplate.from_messages(memory.messages)
         chain = prompt | model
