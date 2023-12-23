@@ -53,13 +53,10 @@ def scratch():
 
 
 @app.command()
-def fine_tune():
+def fine_tune(number: str = "2255233"):
     df = im2df()
-    df_ammon = df[(df.to_phone.str.contains("7091"))]
-    create_fine_tune(df_ammon)
-
-
-# date	text	is_from_me	to_phone
+    df_convo = df[(df.to_phone.str.contains(number))]
+    create_fine_tune(df_convo)
 
 
 def make_message(role, content):
@@ -85,12 +82,11 @@ def create_fine_tune(df):
 
     # I think model is getting confused as too much knowledge about us, and what's been happenign has evolved.
     # So probably need some RAG to help with this.
-    df = df[df.date.dt.year > 2020]
-
-    run_name = "igor_2020_up_1d"
-    df["group"] = 1e3 * df.date.dt.year + np.floor(df.date.dt.day_of_year / 1)
+    # df = df[df.date.dt.year > 2020]
+    run_name = "ray_2d"
+    df["group"] = 1e3 * df.date.dt.year + np.floor(df.date.dt.day_of_year / 2)
     # invert is_from_me if you want to train for Igor.
-    df.is_from_me = ~df.is_from_me
+    # df.is_from_me = ~df.is_from_me
 
     # images are uffc - remove those
     # make ''' ascii to be more pleasant to look at
@@ -130,10 +126,17 @@ def create_fine_tune(df):
     write_jsonl(validation, ft_path / f"validate.{run_name}.jsonl")
 
     ic(len(training))
-    for i, t in enumerate(training[:100]):
+    flagged = 0
+    for i, t in enumerate(training):
         output = moderate(json.dumps(t))
+        if i % 100 == 0:
+            ic(t)
+            ic(i, flagged)
         if output.flagged:
             ic(i, output)
+            flagged += 1
+
+    ic(flagged)
 
 
 @backoff.on_exception(backoff.expo, openai.RateLimitError)
@@ -173,7 +176,9 @@ def im2df():
 
 
 models = {
+    "r+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Z4f8RhL",
     "2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YkPgWs2",
+    "i-2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Z3GDyd0",
     "2015+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YgPRpMB",
     "2021+3d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Yz10hf9",
     "2021+2d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Yys2osB",
@@ -185,7 +190,7 @@ models_list = "\n".join(models.keys())
 def convo(
     model_name: Annotated[
         str, typer.Option(help=f"Model any of: {models_list}")
-    ] = "2021+3d",
+    ] = "i-2021+1d",
 ):
     from langchain.memory import ChatMessageHistory
 
@@ -213,6 +218,52 @@ def convo(
         ai_output = str(result.content)
         memory.add_ai_message(ai_output)
         print(f"[yellow]{ai_output}")
+
+
+@app.command()
+def a_i_convo(
+    start: str = "Just woke up, bored",
+    model_name: Annotated[
+        str, typer.Option(help=f"Model any of: {models_list}")
+    ] = "i-2021+1d",
+):
+    from langchain.memory import ChatMessageHistory
+
+    system_prompt_base = "You are an imessage best friend converation simulator."
+    custom_instructions = """
+        * When you answer use atleast 6 words, or ask a question
+        * Keep the conversation going if I anwer with the letter x
+        """
+    system_prompt = f"{system_prompt_base}\n {custom_instructions}"
+
+    bestie_memory = ChatMessageHistory()
+    bestie_memory.add_message(SystemMessage(content=system_prompt))
+    bestie_model = ChatOpenAI(model=models[model_name])
+
+    igor_memory = ChatMessageHistory()
+    igor_memory.add_message(SystemMessage(content=system_prompt))
+    igor_memory.add_ai_message(start)
+    igor_model = ChatOpenAI(model=models["i-2021+1d"])
+
+    ic(model_name)
+    ic(custom_instructions)
+
+    for i in range(5):
+        user_input = str(igor_memory.messages[-1].content)
+        print(f"[green] {i}:{user_input}")
+        bestie_memory.add_user_message(message=user_input)
+
+        prompt = ChatPromptTemplate.from_messages(bestie_memory.messages)
+        bestie_output = str((prompt | bestie_model).invoke({}).content)
+
+        print(f"[yellow]{i}:{bestie_output}")
+        bestie_memory.add_ai_message(bestie_output)
+        igor_memory.add_user_message(bestie_output)
+
+        # add something from igor model
+        prompt = ChatPromptTemplate.from_messages(igor_memory.messages)
+        igor_output = str((prompt | igor_model).invoke({}).content)
+        igor_memory.add_ai_message(igor_output)
 
 
 @app.command()
