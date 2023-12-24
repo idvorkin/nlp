@@ -225,7 +225,7 @@ def a_i_convo(
     start: str = "Just woke up, bored",
     model_name: Annotated[
         str, typer.Option(help=f"Model any of: {models_list}")
-    ] = "i-2021+1d",
+    ] = "2021+3d",
 ):
     from langchain.memory import ChatMessageHistory
 
@@ -250,7 +250,7 @@ def a_i_convo(
 
     for i in range(5):
         user_input = str(igor_memory.messages[-1].content)
-        print(f"[green] {i}:{user_input}")
+        print(f"[green]{i}:{user_input}")
         bestie_memory.add_user_message(message=user_input)
 
         prompt = ChatPromptTemplate.from_messages(bestie_memory.messages)
