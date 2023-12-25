@@ -300,8 +300,9 @@ def journal_report(
         datetime.now().date(), help="Pass a date or int for days ago"
     ),
     launch_fx: Annotated[bool, typer.Option()] = True,
+    days: int = 1,
 ):
-    asyncio.run(async_journal_report(u4, journal_for, launch_fx))
+    asyncio.run(async_journal_report(u4, journal_for, launch_fx, days))
 
 
 def spark_df(df):
@@ -415,10 +416,10 @@ async def async_journal_for_year(u4):
             ic(entry_date, e)
 
 
-async def async_journal_report(u4, journal_for, launch_fx):
+async def async_journal_report(u4, journal_for, launch_fx, days):
     # Get my closest journal for the day:
     completed_process = subprocess.run(
-        f"python3 ~/gits/nlp/igor_journal.py body {journal_for} --close",
+        f"python3 ~/gits/nlp/igor_journal.py body {journal_for} --close --days={days}",
         shell=True,
         check=True,
         text=True,
