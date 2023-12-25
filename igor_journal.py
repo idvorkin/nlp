@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Dict, Iterable, List
+from icecream import ic
 
 import typer
 from rich.console import Console
@@ -158,7 +159,10 @@ class S50Export:
                 continue
             is_date_line = line.startswith("Date:")
             if is_date_line:
-                entry_date = date.fromisoformat(line.split(":")[1].strip())
+                iso_date_pattern = r"\d{4}-\d{2}-\d{2}"
+                match = re.search(iso_date_pattern, line)
+                if match:
+                    entry_date = date.fromisoformat(match.group())
                 continue
 
             # meta data lines
@@ -277,9 +281,12 @@ class JournalEntry:
             if is_blank_line:
                 continue
 
-            is_date_line = line.startswith("750 words for:20")
+            is_date_line = line.startswith("750 words for:")
             if is_date_line:
-                self.date = date.fromisoformat(line.split(":")[1])
+                iso_date_pattern = r"\d{4}-\d{2}-\d{2}"
+                match = re.search(iso_date_pattern, line)
+                if match:
+                    self.date = date.fromisoformat(match.group())
                 continue
 
             is_section_line = line.startswith("##")
@@ -383,25 +390,9 @@ def todo(
         ),
     ] = False,
 ):
-    # Make first parameter
-    # If is a date == parse it
-    # If an int, take that.
-    date_journal_for = datetime.now().date()
-    entry = None
-    if journal_for.isdigit():
-        days_ago = int(journal_for)
-        date_journal_for = datetime.now().date() - timedelta(days=days_ago)
-    else:
-        date_journal_for = date.fromisoformat(journal_for)
+    date_journal_for = cli_date_to_entry_date(journal_for, close)
+    entry = JournalEntry(date_journal_for)
 
-    if close:
-        for i in range(1000):
-            entry = JournalEntry(date_journal_for - timedelta(days=i))
-            if entry.is_valid():
-                break
-
-    if not entry:
-        entry = JournalEntry(date_journal_for)
     if not entry.is_valid():
         raise Exception(f"No Entry for {journal_for} ")
 
@@ -416,11 +407,30 @@ def todo(
     return
 
 
+def cli_date_to_entry_date(journal_for, close) -> date:
+    date_journal_for = datetime.now().date()
+    if journal_for.isdigit():
+        days_ago = int(journal_for)
+        date_journal_for = datetime.now().date() - timedelta(days=days_ago)
+    else:
+        date_journal_for = date.fromisoformat(journal_for)
+
+    if close:
+        for i in range(1000):
+            candidate = date_journal_for - timedelta(days=i)
+            ic(candidate)
+            entry = JournalEntry(candidate)
+            if entry.is_valid():
+                return candidate
+
+    return date_journal_for
+
+
 @app.command()
 def body(
     journal_for: Annotated[
         str, typer.Argument(help="Pass a date or int for days ago")
-    ] = datetime.now().date(),
+    ] = str(datetime.now().date()),
     close: Annotated[
         bool,
         typer.Option(
@@ -431,25 +441,8 @@ def body(
         bool, typer.Option(help="Always include the date header")
     ] = False,
 ):
-    # Make first parameter
-    # If is a date == parse it
-    # If an int, take that.
-    entry = None
-    date_journal_for = datetime.now().date()
-    if journal_for.isdigit():
-        days_ago = int(journal_for)
-        date_journal_for = datetime.now().date() - timedelta(days=days_ago)
-    else:
-        date_journal_for = date.fromisoformat(journal_for)
-
-    if close:
-        for i in range(1000):
-            entry = JournalEntry(date_journal_for - timedelta(days=i))
-            if entry.is_valid():
-                break
-
-    if not entry:
-        entry = JournalEntry(date_journal_for)
+    date_journal_for = cli_date_to_entry_date(journal_for, close)
+    entry = JournalEntry(date_journal_for)
 
     if not entry.is_valid():
         raise FileNotFoundError(f"No Entry for {date_journal_for} ")
