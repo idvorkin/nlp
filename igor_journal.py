@@ -200,7 +200,7 @@ class JournalEntry:
     def init_from_date(self, for_date: date):
         errors = []
 
-        base_path = Path("~/gits/igor2").expanduser()
+        base_path = Path.home() / "gits/igor2"
 
         # check in new archive
         path = base_path / f"750words_new_archive/{for_date}.md"
@@ -252,9 +252,10 @@ class JournalEntry:
 
     def from_750words_export(self, for_date: date):
         # find year and month file - if not exists, exit
-        path = Path(
-            f"~/gits/igor2/750words_archive/750 Words-export-{for_date.year}-{for_date.month:02d}-01.txt"
-        ).expanduser()
+        path = (
+            Path.home()
+            / f"gits/igor2/750words_archive/750 Words-export-{for_date.year}-{for_date.month:02d}-01.txt"
+        )
         if path.exists:
             archive = S50Export(path)
             if for_date in archive.entries:
@@ -456,9 +457,11 @@ def body(
 
 def entries_for_month(corpus_for: datetime) -> Iterable[date]:
     # Used to be, entries are stored in these exported files 1 per month
-    old_export_path = Path(
-        f"~/gits/igor2/750words_archive/750 Words-export-{corpus_for.year}-{corpus_for.month:02d}-01.txt"
-    ).expanduser()
+
+    old_export_path = (
+        Path.home()
+        / f"gits/igor2/750words_archive/750 Words-export-{corpus_for.year}-{corpus_for.month:02d}-01.txt"
+    )
 
     if old_export_path.exists():
         archive = S50Export(old_export_path)
@@ -468,11 +471,13 @@ def entries_for_month(corpus_for: datetime) -> Iterable[date]:
 
     # After that, moved to this new archive path, and then the working path
 
-    possible_paths = ["~/gits/igor2/750words_new_archive/", "~/gits/igor2/750words/"]
+    possible_paths = [
+        Path.home() / "gits/igor2" / p for p in ["750words_new_archive/", "750words/"]
+    ]
     for path in possible_paths:
-        corpus_files = glob.glob(
-            os.path.expanduser(f"{path}/{corpus_for.year}-{corpus_for.month:02d}-*")
-        )
+        pattern = path / f"{corpus_for.year}-{corpus_for.month:02d}-*"
+        corpus_files = glob.glob(str(pattern))
+        ic(corpus_files)
         for file_name in sorted(corpus_files):
             yield date.fromisoformat(file_name.split("/")[-1].replace(".md", ""))
 
@@ -534,7 +539,7 @@ def sanity():
 @app.command()
 def files_with_word(word):
     # I need to put this in a DB so it's fast.
-    directory = os.path.expanduser("~/gits/igor2/750words_new_archive")
+    directory = Path.home() / "gits/igor2/750words_new_archive"
     if not os.path.isdir(directory):
         print(f"Error: Directory '{directory}' not found.")
         sys.exit(1)
