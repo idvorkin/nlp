@@ -398,7 +398,7 @@ def todo(
         raise Exception(f"No Entry for {journal_for} ")
 
     if close:
-        console.print(f"[blue]Using Date:{entry.date}")
+        console.print(f"[blue]Using Date:{entry.date}[/blue]")
 
     for todo_line in entry.todo():
         # Safely remove these symbols
@@ -441,6 +441,7 @@ def body(
     date_header: Annotated[
         bool, typer.Option(help="Always include the date header")
     ] = False,
+    days: int = 1,
 ):
     date_journal_for = cli_date_to_entry_date(journal_for, close)
     entry = JournalEntry(date_journal_for)
@@ -449,10 +450,17 @@ def body(
         raise FileNotFoundError(f"No Entry for {date_journal_for} ")
 
     if close or date_header:
-        console.print(f"[blue]Using Date:[/blue] {entry.date}")
+        console.print(f"[blue]Using Date:{entry.date} [/blue]")
 
-    for line in entry.body():
-        print(line)
+    multi_day = days > 0
+    for i in range(days):
+        entry = JournalEntry(date_journal_for - timedelta(days=i))
+        if not entry.is_valid():
+            continue
+        if multi_day:
+            console.print(f"[blue] Journal For {entry.date}")
+        for line in entry.body():
+            print(line)
 
 
 def entries_for_month(corpus_for: datetime) -> Iterable[date]:
@@ -513,7 +521,7 @@ def all():
 
 
 @app.command()
-def all_body():
+def bodies(days: int = 7):
     for x in all_entries():
         print(JournalEntry(x).body())
     # print (len(list(all_entries())))
