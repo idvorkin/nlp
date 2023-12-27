@@ -21,6 +21,8 @@ from loguru import logger
 from rich import print
 from rich.console import Console
 from typing import Annotated
+from pydantic import BaseModel
+
 
 console = Console()
 app = typer.Typer()
@@ -186,6 +188,32 @@ models = {
 models_list = "\n".join(models.keys())
 
 
+class Memory(BaseModel):
+    # long term knowledge
+    # mid term conversations
+    # short term conversations
+    messages: list = []
+    system_messages: list = []
+    facts: list = []
+    facts = []
+
+    def add_user_message(self, content):
+        self.messages.append(("user", content))
+
+    def add_ai_message(self, content):
+        self.messages.append(("assistant", content))
+
+    def add_system_message(self, content):
+        self.system_messages.append(("system", content))
+
+    def add_facts(self, facts):
+        self.system_messages.append(("facts", facts))
+        pass
+
+    def to_messages(self):
+        return self.system_messages + self.messages
+
+
 @app.command()
 def convo(
     model_name: Annotated[
@@ -198,6 +226,7 @@ def convo(
     custom_instructions = """
         * When you answer use atleast 6 words, or ask a question
         * Keep the conversation going if I anwer with the letter x
+        * You are feeling supportive and positive
         """
     system_prompt = f"{system_prompt_base}\n {custom_instructions}"
     memory = ChatMessageHistory()
