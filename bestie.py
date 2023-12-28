@@ -55,7 +55,7 @@ def scratch():
 
 
 @app.command()
-def fine_tune(number: str = "2255233"):
+def finetune(number: str = "7091"):
     df = im2df()
     df_convo = df[(df.to_phone.str.contains(number))]
     create_fine_tune(df_convo)
@@ -85,8 +85,13 @@ def create_fine_tune(df):
     # I think model is getting confused as too much knowledge about us, and what's been happenign has evolved.
     # So probably need some RAG to help with this.
     # df = df[df.date.dt.year > 2020]
-    run_name = "ray_2d"
-    df["group"] = 1e3 * df.date.dt.year + np.floor(df.date.dt.day_of_year / 2)
+    days_to_group = 3
+    df = df[(df.date.dt.year == 2023) & (df.date.dt.month == 10)]
+    run_name = f"ammon_oct_2023_{days_to_group}d"
+
+    df["group"] = 1e3 * df.date.dt.year + np.floor(
+        df.date.dt.day_of_year / days_to_group
+    )
     # invert is_from_me if you want to train for Igor.
     # df.is_from_me = ~df.is_from_me
 
@@ -128,6 +133,8 @@ def create_fine_tune(df):
     write_jsonl(validation, ft_path / f"validate.{run_name}.jsonl")
 
     ic(len(training))
+    ic(openai_wrapper.num_tokens_from_string(json.dumps(training)))
+
     flagged = 0
     for i, t in enumerate(training):
         output = moderate(json.dumps(t))
