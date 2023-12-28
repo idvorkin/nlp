@@ -301,6 +301,7 @@ def a_i_convo(
     model_name: Annotated[
         str, typer.Option(help=f"Model any of: {models_list}")
     ] = "2021+3d",
+    rounds: int = 10,
 ):
     from langchain.memory import ChatMessageHistory
 
@@ -323,7 +324,8 @@ def a_i_convo(
     ic(model_name)
     ic(custom_instructions)
 
-    for i in range(5):
+    print("[pink]First message is Igor supplied, the rest is an AI loop")
+    for i in range(rounds):
         user_input = str(igor_memory.messages[-1].content)
         print(f"[green]{i}:{user_input}")
         bestie_memory.add_user_message(message=user_input)
