@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 from typing import Annotated
 import random
+import time
 # from pydantic import BaseModel
 
 
@@ -51,10 +52,12 @@ def say(
     voice: Annotated[
         str, typer.Option(help=f"Model any of: {list_of_voices}")
     ] = "igor",
+    fast=True,
 ):
+    # record how long it takes
+    start = time.time()
     to_speak = "\n".join(sys.stdin.readlines())
-
-    model = "eleven_multilingual_v2"
+    model = "eleven_turbo_v2" if fast else "eleven_multilingual_v2"
     voice = voices[voice]
     ic(voice, model)
     audio = generate(
@@ -63,8 +66,9 @@ def say(
         model=model,
     )
 
+    print(f"Took {round(time.time() -start,3)} seconds")
     temp_path = Path.home() / "tmp/tts" / f"{random.random()}.mp3"
-    ic(temp_path)
+    print(temp_path)
     temp_path.write_bytes(audio)
 
     play(audio)
