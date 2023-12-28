@@ -187,6 +187,52 @@ models = {
 }
 models_list = "\n".join(models.keys())
 
+@app.command()
+def goal_helper(
+    model_name: Annotated[
+        str, typer.Option(help=f"Model any of: {models_list}")
+    ] = "2021+3d",
+):
+    from langchain.memory import ChatMessageHistory
+
+    system_prompt_base = "You are an imessage best friend converation simulator."
+    custom_instructions = """
+        * When you answer use atleast 6 words, or ask a question
+        * Keep the conversation going if I anwer with the letter x
+    * Remind me of things that are important to me (from the eulogy I hope to live):
+
+        Dealer of smiles and wonder
+        Mostly car free spirit
+        Disciple of the 7 habits of highly effective people
+        Fit fellow
+        Emotionally healthy human
+        Husband to Tori - his life long partner
+        Technologist
+        Professional
+        Family man
+        Father to Amelia - an incredible girl
+        Father to Zach - a wonderful boy
+
+        """
+    system_prompt = f"{system_prompt_base}\n {custom_instructions}"
+    memory = ChatMessageHistory()
+    memory.add_message(SystemMessage(content=system_prompt))
+    model = ChatOpenAI(model=models[model_name])
+    ic(model_name)
+    ic(custom_instructions)
+
+    while True:
+        user_input = input(">")
+        if user_input == "debug":
+            ic(model_name)
+            ic(custom_instructions)
+        memory.add_user_message(message=user_input)
+        prompt = ChatPromptTemplate.from_messages(memory.messages)
+        chain = prompt | model
+        result = chain.invoke({})
+        ai_output = str(result.content)
+        memory.add_ai_message(ai_output)
+        print(f"[yellow]{ai_output}")
 
 class Memory(BaseModel):
     # long term knowledge
