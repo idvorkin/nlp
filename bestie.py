@@ -187,6 +187,7 @@ models = {
 }
 models_list = "\n".join(models.keys())
 
+
 @app.command()
 def goal_helper(
     model_name: Annotated[
@@ -234,6 +235,7 @@ def goal_helper(
         memory.add_ai_message(ai_output)
         print(f"[yellow]{ai_output}")
 
+
 class Memory(BaseModel):
     # long term knowledge
     # mid term conversations
@@ -264,7 +266,7 @@ class Memory(BaseModel):
 def convo(
     model_name: Annotated[
         str, typer.Option(help=f"Model any of: {models_list}")
-    ] = "i-2021+1d",
+    ] = "2021+3d",
 ):
     from langchain.memory import ChatMessageHistory
 
@@ -282,7 +284,7 @@ def convo(
     ic(custom_instructions)
 
     while True:
-        user_input = input(">")
+        user_input = input("Igor:")
         if user_input == "debug":
             ic(model_name)
             ic(custom_instructions)
@@ -292,7 +294,7 @@ def convo(
         result = chain.invoke({})
         ai_output = str(result.content)
         memory.add_ai_message(ai_output)
-        print(f"[yellow]{ai_output}")
+        print(f"[yellow]aGPT:{ai_output}")
 
 
 @app.command()
@@ -327,13 +329,13 @@ def a_i_convo(
     print("[pink]First message is Igor supplied, the rest is an AI loop")
     for i in range(rounds):
         user_input = str(igor_memory.messages[-1].content)
-        print(f"[green]{i}:{user_input}")
+        print(f"[green]iGPT_{i}: {user_input}")
         bestie_memory.add_user_message(message=user_input)
 
         prompt = ChatPromptTemplate.from_messages(bestie_memory.messages)
         bestie_output = str((prompt | bestie_model).invoke({}).content)
 
-        print(f"[yellow]{i}:{bestie_output}")
+        print(f"[yellow]aGPT_{i}: {bestie_output}")
         bestie_memory.add_ai_message(bestie_output)
         igor_memory.add_user_message(bestie_output)
 
