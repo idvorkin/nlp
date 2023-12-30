@@ -65,12 +65,9 @@ def make_message(role, content):
     return {"role": role, "content": content}
 
 
-def write_jsonl(data_list: list, filename: Path) -> None:
-    with open(filename, "w") as out:
-        for ddict in data_list:
-            messages = {"messages": ddict}
-            jout = json.dumps(messages) + "\n"
-            out.write(jout)
+def write_messages_samples_to_jsonl(samples: list, filename: Path) -> None:
+    json_string_samples = [json.dumps({"messages": sample}) for sample in samples]
+    filename.write_text("\n".join(json_string_samples))
 
 
 def create_fine_tune(df):
@@ -85,8 +82,9 @@ def create_fine_tune(df):
     # I think model is getting confused as too much knowledge about us, and what's been happenign has evolved.
     # So probably need some RAG to help with this.
     # df = df[df.date.dt.year > 2020]
-    days_to_group = 3
-    df = df[(df.date.dt.year == 2023) & (df.date.dt.month == 10)]
+    df = df[(df.date.dt.year == 2023)]
+    df = df[(df.date.dt.month == 10)]
+    days_to_group = 7
     run_name = f"ammon_oct_2023_{days_to_group}d"
 
     df["group"] = 1e3 * df.date.dt.year + np.floor(
@@ -129,8 +127,8 @@ def create_fine_tune(df):
     ratio = 20
     training = [t for i, t in enumerate(traindata_set) if i % ratio != 0]
     validation = [t for i, t in enumerate(traindata_set) if i % ratio == 0]
-    write_jsonl(training, ft_path / f"train.{run_name}.jsonl")
-    write_jsonl(validation, ft_path / f"validate.{run_name}.jsonl")
+    write_messages_samples_to_jsonl(training, ft_path / f"train.{run_name}.jsonl")
+    write_messages_samples_to_jsonl(validation, ft_path / f"validate.{run_name}.jsonl")
 
     ic(len(training))
     ic(openai_wrapper.num_tokens_from_string(json.dumps(training)))
@@ -138,7 +136,7 @@ def create_fine_tune(df):
     flagged = 0
     for i, t in enumerate(training):
         output = moderate(json.dumps(t))
-        if i % 100 == 0:
+        if i % 10 == 0:
             ic(t)
             ic(i, flagged)
         if output.flagged:
