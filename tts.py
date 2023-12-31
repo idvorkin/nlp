@@ -68,6 +68,8 @@ def say(
 
     print(f"Took {round(time.time() -start,3)} seconds")
     temp_path = Path.home() / "tmp/tts" / f"{random.random()}.mp3"
+    # make the dir if it doesn't exist
+    temp_path.parent.mkdir(parents=True, exist_ok=True)
     print(temp_path)
     temp_path.write_bytes(audio)
 
