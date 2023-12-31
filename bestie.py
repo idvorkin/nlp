@@ -23,6 +23,16 @@ from rich.console import Console
 from typing import Annotated
 from pydantic import BaseModel
 
+# set the environment variable from the secrets file
+
+
+def setup_secret():
+    secret_file = Path.home() / "gits/igor2/secretBox.json"
+    SECRETS = json.loads(secret_file.read_text())
+    os.environ["OPENAI_API_KEY"] = SECRETS["openai"]
+
+
+setup_secret()
 
 console = Console()
 app = typer.Typer()
@@ -280,6 +290,7 @@ def convo(
         * When you answer use atleast 6 words, or ask a question
         * Keep the conversation going if I anwer with the letter x
         * You are feeling supportive and positive
+        * You should make the conversation satisfying
         """
     system_prompt = f"{system_prompt_base}\n {custom_instructions}"
     memory = ChatMessageHistory()
