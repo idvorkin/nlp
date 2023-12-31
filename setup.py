@@ -10,6 +10,8 @@ setup(
         "dump_grateful",
         "improv",
         "openai_wrapper",
+        "tts",
+        "pbf",
     ],
     install_requires=[],
     entry_points="""
@@ -20,5 +22,7 @@ setup(
             dg=dump_grateful:app
             improv=improv:app
             life=life:app
+            tts=tts:app
+            pbf=pbf:app
         """,
 )
