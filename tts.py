@@ -9,7 +9,7 @@ from elevenlabs import generate, play, set_api_key
 import json
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 import random
 import time
 # from pydantic import BaseModel
@@ -54,6 +54,8 @@ def say(
     ] = "igor",
     fast=True,
     copy: bool = False,
+    outfile: Optional[Path] = None,
+    speak: bool = True,
 ):
     # record how long it takes
     start = time.time()
@@ -68,13 +70,19 @@ def say(
     )
 
     print(f"Took {round(time.time() -start,3)} seconds")
-    temp_path = Path.home() / "tmp/tts" / f"{random.random()}.mp3"
-    # make the dir if it doesn't exist
-    temp_path.parent.mkdir(parents=True, exist_ok=True)
-    print(temp_path)
-    temp_path.write_bytes(audio)
+    if outfile is not None:
+        # write to it
+        outfile.write_bytes(audio)
+        print(outfile)
+    else:
+        temp_path = Path.home() / "tmp/tts" / f"{random.random()}.mp3"
+        # make the dir if it doesn't exist
+        temp_path.parent.mkdir(parents=True, exist_ok=True)
+        print(temp_path)
+        temp_path.write_bytes(audio)
 
-    play(audio)
+    if speak:
+        play(audio)
     if copy:
         import pbf
 
