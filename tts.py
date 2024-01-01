@@ -53,6 +53,7 @@ def say(
         str, typer.Option(help=f"Model any of: {list_of_voices}")
     ] = "igor",
     fast=True,
+    copy: bool = False,
 ):
     # record how long it takes
     start = time.time()
@@ -74,6 +75,10 @@ def say(
     temp_path.write_bytes(audio)
 
     play(audio)
+    if copy:
+        import pbf
+
+        pbf.copy(temp_path)
 
 
 @logger.catch()
