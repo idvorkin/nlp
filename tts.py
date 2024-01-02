@@ -52,7 +52,7 @@ def say(
     voice: Annotated[
         str, typer.Option(help=f"Model any of: {list_of_voices}")
     ] = "igor",
-    fast=True,
+    fast:bool =True,
     copy: bool = False,
     outfile: Optional[Path] = None,
     speak: bool = True,
