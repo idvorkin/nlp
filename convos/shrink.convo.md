@@ -13,11 +13,40 @@ The most important thing to the dr is the pursuit of happiness as defined... Bel
 
 ## Definitons
 
+
+## Reframes
+
+Here are some reframes the AI likes to use:
+
+
+Cognative distortions, are lies we tell ourselves that are lies, and need to be replaced with better evidence. Here are some of mine:
+
+**I just can't do it ..**
+**I can't force myself ..**
+
+The classic, vague answer, when I get this I can't, I need to answer myself with:
+
+- Why can't you you do it?
+- What's a small thing you can do to influence the situation?
+- How can you make one iota of progress?
+
+**I'm not a successful EM**
+
+- I've been an EM for 10 years. I've had several challenging experineces, but I've gotten through most of them. Sometime things get tough,
+- I have an amazing set of resources for being an EM, and being a great EM. In fact, my goal is to be the best EM ever.
+
+**I always get depressed**
+
+- I have been depresed about 4 times, it's been tough, but with medication and support and many of the learnigns I've had, I will get better.
+
+**I am depressed**
+
+I've caught a depression. A better model, that reminds us we're sick, and that it is a temporary condition that applies to us, not is us.
+
+
 ## Pursuit of Happiness
 
 It's not about happiness the emotion, it's about the pursuit of happiness the verb.
-
-The document provides a detailed and philosophical exploration of happiness and its relation to Buddhist principles and psychological well-being. The author argues that happiness, akin to Buddhist Enlightenment, is a highly desired yet ultimately unattainable state that involves the cessation of suffering. Rather than being a static state to achieve, happiness and enlightenment should be viewed as ongoing, lifelong processes.
 
 The text distinguishes happiness from similar states like good mood and pleasure. Mood is transient, an emotional response to the perceived quality of the present moment, while pleasure is a fleeting sensation resulting from the quick release of a pre-existing tension. Happiness, on the other hand, is a more profound and enduring pursuit that requires three key prerequisites:
 
@@ -38,7 +67,6 @@ The most desired, approachable but unattainable, state of mind that stems from t
 ## Hate
 
 A state of mind hallmarked by a repulsion from something and the conviction that, therefore, it must be destroyed.
-
 
 
 ## Freedom
