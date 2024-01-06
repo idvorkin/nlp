@@ -16,8 +16,7 @@ The most important thing to the dr is the pursuit of happiness as defined... Bel
 
 ## Reframes
 
-Here are some reframes the AI likes to use:
-
+Here are some reframes the AI likes to use on the patient:
 
 Cognative distortions, are lies we tell ourselves that are lies, and need to be replaced with better evidence. Here are some of mine:
 
@@ -32,7 +31,10 @@ The classic, vague answer, when I get this I can't, I need to answer myself with
 
 **I'm not a successful EM**
 
-- I've been an EM for 10 years. I've had several challenging experineces, but I've gotten through most of them. Sometime things get tough,
+- I've been an EM for 15 years. I have been a successful EM at 3 of the biggest big tech companies: MSFT, AMZN, and META.
+- I have glowing feedback from people I support
+- I've experienced basically every situation, and I'm getting good at all of them.
+-  I've literally written a book on most of the situations
 - I have an amazing set of resources for being an EM, and being a great EM. In fact, my goal is to be the best EM ever.
 
 **I always get depressed**
