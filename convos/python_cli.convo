@@ -7,5 +7,10 @@ Write a python cli app using:
     * Include the thing on top that makes it executable
     * assume the libraries are already installed, and you can include debugging with pythong
     * Keep Answers concise
+    * Use types when possible
+    * Use pathlib for paths
+    * Define custom types when possible
+
+
 
 
