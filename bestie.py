@@ -195,6 +195,7 @@ def im2df():
 models = {
     "r+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Z4f8RhL",
     "2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YkPgWs2",
+    "2023+7d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8apOoG0u",
     "i-2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Z3GDyd0",
     "2015+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YgPRpMB",
     "2021+3d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Yz10hf9",
