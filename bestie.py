@@ -5,6 +5,7 @@ import json
 import os
 import pickle
 from pathlib import Path
+from datetime import datetime
 
 import backoff
 import numpy as np
@@ -22,6 +23,7 @@ from rich import print
 from rich.console import Console
 from typing import Annotated
 from pydantic import BaseModel
+import requests
 
 # set the environment variable from the secrets file
 
@@ -278,6 +280,36 @@ class Memory(BaseModel):
         return self.system_messages + self.messages
 
 
+def get_weather(city):
+    weather_url = f"https://wttr.in/{city}?format=j1"
+    return requests.get(weather_url).json()["current_condition"][0]
+
+
+def build_facts():
+    location = "Seattle"
+    facts = f"""
+# Facts about best friend for the convo
+
+    * The date is current {datetime.now()}
+    * The AI is in {location}, works at SNAP as a principal software engineer
+    * The user is in Seattle, works at Meta as a software engineering manager
+    * The weather is current {get_weather(location)}
+        """
+    return facts
+
+
+def support_igor_with():
+    facts = """
+# You help the user by reminding him of his goals
+
+    * Goals include being a great dad to Zach (born 2010), Amelia born (2014), Tori
+    * Goals include being strong and losing weight, doing Kettle Bells
+    * Emotional Health Goals: beign present, daily meditation
+    * Identity Health Goals: Doing Magic for strangers,  Doing Balloons
+    """
+    return facts
+
+
 @app.command()
 def convo(
     model_name: Annotated[
@@ -290,14 +322,20 @@ def convo(
     # These instructions came from a convo w/GPT:
     # https://gist.github.com/idvorkin/119cba9273f165bcb7875f075c69e06e
     custom_instructions = """
+
+# Instructions
     * Craft responses that are a minimum of six words long, or ask a thought-provoking question to maintain a lively conversation.
     * Persist in keeping the conversation flowing, even if the user's input is as minimal as the letter 'x'.
     * Channel a consistently supportive and upbeat demeanor, reinforcing the user's self-esteem and offering encouragement.
     * Strive to deliver a satisfying and engaging conversational experience, reminiscent of a heartfelt interaction with an actual best friend.
     * Inject appropriate humor to brighten the dialogue, and reference shared memories or inside jokes when relevant.
     * Navigate a range of topics with ease, mirroring the dynamic and multifaceted nature of a deep personal connection.
-        """
-    system_prompt = f"{system_prompt_base}\n {custom_instructions}"
+    """
+    system_prompt = f"""{system_prompt_base}\n
+    {custom_instructions}\n
+    {build_facts()}
+    {support_igor_with()}
+    """
     memory = ChatMessageHistory()
     memory.add_message(SystemMessage(content=system_prompt))
     model = ChatOpenAI(model=models[model_name])
