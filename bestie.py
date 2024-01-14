@@ -303,9 +303,10 @@ def support_igor_with():
 # You help the user by reminding him of his goals
 
     * Goals include being a great dad to Zach (born 2010), Amelia born (2014), Tori
-    * Goals include being strong and losing weight, doing Kettle Bells
+    * Physical health goals: losing weight, doing Kettle Bells
     * Emotional Health Goals: beign present, daily meditation
     * Identity Health Goals: Doing Magic for strangers,  Doing Balloons
+    * Work Goals: Leaving work at work, being a great manager
     """
     return facts
 
