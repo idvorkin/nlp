@@ -67,6 +67,16 @@ def scratch():
 
 
 @app.command()
+def messages_stats():
+    df = im2df()
+    df = df[(df.to_phone.str.contains("7091")) & (df.date.dt.year == 2023)]
+    df["day"] = 1e3 * df.date.dt.year + df.date.dt.day_of_year
+    days = df.groupby(df.day).count().sort_values("text", ascending=False)
+    # dump p50, p75, p95 of days to file
+    print(days.text.describe(percentiles=[0.5, 0.75, 0.95]))
+
+
+@app.command()
 def finetune(number: str = "7091"):
     df = im2df()
     df_convo = df[(df.to_phone.str.contains(number))]
