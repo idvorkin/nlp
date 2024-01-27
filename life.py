@@ -17,7 +17,7 @@ from typing import Annotated, Dict, List
 import pydantic
 import typer
 from icecream import ic
-from langchain.chat_models import ChatOpenAI
+from langchain_openai.chat_models import ChatOpenAI
 from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
 from langchain.prompts.chat import (
     ChatPromptTemplate,
