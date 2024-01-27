@@ -31,7 +31,7 @@ from rich.markdown import Markdown
 from rich.progress import track
 
 import igor_journal
-from openai_wrapper import num_tokens_from_string, setup_gpt
+from openai_wrapper import num_tokens_from_string, setup_gpt, get_model
 
 console = Console()
 
@@ -115,8 +115,7 @@ E.g.
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
-    model_name = "gpt-4-1106-preview"
-    # model_name = "gpt-3.5-turbo-1106"
+    model_name = get_model(u4=True)
     model = ChatOpenAI(model=model_name)
 
     ic(model_name)
@@ -170,7 +169,7 @@ IF possible, categories should match the following
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
-    model_name = "gpt-4-1106-preview"
+    model_name = get_model(u4=True)
     model = ChatOpenAI(model=model_name)
 
     ic(model_name)
@@ -359,7 +358,7 @@ tmp = os.path.expanduser("~/tmp")
 
 def get_reports():
     path_reports = glob.glob(
-        os.path.expanduser("~/tmp/journal_report/*4-1106-preview.json")
+        os.path.expanduser("~/tmp/journal_report/*4-*-preview.json")
     )
     reports = []
     validation_errors = {}
@@ -404,7 +403,8 @@ def journal_report_path(date: str, model: str):
 async def async_journal_for_year(u4):
     for entry_date in igor_journal.all_entries():
         ic(entry_date)
-        model_name = "gpt-4-1106-preview" if u4 else "gpt-3.5-turbo-1106"
+        model_name = get_model(u4=True)
+
         journal_path = journal_report_path(date=entry_date, model=model_name)
         if os.path.exists(journal_path):
             ic("Exists", journal_path)
@@ -451,7 +451,8 @@ You task it to write a report based on the journal entry that is going to be pas
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
-    model_name = "gpt-4-1106-preview" if u4 else "gpt-3.5-turbo-1106"
+
+    model_name = get_model(u4=True)
     model = ChatOpenAI(model=model_name)
     ic(model_name)
     chain = (

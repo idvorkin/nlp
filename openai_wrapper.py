@@ -30,7 +30,7 @@ class CompletionModel(BaseModel):
 gpt4 = CompletionModel(
     max_input_only_tokens=100 * 1000,
     max_output_tokens=4 * 1000,
-    name="gpt-4-1106-preview",
+    name="gpt-4-0125-preview",
 )
 gpt35 = CompletionModel(
     max_input_only_tokens=12 * 1000,
@@ -46,7 +46,7 @@ def get_model_type(u4: bool) -> CompletionModel:
         return gpt35
 
 
-text_model_gpt_4 = "gpt-4-1106-preview"
+text_model_gpt_4 = "gpt-4-0125-preview"
 gpt_4_tokens = 100000
 gpt_4_input_tokens = 100 * 1000
 gpt_4_output_tokens = 100 * 1000
