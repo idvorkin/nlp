@@ -17,7 +17,9 @@ from typing import Annotated, Dict, List
 import pydantic
 import typer
 from icecream import ic
+from langchain.docstore.document import Document
 from langchain_openai.chat_models import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
 from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
 from langchain.prompts.chat import (
     ChatPromptTemplate,
@@ -29,11 +31,14 @@ from pydantic import BaseModel, field_validator
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.progress import track
+from langchain_community.vectorstores import Chroma
 
 import igor_journal
+from pathlib import Path
 from openai_wrapper import num_tokens_from_string, setup_gpt, get_model
 
 console = Console()
+embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
 
 # By default, when you hit C-C in a pipe, the pipe is stopped
@@ -353,7 +358,25 @@ def insights():
     get_reports()
 
 
-tmp = os.path.expanduser("~/tmp")
+tmp = Path("~/tmp")
+chroma_path_igor_journal = Path("~/tmp/igor_journal_chroma")
+
+
+def journal_entry_to_document(entry: igor_journal.JournalEntry):
+    metadata = {"date": str(entry.date)}
+    return Document(page_content="\n".join(entry.body()), metadata=metadata)
+
+
+@app.command()
+def build_vectors_for_journal():
+    valid_dates = igor_journal.all_entries()
+    journal_entries = [igor_journal.JournalEntry(date) for date in valid_dates]
+    documents = [journal_entry_to_document(j) for j in journal_entries]
+
+    search_index = Chroma.from_documents(
+        documents, embeddings, persist_directory=str(chroma_path_igor_journal)
+    )
+    search_index.persist()
 
 
 def get_reports():
