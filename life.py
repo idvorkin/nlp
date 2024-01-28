@@ -380,7 +380,21 @@ def build_index_for_journal():
 
 
 @app.command()
-def closest_entries(
+def closest_journal_entries_stdin(
+    count: int = 15,
+):
+    index = Chroma(
+        persist_directory=str(chroma_path_igor_journal), embedding_function=embeddings
+    )
+
+    str_stdin = "".join(sys.stdin.readlines())
+    nearest_documents = index.similarity_search_with_score(str_stdin, k=count)
+    for f, score in nearest_documents:
+        ic(f.metadata["date"], score)
+
+
+@app.command()
+def closest_journal_entries(
     journal_for: Annotated[
         str, typer.Argument(help="Pass a date or int for days ago")
     ] = str(datetime.now().date()),
@@ -403,9 +417,11 @@ def closest_entries(
         persist_directory=str(chroma_path_igor_journal), embedding_function=embeddings
     )
 
-    nearest_documents = index.similarity_search("\n".join(entry.body()), k=count)
-    for f in nearest_documents:
-        ic(f.metadata["date"])
+    nearest_documents = index.similarity_search_with_score(
+        "\n".join(entry.body()), k=count
+    )
+    for f, score in nearest_documents:
+        ic(f.metadata["date"], score)
 
 
 def get_reports():
