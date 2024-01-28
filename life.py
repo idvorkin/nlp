@@ -379,6 +379,35 @@ def build_vectors_for_journal():
     search_index.persist()
 
 
+@app.command()
+def closest_entries(
+    journal_for: Annotated[
+        str, typer.Argument(help="Pass a date or int for days ago")
+    ] = str(datetime.now().date()),
+    close: Annotated[
+        bool,
+        typer.Option(
+            help="Keep going back in days till you find the closest valid one"
+        ),
+    ] = True,
+    count: int = 15,
+):
+    date_journal_for = igor_journal.cli_date_to_entry_date(journal_for, close)
+    ic(date_journal_for)
+    entry = igor_journal.JournalEntry(date_journal_for)
+
+    if not entry.is_valid():
+        raise FileNotFoundError(f"No Entry for {date_journal_for} ")
+
+    index = Chroma(
+        persist_directory=str(chroma_path_igor_journal), embedding_function=embeddings
+    )
+
+    nearest_documents = index.similarity_search("\n".join(entry.body()), k=count)
+    for f in nearest_documents:
+        ic(f.metadata["date"])
+
+
 def get_reports():
     path_reports = glob.glob(
         os.path.expanduser("~/tmp/journal_report/*4-*-preview.json")
