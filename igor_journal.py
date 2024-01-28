@@ -192,10 +192,17 @@ class JournalEntry:
         self.init_from_date(for_date)
 
     def is_valid(self):
-        return (
+        contains_journal = (
             JournalEntry.default_journal_section in self.sections
             or "Journal" in self.sections
         )
+        if not contains_journal:
+            return False
+
+        # Sometimes I create an empty entry, skip those
+        body_content = "\n".join(self.body())
+        is_super_short_entry = len(body_content) < 750
+        return not is_super_short_entry
 
     def init_from_date(self, for_date: date):
         errors = []
