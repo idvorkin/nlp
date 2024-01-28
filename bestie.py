@@ -15,7 +15,7 @@ import pandas as pd
 import typer
 from icecream import ic
 from langchain.chat_loaders.imessage import IMessageChatLoader
-from langchain.chat_models import ChatOpenAI
+from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import SystemMessage
 from loguru import logger
