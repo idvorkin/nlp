@@ -7,6 +7,13 @@ from icecream import ic
 from openai import OpenAI
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_random_exponential
+from pathlib import Path
+
+
+def setup_secret():
+    secret_file = Path.home() / "gits/igor2/secretBox.json"
+    SECRETS = json.loads(secret_file.read_text())
+    os.environ["OPENAI_API_KEY"] = SECRETS["openai"]
 
 
 def setup_gpt():

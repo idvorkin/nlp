@@ -25,16 +25,10 @@ from typing import Annotated
 from pydantic import BaseModel
 import requests
 
+openai_wrapper.setup_secret()
+
 # set the environment variable from the secrets file
 
-
-def setup_secret():
-    secret_file = Path.home() / "gits/igor2/secretBox.json"
-    SECRETS = json.loads(secret_file.read_text())
-    os.environ["OPENAI_API_KEY"] = SECRETS["openai"]
-
-
-setup_secret()
 
 console = Console()
 app = typer.Typer()
