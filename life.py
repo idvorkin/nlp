@@ -359,7 +359,7 @@ def insights():
 
 
 tmp = Path("~/tmp")
-chroma_path_igor_journal = Path("~/tmp/igor_journal_chroma")
+chroma_path_igor_journal = Path("~/tmp/igor_journal_chroma_2")
 
 
 def journal_entry_to_document(entry: igor_journal.JournalEntry):
@@ -368,7 +368,7 @@ def journal_entry_to_document(entry: igor_journal.JournalEntry):
 
 
 @app.command()
-def build_vectors_for_journal():
+def build_index_for_journal():
     valid_dates = igor_journal.all_entries()
     journal_entries = [igor_journal.JournalEntry(date) for date in valid_dates]
     documents = [journal_entry_to_document(j) for j in journal_entries]
