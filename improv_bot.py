@@ -369,7 +369,8 @@ async def llm_extend_story(prompt_to_gpt):
         tool_choice=tc,
         # tool_choice = openai_wrapper.tool_choice(extendStory),
     )
-    r = chain.invoke({})
+    async_r = chain.ainvoke({})
+    r = await async_r
     ic(r)
     return r.additional_kwargs["tool_calls"][0]["function"]["arguments"]
 
@@ -513,9 +514,13 @@ async def visualize(ctx, count: int = 2):
         )
     )
 
-    prompt = await llm_extend_story(
-        prompt_to_gpt=prompt,
-    )
+    chain_make_dalle_prompt = prompts.ChatPromptTemplate.from_messages(
+        ("user", prompt)
+    ) | ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
+
+    r = await chain_make_dalle_prompt.ainvoke({})
+    prompt = r.content
+
     output_waiting_task.cancel()
 
     ic(prompt)
@@ -526,12 +531,17 @@ async def visualize(ctx, count: int = 2):
 
     response = None
     try:
-        response = await asyncify(openai.Image.create)(
+        response = await asyncify(openai.images.generate)(
+            model="dall-e-3",
             prompt=prompt,
-            n=count,
+            n=1,
         )
         ic(response)
-        image_urls = [response["data"][i]["url"] for i in range(count)]
+        images = response.data
+        ic(images)
+        image_urls = [image.url for image in images]
+
+        # [response["data"][i]["url"] for i in range(count)]
         ic(image_urls)
 
         images = []
