@@ -18,18 +18,23 @@ from discord.ext import commands
 from discord.ui import View
 from icecream import ic
 
-# import OpenAI exceptiions
-from openai.error import InvalidRequestError
 from pydantic import BaseModel
 from rich.console import Console
 from rich.text import Text
+import openai_wrapper
 
-from openai_wrapper import ask_gpt, ask_gpt_n, setup_gpt
+from openai_wrapper import setup_secret
+from langchain_openai.chat_models import ChatOpenAI
+from langchain import prompts
+
+setup_secret()
 
 console = Console()
 
-model = setup_gpt()
+model = openai_wrapper.setup_gpt()
 app = typer.Typer()
+
+u4 = True
 
 
 class Fragment(BaseModel):
@@ -52,12 +57,18 @@ class Fragment(BaseModel):
         return Fragment(player=player, text=text, reasoning=reasoning)
 
 
+ImprovStory = List[Fragment]
+
 default_story_start = [
     Fragment.Pos("coach", "Once upon a time", "A normal story start"),
 ]
 
 
-def print_story(story: List[Fragment], show_story: bool):
+class ExtendStory(BaseModel):
+    Story: ImprovStory
+
+
+def print_story(story: ImprovStory, show_story: bool):
     # Split on '.', but only if there isn't a list
     coach_color = "bold bright_cyan"
     user_color = "bold yellow"
@@ -127,10 +138,14 @@ example_2_out = example_2_in + [
 
 
 def prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
-    story_so_far: List[Fragment],
+    story_so_far: ImprovStory,
 ):
     # convert story to json
-    story_so_far = json.dumps(story_so_far, default=lambda x: x.__dict__)
+    story_so_far = (
+        json.dumps(story_so_far, default=lambda x: x.__dict__)
+        .replace("{", "[")
+        .replace("}", "]")
+    )
     return f"""
 You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
 We're playing a game where we write a story together.
@@ -233,7 +248,7 @@ def key_for_ctx(ctx):
         return f"{ctx.guild.name}-{ctx.channel.name}"
 
 
-def get_story_for_channel(ctx):
+def get_story_for_channel(ctx) -> ImprovStory:
     key = key_for_ctx(ctx)
     if key not in context_to_story:
         reset_story_for_channel(ctx)
@@ -308,9 +323,10 @@ async def explore(ctx):
         edit_message_to_append_dots_every_second(progress_message, colored)
     )
 
-    n = 4
-    list_of_json_version_of_a_story = await asyncify(ask_gpt_n)(
-        prompt_to_gpt=prompt, debug=False, u4=False, n=n
+    # todo extend this to be n stories
+    # n = 4
+    list_of_json_version_of_a_story = await asyncify(llm_extend_story)(
+        prompt_to_gpt=prompt
     )
     output_waiting_task.cancel()
 
@@ -339,6 +355,23 @@ async def once_upon_a_time(ctx):
     colored = color_story_for_discord(active_story)
     response = f"{bot_help_text}\n**The story so far:** {colored}"
     await ctx.respond(response)
+
+
+async def llm_extend_story(prompt_to_gpt):
+    extendStory = openai_wrapper.openai_func(ExtendStory)
+    ic(prompt_to_gpt)
+    tc = openai_wrapper.tool_choice(extendStory)
+    ic(tc)
+    chain = prompts.ChatPromptTemplate.from_messages(
+        ("user", prompt_to_gpt)
+    ) | ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name).bind(
+        tools=[extendStory],
+        tool_choice=tc,
+        # tool_choice = openai_wrapper.tool_choice(extendStory),
+    )
+    r = chain.invoke({})
+    ic(r)
+    return r.additional_kwargs["tool_calls"][0]["function"]["arguments"]
 
 
 async def extend_story_for_bot(ctx, extend: str = ""):
@@ -374,10 +407,8 @@ async def extend_story_for_bot(ctx, extend: str = ""):
         active_story
     )
 
-    json_version_of_a_story = await asyncify(ask_gpt)(
+    json_version_of_a_story = await llm_extend_story(
         prompt_to_gpt=prompt,
-        debug=False,
-        u4=False,
     )
     output_waiting_task.cancel()
 
@@ -385,10 +416,8 @@ async def extend_story_for_bot(ctx, extend: str = ""):
 
     # convert json_version_of_a_story to a list of fragments
     # Damn - Copilot wrote this code, and it's right (or so I think)
-    active_story = json.loads(
-        json_version_of_a_story, object_hook=lambda d: Fragment(**d)
-    )
-
+    the_active_story = ExtendStory.model_validate(json.loads(json_version_of_a_story))
+    active_story = the_active_story.Story  # todo clean types up
     set_story_for_channel(ctx, active_story)
 
     # convert story to text
@@ -439,7 +468,6 @@ Process:
     Up time: {datetime.datetime.now() - datetime.datetime.fromtimestamp(process.create_time())}
     VM: {memory_info.vms / 1024 / 1024} MB
     Residitent: {memory_info.rss / 1024 / 1024} MB
-    Shared: {memory_info.shared / 1024 / 1024} MB
 Active Story:
     {[repr(f) for f in active_story] }
 Other Stories
@@ -485,10 +513,8 @@ async def visualize(ctx, count: int = 2):
         )
     )
 
-    prompt = await asyncify(ask_gpt)(
+    prompt = await llm_extend_story(
         prompt_to_gpt=prompt,
-        debug=False,
-        u4=False,
     )
     output_waiting_task.cancel()
 
@@ -517,8 +543,6 @@ async def visualize(ctx, count: int = 2):
 
         await ctx.followup.send(files=images)
         await progress_message.edit(content=f"**{prompt}** ")
-    except InvalidRequestError as e:
-        await ctx.followup.send(f"Error: {e}")
     finally:
         output_waiting_task.cancel()
 

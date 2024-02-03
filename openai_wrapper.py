@@ -143,13 +143,13 @@ def ask_gpt_n(
         {"role": "user", "content": prompt_to_gpt},
     ]
 
-    input_tokens = num_tokens_from_string(prompt_to_gpt, "cl100k_base") + 100
-    output_tokens = tokens - input_tokens
+    model = get_model_type(u4)
+    output_tokens = get_remaining_output_tokens(model, prompt_to_gpt)
+    text_model_best = model.name
 
     if debug:
         ic(text_model_best)
         ic(tokens)
-        ic(input_tokens)
         ic(output_tokens)
 
     start = time.time()
@@ -179,4 +179,13 @@ def ask_gpt_n(
 
 
 def openai_func(cls):
-    return {"name": cls.__name__, "parameters": cls.model_json_schema()}
+    return {
+        "type": "function",
+        "function": {"name": cls.__name__, "parameters": cls.model_json_schema()},
+    }
+
+
+def tool_choice(fn):
+    r = {"type": "function", "function": {"name": fn["function"]["name"]}}
+    ic(r)
+    return r
