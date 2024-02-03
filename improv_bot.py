@@ -64,7 +64,7 @@ default_story_start = [
 ]
 
 
-class ExtendStory(BaseModel):
+class AppendCoachFragmentThenOuputStory(BaseModel):
     Story: ImprovStory
 
 
@@ -137,19 +137,15 @@ example_2_out = example_2_in + [
 ]
 
 
-def prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
-    story_so_far: ImprovStory,
-):
-    # convert story to json
-    story_so_far = (
-        json.dumps(story_so_far, default=lambda x: x.__dict__)
-        .replace("{", "[")
-        .replace("}", "]")
-    )
+def prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json():
     return f"""
+
+### Instructions
+
 You are a professional improv performer and coach. Help me improve my improv skills through doing practice.
 We're playing a game where we write a story together.
 The story should have the following format
+
     - Once upon a time
     - Every day
     - But one day
@@ -160,18 +156,24 @@ The story should have the following format
 
 The story should be creative and funny
 
-I'll write 1-5 words, and then you do the same, and we'll go back and forth writing the story.
-The story is expressed as a json, I will pass in json, and you add the coach line to the json.
-You will add a third field as to why you added those words in the line
-Only add a single coach field to the output
-You can correct spelling and capilization mistakes
-The below strings are python strings, so if using ' quotes, ensure to escape them properly
+* I'll write 1-5 words, and then you do the same, and we'll go back and forth writing the story.
+* You will add a reasoning to why you added the next fragment to the story
+* You can correct spelling and capilization mistakes
+
+### Techincal Details
+
+* The users input will look like a python represenation
+* You should provide output by taking the input, adding your own fragment as the coach, then calling the function
+
+### Examples
+
+In these examples, you'd have called the function with the example output
 
 Example 1 Input:
 
 {example_1_in}
 
-Example 1 Output:
+Example 1 What you'd call the Extend function with
 
 {example_1_out}
 --
@@ -180,20 +182,10 @@ Example 2 Input:
 
 {example_2_in}
 
-Example 2 Output:
+Example 2 What you'd call the Extend function with
 
 {example_2_out}
 
---
-
-Now, here is the story we're doing together. Add the next coach fragment to the story, and correct spelling and grammer mistakes in the fragments
-
---
-Actual Input:
-
-{story_so_far}
-
-Ouptut:
 """
 
 
@@ -315,9 +307,7 @@ async def explore(ctx):
     progress_message = await smart_send(ctx, ".")
     view = View()
 
-    prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
-        active_story
-    )
+    prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json()
 
     output_waiting_task = asyncio.create_task(
         edit_message_to_append_dots_every_second(progress_message, colored)
@@ -357,22 +347,25 @@ async def once_upon_a_time(ctx):
     await ctx.respond(response)
 
 
-async def llm_extend_story(prompt_to_gpt):
-    extendStory = openai_wrapper.openai_func(ExtendStory)
-    ic(prompt_to_gpt)
-    tc = openai_wrapper.tool_choice(extendStory)
-    ic(tc)
-    chain = prompts.ChatPromptTemplate.from_messages(
-        ("user", prompt_to_gpt)
-    ) | ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name).bind(
-        tools=[extendStory],
-        tool_choice=tc,
-        # tool_choice = openai_wrapper.tool_choice(extendStory),
+async def llm_extend_story(active_story):
+    extendStory = openai_wrapper.openai_func(AppendCoachFragmentThenOuputStory)
+    system_prompt = (
+        prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json()
     )
-    async_r = chain.ainvoke({})
-    r = await async_r
-    ic(r)
-    return r.additional_kwargs["tool_calls"][0]["function"]["arguments"]
+    ic(system_prompt)
+
+    chain = prompts.ChatPromptTemplate.from_messages(
+        [("system", system_prompt), ("user", str(active_story))]
+    ) | ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name).bind(
+        tools=[extendStory], tool_choice=openai_wrapper.tool_choice(extendStory)
+    )
+    r = await chain.ainvoke({})
+    extended_story_json_str = r.additional_kwargs["tool_calls"][0]["function"][
+        "arguments"
+    ]
+    return AppendCoachFragmentThenOuputStory.model_validate(
+        json.loads(extended_story_json_str)
+    )
 
 
 async def extend_story_for_bot(ctx, extend: str = ""):
@@ -404,21 +397,11 @@ async def extend_story_for_bot(ctx, extend: str = ""):
     output_waiting_task = asyncio.create_task(
         edit_message_to_append_dots_every_second(progress_message, f"{colored}")
     )
-    prompt = prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json(
-        active_story
-    )
 
-    json_version_of_a_story = await llm_extend_story(
-        prompt_to_gpt=prompt,
-    )
+    result = await llm_extend_story(active_story)
     output_waiting_task.cancel()
-
-    ic(json_version_of_a_story)
-
-    # convert json_version_of_a_story to a list of fragments
-    # Damn - Copilot wrote this code, and it's right (or so I think)
-    the_active_story = ExtendStory.model_validate(json.loads(json_version_of_a_story))
-    active_story = the_active_story.Story  # todo clean types up
+    ic(result)
+    active_story = result.Story  # todo clean types up
     set_story_for_channel(ctx, active_story)
 
     # convert story to text
