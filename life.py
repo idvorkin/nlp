@@ -37,11 +37,10 @@ import igor_journal
 from pathlib import Path
 from openai_wrapper import num_tokens_from_string, setup_gpt, get_model, setup_secret
 
+setup_secret()
 
 console = Console()
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-
-setup_secret()
 
 
 # By default, when you hit C-C in a pipe, the pipe is stopped
