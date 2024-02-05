@@ -15,7 +15,7 @@ import openai_wrapper
 
 from openai_wrapper import setup_secret
 from langchain_openai.chat_models import ChatOpenAI
-from langchain import prompts
+from langchain.prompts import ChatPromptTemplate
 from typing import TypeVar, Generic
 import bestie
 
@@ -41,8 +41,7 @@ class BotState(Generic[T]):
 
     def __ket_for_ctx(self, ctx):
         ic(type(ctx))
-        is_message = isinstance(ctx, discord.message.Message)
-        is_channel = ctx.guild != None
+        is_channel = ctx.guild is not None
         if is_channel:
             return f"{ctx.guild.name}-{ctx.channel.name}"
         else:
@@ -65,20 +64,24 @@ class BotState(Generic[T]):
 
 
 class BestieState:
-    model = "2021+3d"
+    model_name = "2021+3d"
     memory = bestie.createBestieMessageHistory()
 
 
 ic(discord)
 bot = discord.Bot()
-botState = BotState[BestieState](None)
+botState = BotState[BestieState](BestieState())
 
 bot_help_text = "Replaced on_ready"
 
 
-async def smart_send(ctx, message):
+def ctx_to_send_function(ctx):
     is_message = not hasattr(ctx, "defer")
-    return await ctx.channel.send(message) if is_message else await ctx.send(message)
+    return ctx.channel.send if is_message else ctx.send
+
+
+async def send(ctx, message):
+    return await ctx_to_send_function(ctx)(message)
 
 
 @bot.event
@@ -100,86 +103,33 @@ When you DM the bot directly, or include a @{bot.user.display_name} in a channel
 
 # Due to permissions, we should only get this for a direct message
 @bot.event
-async def on_message(message):
+async def on_message(ctx):
     # if message is from me, skip it
-    if message.author.bot:
+    if ctx.author.bot:
         # ic ("Ignoring message from bot", message)
         return
 
-    ic("bot.on_message", message)
-    ic(message.content)
-    bestieState = botState.get(message)
-    await smart_send(message, f"OK, {message.content}")
-
-
-async def llm_extend_story(active_story):
-    extendStory = openai_wrapper.openai_func(AppendCoachFragmentThenOuputStory)
-    system_prompt = (
-        prompt_gpt_to_return_json_with_story_and_an_additional_fragment_as_json()
-    )
-    ic(system_prompt)
-
-    chain = prompts.ChatPromptTemplate.from_messages(
-        [("system", system_prompt), ("user", str(active_story))]
-    ) | ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name).bind(
-        tools=[extendStory], tool_choice=openai_wrapper.tool_choice(extendStory)
-    )
-    r = await chain.ainvoke({})
-    extended_story_json_str = r.additional_kwargs["tool_calls"][0]["function"][
-        "arguments"
-    ]
-    return AppendCoachFragmentThenOuputStory.model_validate(
-        json.loads(extended_story_json_str)
-    )
-
-
-async def extend_story_for_bot(ctx, extend: str = ""):
-    # if story is empty, then start with the default story
-    ic(extend)
-    is_message = not hasattr(ctx, "defer")
-
-    active_story = get_bot_state(ctx)
-
-    if not extend:
-        # If called with an empty message lets send help as well
-        colored = color_story_for_discord(active_story)
-        ic(colored)
-        await smart_send(ctx, f"{bot_help_text}\n**The story so far:** {colored}")
+    ic("bot.on_message", ctx)
+    if len(ctx.content) == 0:
         return
 
-    if not is_message:
-        await ctx.defer()
+    message_content = ctx.content.replace(f"<@{bot.user.id}>", "").strip()
 
-    user_said = Fragment(player=ctx.author.name, text=extend)
-    active_story += [user_said]
-    ic(active_story)
-    ic("calling gpt")
-    colored = color_story_for_discord(active_story)
-    # print progress in the background while running
-    progress_message = (
-        await ctx.channel.send(".") if is_message else await ctx.send(".")
-    )
+    state = botState.get(ctx)
+    model = ChatOpenAI(model=bestie.models[state.model_name])
+    state.memory.add_user_message(message=message_content)
+    prompt = ChatPromptTemplate.from_messages(state.memory.messages)
+    chain = prompt | model
+    progress_message = await ctx_to_send_function(ctx)(".")
     output_waiting_task = asyncio.create_task(
-        edit_message_to_append_dots_every_second(progress_message, f"{colored}")
+        edit_message_to_append_dots_every_second(progress_message, ".")
     )
-
-    result = await llm_extend_story(active_story)
+    result = await chain.ainvoke({})
     output_waiting_task.cancel()
-    ic(result)
-    active_story = result.Story  # todo clean types up
-    set_bot_state(ctx, active_story)
-
-    # convert story to text
-    print_story(active_story, show_story=True)
-    story_text = " ".join([f.text for f in active_story])
-    ic(story_text)
-    colored = color_story_for_discord(active_story)
-    ic(colored)
-
-    await progress_message.edit(content=colored)
-    if not is_message:
-        # acknolwedge without sending
-        await ctx.send(content="")
+    ai_output = str(result.content)
+    ic(ai_output)
+    state.memory.add_ai_message(ai_output)
+    await send(ctx, f"{ai_output}")
 
 
 @bot.command(description="Reset THe bot State")
@@ -187,23 +137,13 @@ async def reset(
     ctx,
 ):
     botState.reset(ctx)
-    await smart_send(ctx, "The bot is now reset")
-
-
-@bot.command(description="Show the story so far, or extend it")
-async def story(
-    ctx,
-    extend: discord.Option(
-        str, name="continue_with", description="continue story with", required="False"
-    ),
-):
-    await extend_story_for_bot(ctx, extend)
+    await send(ctx, "The bot is now reset")
 
 
 @bot.command(description="Show help")
 async def help(ctx):
     response = f"{bot_help_text}"
-    await ctx.respond(response)
+    await send(ctx, response)
 
 
 @bot.command(description="See local state")
@@ -215,10 +155,16 @@ Process:
     Up time: {datetime.datetime.now() - datetime.datetime.fromtimestamp(process.create_time())}
     VM: {memory_info.vms / 1024 / 1024} MB
     Residitent: {memory_info.rss / 1024 / 1024} MB
-    TBD do state generically
+    States: {botState.context_to_state.keys()}
+    Current Chat History:
     ```
     """
-    await ctx.respond(debug_out)
+    state = botState.get(ctx)
+    # the first is the system message, skip that
+    for m in state.memory.messages[1:]:
+        debug_out += f"{m}\n"
+
+    await send(ctx, debug_out)
 
 
 @app.command()
