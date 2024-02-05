@@ -17,7 +17,7 @@ from openai_wrapper import setup_secret
 from langchain_openai.chat_models import ChatOpenAI
 from langchain import prompts
 from typing import TypeVar, Generic
-from pydantic import BaseModel
+import bestie
 
 setup_secret()
 
@@ -40,12 +40,13 @@ class BotState(Generic[T]):
         self.defaultState = defaultState
 
     def __ket_for_ctx(self, ctx):
-        is_dm_type = isinstance(ctx, discord.channel.DMChannel)
-        is_dm_channel = is_dm_type or ctx.guild is None
-        if is_dm_channel:
-            return f"DM-{ctx.author.name}-{ctx.author.id}"
-        else:
+        ic(type(ctx))
+        is_message = isinstance(ctx, discord.message.Message)
+        is_channel = ctx.guild != None
+        if is_channel:
             return f"{ctx.guild.name}-{ctx.channel.name}"
+        else:
+            return f"DM-{ctx.author.name}-{ctx.author.id}"
 
     def get(self, ctx) -> T:
         key = self.__ket_for_ctx(ctx)
@@ -53,7 +54,7 @@ class BotState(Generic[T]):
             self.reset(ctx)
 
         # return a copy of the story
-        return self.context_to_state[key][:]
+        return self.context_to_state[key]
 
     def set(self, ctx, state: T):
         key = self.__ket_for_ctx(ctx)
@@ -63,8 +64,9 @@ class BotState(Generic[T]):
         self.set(ctx, self.defaultState)
 
 
-class BestieState(BaseModel):
-    model: int
+class BestieState:
+    model = "2021+3d"
+    memory = bestie.createBestieMessageHistory()
 
 
 ic(discord)
@@ -99,8 +101,15 @@ When you DM the bot directly, or include a @{bot.user.display_name} in a channel
 # Due to permissions, we should only get this for a direct message
 @bot.event
 async def on_message(message):
+    # if message is from me, skip it
+    if message.author.bot:
+        # ic ("Ignoring message from bot", message)
+        return
+
     ic("bot.on_message", message)
     ic(message.content)
+    bestieState = botState.get(message)
+    await smart_send(message, f"OK, {message.content}")
 
 
 async def llm_extend_story(active_story):
