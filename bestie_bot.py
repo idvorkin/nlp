@@ -8,7 +8,6 @@ import os
 import discord
 import psutil
 import typer
-from discord.ext import commands
 from icecream import ic
 
 from rich.console import Console
@@ -17,6 +16,8 @@ import openai_wrapper
 from openai_wrapper import setup_secret
 from langchain_openai.chat_models import ChatOpenAI
 from langchain import prompts
+from typing import TypeVar, Generic
+from pydantic import BaseModel
 
 setup_secret()
 
@@ -28,8 +29,15 @@ app = typer.Typer()
 u4 = True
 
 
-class BotState:
+T = TypeVar("T")
+
+
+class BotState(Generic[T]):
     context_to_state = dict()
+    defaultState: T
+
+    def __init__(self, defaultState):
+        self.defaultState = defaultState
 
     def __ket_for_ctx(self, ctx):
         is_dm_type = isinstance(ctx, discord.channel.DMChannel)
@@ -39,7 +47,7 @@ class BotState:
         else:
             return f"{ctx.guild.name}-{ctx.channel.name}"
 
-    def get(self, ctx):
+    def get(self, ctx) -> T:
         key = self.__ket_for_ctx(ctx)
         if key not in self.context_to_state:
             self.reset(ctx)
@@ -47,17 +55,21 @@ class BotState:
         # return a copy of the story
         return self.context_to_state[key][:]
 
-    def set(self, ctx, state):
+    def set(self, ctx, state: T):
         key = self.__ket_for_ctx(ctx)
         self.context_to_state[key] = state
 
     def reset(self, ctx):
-        self.set(ctx, "")
+        self.set(ctx, self.defaultState)
+
+
+class BestieState(BaseModel):
+    model: int
 
 
 ic(discord)
 bot = discord.Bot()
-botState = BotState()
+botState = BotState[BestieState](None)
 
 bot_help_text = "Replaced on_ready"
 
@@ -87,8 +99,8 @@ When you DM the bot directly, or include a @{bot.user.display_name} in a channel
 # Due to permissions, we should only get this for a direct message
 @bot.event
 async def on_message(message):
-    ic("Does this ever get called?")
-    ic(message)
+    ic("bot.on_message", message)
+    ic(message.content)
 
 
 async def llm_extend_story(active_story):
@@ -161,6 +173,14 @@ async def extend_story_for_bot(ctx, extend: str = ""):
         await ctx.send(content="")
 
 
+@bot.command(description="Reset THe bot State")
+async def reset(
+    ctx,
+):
+    botState.reset(ctx)
+    await smart_send(ctx, "The bot is now reset")
+
+
 @bot.command(description="Show the story so far, or extend it")
 async def story(
     ctx,
@@ -204,29 +224,7 @@ def run_bot():
     # throw if token not found
     if not token:
         raise ValueError("DISCORD_BOT_TOKEN environment variable not set")
-    bot.add_cog(MentionListener(bot))
     bot.run(token)
-
-
-class MentionListener(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot:
-            return
-
-        # Check if the bot is mentioned
-        is_dm = isinstance(message.channel, discord.channel.DMChannel)
-        is_mention = self.bot.user in message.mentions
-        ic(is_mention, is_dm)
-        if is_mention or is_dm:
-            await on_mention(message)
-            return
-        # check if message is a DM
-
-    # TODO: Refactor to be with extend_story_for_bot
 
 
 async def edit_message_to_append_dots_every_second(message, base_text):
@@ -235,23 +233,6 @@ async def edit_message_to_append_dots_every_second(message, base_text):
         base_text += "."
         await message.edit(base_text)
         await asyncio.sleep(0.5)
-
-
-async def on_mention(message):
-    if message.author == bot.user:
-        return
-
-    message_content = message.content.replace(f"<@{bot.user.id}>", "").strip()
-
-    # If user sends '.', let them get a choice of what to write next
-    if message_content.strip() == ".":
-        # await explore(message)
-        return
-
-    # TODO: handle help now
-
-    # await extend_story_for_bot(message, message_content)
-    return
 
 
 if __name__ == "__main__":
