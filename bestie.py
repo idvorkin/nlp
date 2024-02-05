@@ -315,14 +315,7 @@ def support_igor_with():
     return facts
 
 
-@app.command()
-def convo(
-    model_name: Annotated[
-        str, typer.Option(help=f"Model any of: {models_list}")
-    ] = "2021+3d",
-):
-    from langchain.memory import ChatMessageHistory
-
+def make_bestie_system_prompt():
     system_prompt_base = "You are a cutting-edge iMessage-compatible best friend conversation simulator designed to emulate the warmth and familiarity of a real friendship."
     # These instructions came from a convo w/GPT:
     # https://gist.github.com/idvorkin/119cba9273f165bcb7875f075c69e06e
@@ -341,17 +334,33 @@ def convo(
     {build_facts()}
     {support_igor_with()}
     """
+    return system_prompt
+
+
+def createBestieMessageHistory():
+    from langchain.memory import ChatMessageHistory
+
     memory = ChatMessageHistory()
-    memory.add_message(SystemMessage(content=system_prompt))
+    memory.add_message(SystemMessage(content=make_bestie_system_prompt()))
+    return memory
+
+
+@app.command()
+def convo(
+    model_name: Annotated[
+        str, typer.Option(help=f"Model any of: {models_list}")
+    ] = "2021+3d",
+):
+    memory = createBestieMessageHistory()
     model = ChatOpenAI(model=models[model_name])
     ic(model_name)
-    ic(custom_instructions)
+    # ic(custom_instructions)
 
     while True:
         user_input = input("Igor:")
         if user_input == "debug":
             ic(model_name)
-            ic(custom_instructions)
+            # ic(custom_instructions)
         memory.add_user_message(message=user_input)
         prompt = ChatPromptTemplate.from_messages(memory.messages)
         chain = prompt | model
