@@ -93,7 +93,7 @@ async def on_ready():
 Commands:
  /help - show this help
  /debug - Dump state
- /set-model - set model to one (tbd - use the UX for this)
+ /model - set model to one (tbd - use the UX for this)
  /reset - restart the conversation
 When you DM the bot directly, or include a @{bot.user.display_name} in a channel
 
@@ -146,20 +146,32 @@ async def help(ctx):
     await send(ctx, response)
 
 
+@bot.command(description="Set the model")
+async def model(ctx, model):
+    if model not in bestie.models.keys():
+        error = f"model not valid, needs to be one of : {bestie.models.keys()}"
+        await send(ctx, error)
+        return
+    state = botState.get(ctx)
+    state.model_name = model
+    await send(ctx, f"model set to {model}")
+
+
 @bot.command(description="See local state")
 async def debug(ctx):
     process = psutil.Process(os.getpid())
     memory_info = process.memory_info()
+    state = botState.get(ctx)
     debug_out = f"""```ansi
 Process:
     Up time: {datetime.datetime.now() - datetime.datetime.fromtimestamp(process.create_time())}
     VM: {memory_info.vms / 1024 / 1024} MB
     Residitent: {memory_info.rss / 1024 / 1024} MB
     States: {botState.context_to_state.keys()}
+    Model = {state.model_name}
     Current Chat History:
     ```
     """
-    state = botState.get(ctx)
     # the first is the system message, skip that
     for m in state.memory.messages[1:]:
         debug_out += f"{m}\n"
