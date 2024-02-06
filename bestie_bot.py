@@ -36,8 +36,8 @@ class BotState(Generic[T]):
     context_to_state = dict()
     defaultState: T
 
-    def __init__(self, defaultState):
-        self.defaultState = defaultState
+    def __init__(self, defaultStateFactory):
+        self.defaultState = defaultStateFactory()
 
     def __ket_for_ctx(self, ctx):
         ic(type(ctx))
@@ -70,8 +70,7 @@ class BestieState:
 
 ic(discord)
 bot = discord.Bot()
-botState = BotState[BestieState](BestieState())
-
+botState = BotState[BestieState](BestieState)
 bot_help_text = "Replaced on_ready"
 
 
@@ -175,6 +174,9 @@ Process:
     # the first is the system message, skip that
     for m in state.memory.messages[1:]:
         debug_out += f"{m}\n"
+
+    # max message is 2000
+    debug_out = debug_out[:1900]
 
     await send(ctx, debug_out)
 
