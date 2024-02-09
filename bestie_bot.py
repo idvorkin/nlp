@@ -1,6 +1,5 @@
 #!python3
 
-import asyncio
 import datetime
 import json
 import os
@@ -12,10 +11,10 @@ from icecream import ic
 
 from rich.console import Console
 
+from discord_helper import BotState, draw_progress_bar, send
 from openai_wrapper import setup_secret
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
-from typing import TypeVar, Generic, Callable
 import bestie
 
 setup_secret()
@@ -23,44 +22,6 @@ setup_secret()
 console = Console()
 
 app = typer.Typer()
-
-u4 = True
-
-
-T = TypeVar("T")
-
-
-class BotState(Generic[T]):
-    context_to_state = dict()
-    defaultStateFactory: Callable[[], T]
-
-    def __init__(self, defaultStateFactory: Callable[[], T]):
-        self.defaultStateFactory = defaultStateFactory
-
-    def __ket_for_ctx(self, ctx):
-        ic(type(ctx))
-        is_channel = ctx.guild is not None
-        if is_channel:
-            return f"{ctx.guild.name}-{ctx.channel.name}"
-        else:
-            return f"DM-{ctx.author.name}-{ctx.author.id}"
-
-    def get(self, ctx) -> T:
-        key = self.__ket_for_ctx(ctx)
-        if key not in self.context_to_state:
-            self.reset(ctx)
-
-        # return a copy of the story
-        return self.context_to_state[key]
-
-    def set(self, ctx, state: T):
-        key = self.__ket_for_ctx(ctx)
-        ic("setting state", key)
-        self.context_to_state[key] = state
-
-    def reset(self, ctx):
-        self.set(ctx, self.defaultStateFactory())
-        ic("bot reset")
 
 
 class BestieState:
@@ -73,15 +34,6 @@ ic(discord)
 bot = discord.Bot()
 g_botStateStore = BotState[BestieState](BestieState)
 bot_help_text = "Replaced on_ready"
-
-
-def ctx_to_send_function(ctx):
-    is_channel = hasattr(ctx, "channel")
-    return ctx.channel.send if is_channel else ctx.send
-
-
-async def send(ctx, message):
-    return await ctx_to_send_function(ctx)(message)
 
 
 @bot.event
@@ -120,12 +72,10 @@ async def on_message(ctx):
     state.memory.add_user_message(message=message_content)
     prompt = ChatPromptTemplate.from_messages(state.memory.messages)
     chain = prompt | model
-    progress_message = await ctx_to_send_function(ctx)(".")
-    output_waiting_task = asyncio.create_task(
-        edit_message_to_append_dots_every_second(progress_message, ".")
-    )
+
+    progress_bar_task = await draw_progress_bar(ctx)
     result = await chain.ainvoke({})
-    output_waiting_task.cancel()
+    progress_bar_task.cancel()
     ai_output = str(result.content)
     ic(ai_output)
     state.memory.add_ai_message(ai_output)
@@ -197,14 +147,6 @@ def run_bot():
     if not token:
         raise ValueError("DISCORD_BOT_TOKEN environment variable not set")
     bot.run(token)
-
-
-async def edit_message_to_append_dots_every_second(message, base_text):
-    # Stop after 30 seconds - probably nver gonna come back after that.
-    for _ in range(30 * 2):
-        base_text += "."
-        await message.edit(base_text)
-        await asyncio.sleep(0.5)
 
 
 if __name__ == "__main__":
