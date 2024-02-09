@@ -11,19 +11,17 @@ import typer
 from icecream import ic
 
 from rich.console import Console
-import openai_wrapper
 
 from openai_wrapper import setup_secret
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Callable
 import bestie
 
 setup_secret()
 
 console = Console()
 
-model = openai_wrapper.setup_gpt()
 app = typer.Typer()
 
 u4 = True
@@ -34,10 +32,10 @@ T = TypeVar("T")
 
 class BotState(Generic[T]):
     context_to_state = dict()
-    defaultState: T
+    defaultStateFactory: Callable[[], T]
 
-    def __init__(self, defaultStateFactory):
-        self.defaultState = defaultStateFactory()
+    def __init__(self, defaultStateFactory: Callable[[], T]):
+        self.defaultStateFactory = defaultStateFactory
 
     def __ket_for_ctx(self, ctx):
         ic(type(ctx))
@@ -57,26 +55,29 @@ class BotState(Generic[T]):
 
     def set(self, ctx, state: T):
         key = self.__ket_for_ctx(ctx)
+        ic("setting state", key)
         self.context_to_state[key] = state
 
     def reset(self, ctx):
-        self.set(ctx, self.defaultState)
+        self.set(ctx, self.defaultStateFactory())
+        ic("bot reset")
 
 
 class BestieState:
-    model_name = "2021+3d"
-    memory = bestie.createBestieMessageHistory()
+    def __init__(self):
+        self.model_name = "2021+3d"
+        self.memory = bestie.createBestieMessageHistory()
 
 
 ic(discord)
 bot = discord.Bot()
-botState = BotState[BestieState](BestieState)
+g_botStateStore = BotState[BestieState](BestieState)
 bot_help_text = "Replaced on_ready"
 
 
 def ctx_to_send_function(ctx):
-    is_message = not hasattr(ctx, "defer")
-    return ctx.channel.send if is_message else ctx.send
+    is_channel = hasattr(ctx, "channel")
+    return ctx.channel.send if is_channel else ctx.send
 
 
 async def send(ctx, message):
@@ -114,7 +115,7 @@ async def on_message(ctx):
 
     message_content = ctx.content.replace(f"<@{bot.user.id}>", "").strip()
 
-    state = botState.get(ctx)
+    state = g_botStateStore.get(ctx)
     model = ChatOpenAI(model=bestie.models[state.model_name])
     state.memory.add_user_message(message=message_content)
     prompt = ChatPromptTemplate.from_messages(state.memory.messages)
@@ -131,18 +132,18 @@ async def on_message(ctx):
     await send(ctx, f"{ai_output}")
 
 
-@bot.command(description="Reset THe bot State")
+@bot.command(description="Reset the bot State")
 async def reset(
     ctx,
 ):
-    botState.reset(ctx)
-    await send(ctx, "The bot is now reset")
+    g_botStateStore.reset(ctx)
+    await ctx.send("The bot is now reset")
 
 
 @bot.command(description="Show help")
 async def help(ctx):
     response = f"{bot_help_text}"
-    await send(ctx, response)
+    await ctx.send(response)
 
 
 @bot.command(description="Set the model")
@@ -151,22 +152,24 @@ async def model(ctx, model):
         error = f"model not valid, needs to be one of : {bestie.models.keys()}"
         await send(ctx, error)
         return
-    state = botState.get(ctx)
+
+    g_botStateStore.reset(ctx)
+    state = g_botStateStore.get(ctx)
     state.model_name = model
-    await send(ctx, f"model set to {model}")
+    await ctx.send(f"model set to {model}")
 
 
 @bot.command(description="See local state")
 async def debug(ctx):
     process = psutil.Process(os.getpid())
     memory_info = process.memory_info()
-    state = botState.get(ctx)
+    state = g_botStateStore.get(ctx)
     debug_out = f"""```ansi
 Process:
     Up time: {datetime.datetime.now() - datetime.datetime.fromtimestamp(process.create_time())}
     VM: {memory_info.vms / 1024 / 1024} MB
     Residitent: {memory_info.rss / 1024 / 1024} MB
-    States: {botState.context_to_state.keys()}
+    States: {g_botStateStore.context_to_state.keys()}
     Model = {state.model_name}
     Current Chat History:
     ```
