@@ -1,7 +1,6 @@
 #!python3
 
 import datetime
-import json
 import os
 
 import discord
@@ -11,7 +10,7 @@ from icecream import ic
 
 from rich.console import Console
 
-from discord_helper import BotState, draw_progress_bar, send
+from discord_helper import BotState, draw_progress_bar, send, get_bot_token
 from openai_wrapper import setup_secret
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
@@ -136,17 +135,7 @@ Process:
 
 @app.command()
 def run_bot():
-    # read token from environment variable, or from the secret box, if in neither throw
-    token = os.environ.get("DISCORD_BOT_TOKEN")
-    if not token:
-        with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
-            SECRETS = json.load(json_data)
-            token = SECRETS["discord-bestie-bot"]
-
-    # throw if token not found
-    if not token:
-        raise ValueError("DISCORD_BOT_TOKEN environment variable not set")
-    bot.run(token)
+    bot.run(get_bot_token("discord-bestie-bot"))
 
 
 if __name__ == "__main__":

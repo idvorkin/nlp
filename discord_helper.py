@@ -1,6 +1,9 @@
 from typing import TypeVar, Generic, Callable
+import os
 from icecream import ic
 import asyncio
+from pathlib import Path
+import json
 
 T = TypeVar("T")
 
@@ -52,6 +55,16 @@ async def draw_progress_bar(ctx):
     return asyncio.create_task(
         edit_message_to_append_dots_every_second(progress_message, ".")
     )
+
+
+def get_bot_token(secret_key):
+    # read token from environment variable, or from the secret box, if in neither throw
+    token = os.environ.get("DISCORD_BOT_TOKEN")
+    if not token:
+        secret_file = Path.home() / "gits/igor2/secretBox.json"
+        SECRETS = json.loads(secret_file.read_text())
+        token = SECRETS[secret_key]
+    return token
 
 
 async def edit_message_to_append_dots_every_second(message, base_text):
