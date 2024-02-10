@@ -5,13 +5,9 @@
 version: "3.9"
 
 services:
-  talk:
-    build: ./
+  bot:
+    build: .
     volumes:
-      - ./app:/notebooks
-      - ./docker-compose.yml:/app/docker-compose.yml:ro
-      - ./Dockerfile:/app/Dockerfile:ro
-      - ./coding_llms.ipynb:/notebooks/coding_llms.ipynb
-    profiles: ["exclude-from-up"]
+      - ./:/app
     ports:
       - 8888:8888
