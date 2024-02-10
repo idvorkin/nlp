@@ -93,6 +93,11 @@ async def help(ctx):
     await ctx.send(response)
 
 
+@bot.command(description="Message the bot")
+async def txt(ctx):
+    await on_message(ctx)
+
+
 @bot.command(description="Set the model")
 async def model(ctx, model):
     if model not in bestie.models.keys():
