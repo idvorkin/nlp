@@ -71,6 +71,26 @@ def messages_stats():
 
 
 @app.command()
+def recent_state():
+    chat_path = os.path.expanduser("~/imessage/chat.db")
+    loader = IMessageChatLoader(path=chat_path)
+    ic("loading messages")
+    raw = loader.load()
+
+    # limit to chats wtih bestie
+    # bestie_messages = [c for c in raw_messages if "7091" in c.to_phone]
+    df_chats = chats_to_df(raw)
+    # filter messaages to last month
+    df_chats = df_chats[(df_chats.to_phone.str.contains("7091"))]
+    df_chats = df_chats[df_chats.date > "2024-02-01"]
+    df_chats = df_chats.set_index(df_chats.date)
+
+    ic(df_chats)
+
+    # Get last 2 weeks
+
+
+@app.command()
 def finetune(number: str = "7091"):
     df = im2df()
     df_convo = df[(df.to_phone.str.contains(number))]
@@ -108,13 +128,6 @@ def create_fine_tune(df):
     )
     # invert is_from_me if you want to train for Igor.
     # df.is_from_me = ~df.is_from_me
-
-    # images are uffc - remove those
-    # make ''' ascii to be more pleasant to look at
-    df.text = df.text.apply(
-        lambda t: t.replace("\ufffc", "").replace("\u2019", "'").strip()
-    )
-    df = df[df.text.str.len() > 0]
 
     def to_message(row):
         role = "user" if row.is_from_me else "assistant"
@@ -169,15 +182,8 @@ def moderate(text):
     return response.results[0]
 
 
-def im2df():
-    # date	text	is_from_me	to_phone
-    ic("start load")
-    chats = pickle.load(open("raw_messages.pickle", "rb"))
-    ic(f"done load {len(chats)}")
-
+def chats_to_df(chats):
     output = []
-
-    # transform to csv
     for c in chats:
         messages = c["messages"]
         if not len(messages):
@@ -191,11 +197,22 @@ def im2df():
                 "to_phone": m.role,
             }
             output.append(row)
-
-    ic(len(output))
-
     df = pd.DataFrame(output)
+    # images are uffc - remove those
+    # make ''' ascii to be more pleasant to look at
+    df.text = df.text.apply(
+        lambda t: t.replace("\ufffc", "").replace("\u2019", "'").strip()
+    )
+    df = df[df.text.str.len() > 0]
     return df
+
+
+def im2df():
+    # date	text	is_from_me	to_phone
+    ic("start load")
+    chats = pickle.load(open("raw_messages.pickle", "rb"))
+    ic(f"done load {len(chats)}")
+    return chats_to_df(chats)
 
 
 models = {
@@ -290,7 +307,7 @@ def get_weather(city):
 
 
 def build_facts():
-    location = "Seattle"
+    location = "Denmark"
     facts = f"""
 # Facts about best friend for the convo
 
