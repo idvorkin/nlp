@@ -70,6 +70,24 @@ def messages_stats():
     print(days.text.describe(percentiles=[0.5, 0.75, 0.95]))
 
 
+def llm_summarize_recent_convo(dfChat):
+    text_prompt = """
+Below is a conversation between a person and the assistant (the bestie). Your job is to compress the conversation so it can be used as part of a prompt to an assistant which will be the bestie. Include what the assistant and user is trying to accomplish, current state, and concrete topics to discuss. Use about 100 lines
+
+Conversation:
+    """
+    for m in dfChat.message.tolist():
+        text_prompt += f"\n{m['role']}: {m['content']}"
+
+    ic(openai_wrapper.num_tokens_from_string(text_prompt))
+
+    prompt = ChatPromptTemplate.from_template(text_prompt)
+    model = ChatOpenAI(model=openai_wrapper.gpt4.name)
+    chain = prompt | model
+    result = chain.invoke({}).content
+    return result
+
+
 @app.command()
 def recent_state():
     chat_path = os.path.expanduser("~/imessage/chat.db")
@@ -85,8 +103,8 @@ def recent_state():
     df_chats = df_chats[df_chats.date > "2024-02-01"]
     df_chats = df_chats.set_index(df_chats.date)
 
-    ic(df_chats)
-
+    summary = llm_summarize_recent_convo(df_chats)
+    print(summary)
     # Get last 2 weeks
 
 
@@ -128,12 +146,6 @@ def create_fine_tune(df):
     )
     # invert is_from_me if you want to train for Igor.
     # df.is_from_me = ~df.is_from_me
-
-    def to_message(row):
-        role = "user" if row.is_from_me else "assistant"
-        return make_message(role, row["text"])
-
-    df["message"] = df.apply(to_message, axis=1)
 
     traindata_set = []
     ic(len(df.group.unique()))
@@ -204,6 +216,12 @@ def chats_to_df(chats):
         lambda t: t.replace("\ufffc", "").replace("\u2019", "'").strip()
     )
     df = df[df.text.str.len() > 0]
+
+    def to_message(row):
+        role = "user" if row.is_from_me else "assistant"
+        return make_message(role, row["text"])
+
+    df["message"] = df.apply(to_message, axis=1)
     return df
 
 
@@ -354,11 +372,15 @@ def make_bestie_system_prompt():
     return system_prompt
 
 
+# lets add the last 2 weeks of messages to history
+
+
 def createBestieMessageHistory():
     from langchain.memory import ChatMessageHistory
 
     memory = ChatMessageHistory()
     memory.add_message(SystemMessage(content=make_bestie_system_prompt()))
+
     return memory
 
 
