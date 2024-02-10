@@ -1,26 +1,24 @@
 #!python3
 
-import datetime
-import os
 
 import discord
-import psutil
 import typer
 from icecream import ic
 
-from rich.console import Console
 
-from discord_helper import BotState, draw_progress_bar, send, get_bot_token
+from discord_helper import (
+    BotState,
+    draw_progress_bar,
+    send,
+    get_bot_token,
+    get_debug_process_info,
+)
 from openai_wrapper import setup_secret
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 import bestie
 
 setup_secret()
-
-console = Console()
-
-app = typer.Typer()
 
 
 class BestieState:
@@ -110,20 +108,17 @@ async def model(ctx, model):
 
 @bot.command(description="See local state")
 async def debug(ctx):
-    process = psutil.Process(os.getpid())
-    memory_info = process.memory_info()
+    # the first is the system message, skip that
+    debug_out = get_debug_process_info()
     state = g_botStateStore.get(ctx)
-    debug_out = f"""```ansi
-Process:
-    Up time: {datetime.datetime.now() - datetime.datetime.fromtimestamp(process.create_time())}
-    VM: {memory_info.vms / 1024 / 1024} MB
-    Residitent: {memory_info.rss / 1024 / 1024} MB
+    debug_out += f"""```ansi
+Bot State:
+    Model: {state.model_name}
     States: {g_botStateStore.context_to_state.keys()}
-    Model = {state.model_name}
-    Current Chat History:
+Current Chat History:
     ```
     """
-    # the first is the system message, skip that
+
     for m in state.memory.messages[1:]:
         debug_out += f"{m}\n"
 
@@ -131,6 +126,9 @@ Process:
     debug_out = debug_out[:1900]
 
     await send(ctx, debug_out)
+
+
+app = typer.Typer()
 
 
 @app.command()

@@ -4,6 +4,8 @@ from icecream import ic
 import asyncio
 from pathlib import Path
 import json
+import psutil
+import datetime
 
 T = TypeVar("T")
 
@@ -65,6 +67,20 @@ def get_bot_token(secret_key):
         SECRETS = json.loads(secret_file.read_text())
         token = SECRETS[secret_key]
     return token
+
+
+def get_debug_process_info():
+    process = psutil.Process(os.getpid())
+    memory_info = process.memory_info()
+    debug_out = f"""```ansi
+Process:
+    Up time: {datetime.datetime.now() - datetime.datetime.fromtimestamp(process.create_time())}
+    VM: {memory_info.vms / 1024 / 1024} MB
+    Residitent: {memory_info.rss / 1024 / 1024} MB
+    Current Chat History:
+    ```
+    """
+    return debug_out
 
 
 async def edit_message_to_append_dots_every_second(message, base_text):
