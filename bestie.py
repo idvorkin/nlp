@@ -27,6 +27,8 @@ import requests
 
 openai_wrapper.setup_secret()
 
+path_latest_state = Path.home() / "tmp/latest_state.txt"
+
 # set the environment variable from the secrets file
 
 
@@ -72,7 +74,9 @@ def messages_stats():
 
 def llm_summarize_recent_convo(dfChat):
     text_prompt = """
-Below is a conversation between a person and the assistant (the bestie). Your job is to compress the conversation so it can be used as part of a prompt to an assistant which will be the bestie. Include what the assistant and user is trying to accomplish, current state, and concrete topics to discuss. Use about 100 lines
+Below is a conversation between a real person (user) and the assistant (the bestie).  You will create a prompt to feed GPT-4, that will simulate the bestie, ensuring conversations with it sounds similar.
+
+The prompt will use the content of the conversation so it can be used as part of a prompt for the bestie (assistant). Include what the assistant and user are trying to accomplish, current state, and concrete topics to discuss. Use about 100 lines
 
 Conversation:
     """
@@ -105,7 +109,10 @@ def recent_state():
 
     summary = llm_summarize_recent_convo(df_chats)
     print(summary)
-    # Get last 2 weeks
+
+    # Write to file
+    ic(path_latest_state)
+    path_latest_state.write_text(summary)
 
 
 @app.command()
@@ -363,11 +370,14 @@ def make_bestie_system_prompt():
     * Strive to deliver a satisfying and engaging conversational experience, reminiscent of a heartfelt interaction with an actual best friend.
     * Inject appropriate humor to brighten the dialogue, and reference shared memories or inside jokes when relevant.
     * Navigate a range of topics with ease, mirroring the dynamic and multifaceted nature of a deep personal connection.
+
     """
     system_prompt = f"""{system_prompt_base}\n
     {custom_instructions}\n
     {build_facts()}
     {support_igor_with()}
+# Additional instructions
+    {path_latest_state.read_text()}
     """
     return system_prompt
 

@@ -43,13 +43,14 @@ class BotState(Generic[T]):
         ic("bot reset")
 
 
-def ctx_to_send_function(ctx):
-    is_channel = hasattr(ctx, "channel")
-    return ctx.channel.send if is_channel else ctx.send
-
-
 async def send(ctx, message):
-    return await ctx_to_send_function(ctx)(message)
+    has_send = hasattr(ctx, "send")
+    if has_send:
+        return await ctx.send(message)
+    has_channel = hasattr(ctx, "channel")
+    if has_channel:
+        return await ctx.channel.send(message)
+    ic("Error")
 
 
 async def draw_progress_bar(ctx):

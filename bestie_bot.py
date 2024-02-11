@@ -94,8 +94,10 @@ async def help(ctx):
 
 
 @bot.command(description="Message the bot")
-async def txt(ctx):
+async def txt(ctx, message: str):
+    ctx.content = message  # monkey patch, mabye will work
     await on_message(ctx)
+    await ctx.respond(".")
 
 
 @bot.command(description="Set the model")
@@ -120,12 +122,16 @@ async def debug(ctx):
 Bot State:
     Model: {state.model_name}
     States: {g_botStateStore.context_to_state.keys()}
+    ```
+    """
+
+    debug_out += """```ansi
 Current Chat History:
     ```
     """
 
     for m in state.memory.messages[1:]:
-        debug_out += f"{m}\n"
+        debug_out += f"{m.content}\n"
 
     # max message is 2000
     debug_out = debug_out[:1900]
