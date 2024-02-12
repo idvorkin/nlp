@@ -42,7 +42,7 @@ gpt4 = CompletionModel(
 gpt35 = CompletionModel(
     max_input_only_tokens=12 * 1000,
     max_output_tokens=4 * 1000,
-    name="gpt-3.5-turbo-1106",
+    name="gpt-3.5-turbo-0125",
 )
 
 
