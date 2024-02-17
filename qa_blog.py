@@ -28,10 +28,7 @@ from langchain.schema.output_parser import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 import json
 import discord
-from discord_helper import (
-    draw_progress_bar,
-    get_bot_token,
-)
+from discord_helper import draw_progress_bar, get_bot_token, send
 
 
 gpt_model = setup_gpt()
@@ -352,6 +349,23 @@ your answer here
 bot_help_text = "Replaced on_ready"
 
 
+@bot.event
+async def on_message(ctx):
+    # if message is from me, skip it
+    if ctx.author.bot:
+        # ic ("Ignoring message from bot", message)
+        return
+
+    ic("bot.on_message", ctx)
+    if len(ctx.content) == 0:
+        return
+    # message_content = ctx.content.replace(f"<@{bot.user.id}>", "").strip()
+    await send(
+        ctx, "Sorry I don't reply to DMs directly you need to use slash commands. e.g."
+    )
+    await send(ctx, bot_help_text)
+
+
 @app.command()
 def run_bot():
     bot.run(get_bot_token("IGBLOG-DISCORD-BOT"))
@@ -364,7 +378,7 @@ async def on_ready():
     bot_help_text = """```
 
 Commands:
- /bask - Ask a blog questions
+ /ask - Ask a blog questions
  - More coming ...
     ```"""
 
@@ -372,11 +386,11 @@ Commands:
 @bot.command(description="Show help")
 async def help(ctx):
     response = f"{bot_help_text}"
-    await ctx.send(response)
+    await ctx.respond(response)
 
 
-@bot.command(description="Message the bot")
-async def bask(ctx, question: str):
+@bot.command(name="ask", description="Message the bot")
+async def ask_discord_command(ctx, question: str):
     await ctx.defer()
     await ctx.send(f"User asked: {question}")
     progress_bar_task = await draw_progress_bar(ctx)
