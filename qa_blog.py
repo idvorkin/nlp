@@ -377,11 +377,14 @@ async def help(ctx):
 
 @bot.command(description="Message the bot")
 async def bask(ctx, question: str):
+    await ctx.defer()
+    await ctx.send(f"User asked: {question}")
     progress_bar_task = await draw_progress_bar(ctx)
     response = await iask(question, facts=5, u4=True, debug=False)
+    ic(response)
     progress_bar_task.cancel()
     ic(response)
-    await ctx.send(response)
+    await ctx.respond(response)
 
 
 # @logger.catch()
