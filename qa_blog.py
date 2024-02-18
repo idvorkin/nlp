@@ -43,32 +43,57 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 # embeddings = OpenAIEmbeddings()
 
 
-# TODO: Use UnstructuredMarkdownParser
-# Interesting trade off here, if we make chunks bigger we can have more context
-# If we make chunk smaller we can inject more chunks
-headers_to_split_on = [
-    ("#", "H1"),
-    ("##", "H2"),
-    ("###", "H3"),
-    ("####", "H4"),
-]
-
-chunk_size = 2048
-markdown_splitter = text_splitter.MarkdownHeaderTextSplitter(
-    headers_to_split_on=headers_to_split_on, strip_headers=False
-)
+chunk_size_5k_tokens = (
+    4 * 1000 * 5
+)  # ~ 5K tokens, given we'll be doing 5-10 facts, seems reasonable
 
 
-def chunk_documents(documents, chunk_size=chunk_size, chunk_overlap=200):
-    # splitter = RecursiveCharacterTextSplitter( chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    splitter = markdown_splitter
+def chunk_documents_recursive(documents, chunk_size=chunk_size_5k_tokens):
+    recursive_splitter = text_splitter.RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_size // 4
+    )
+    splitter = recursive_splitter
 
     for document in documents:
         for chunk in splitter.split_text(document.page_content):
             yield Document(
-                page_content=chunk.page_content,
-                metadata={**chunk.metadata, "source": document.metadata["source"]},
+                page_content=chunk,
+                metadata={"source": document.metadata["source"]},
             )
+
+
+def chunk_documents_as_md(documents, chunk_size=chunk_size_5k_tokens):
+    # TODO: Use UnstructuredMarkdownParser
+    # Interesting trade off here, if we make chunks bigger we can have more context
+    # If we make chunk smaller we can inject more chunks
+    headers_to_split_on = [
+        ("#", "H1"),
+        ("##", "H2"),
+        ("###", "H3"),
+        ("####", "H4"),
+    ]
+    markdown_splitter = text_splitter.MarkdownHeaderTextSplitter(
+        headers_to_split_on=headers_to_split_on, strip_headers=False
+    )
+    splitter = markdown_splitter
+
+    for document in documents:
+        candidate_chunk = Document(
+            page_content="", metadata={"source": document.metadata["source"]}
+        )
+        for chunk in splitter.split_text(document.page_content):
+            candidate_big_enough = len(candidate_chunk.page_content) > chunk_size
+            if candidate_big_enough:
+                yield candidate_chunk
+                candidate_chunk = Document(
+                    page_content="", metadata={"source": document.metadata["source"]}
+                )
+
+            # grow the candate chunk with current chunk
+            candidate_chunk.page_content += chunk.page_content
+
+        # yield the last chunk, regardless of its size
+        yield candidate_chunk
 
 
 def get_blog_content(path):
@@ -90,7 +115,11 @@ def build():
     # db = Path(chroma_db_dir)
     # erase the db directory
 
-    chunks = list(chunk_documents(docs))
+    ic(len(docs))
+    chunks = list(chunk_documents_as_md(docs))
+    ic(len(chunks))
+    chunks += list(chunk_documents_recursive(docs))
+    ic(len(chunks))
     search_index = Chroma.from_documents(
         chunks, embeddings, persist_directory=chroma_db_dir
     )
