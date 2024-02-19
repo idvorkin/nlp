@@ -525,6 +525,12 @@ async def ask_discord_command(ctx, question: str):
     await ctx.respond(response)
 
 
+@bot.command(name="ask", description="Get Debgu Info from last call")
+async def debug(ctx):
+    await ctx.defer()
+    await ctx.respond("Todo implement this")
+
+
 # @logger.catch()
 def app_wrap_loguru():
     app()
