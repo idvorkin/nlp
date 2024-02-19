@@ -516,7 +516,7 @@ async def help(ctx):
 @bot.command(name="ask", description="Message the bot")
 async def ask_discord_command(ctx, question: str):
     await ctx.defer()
-    await ctx.send(f"User asked: {question}")
+    await send(ctx, f"User asked: {question}")
     progress_bar_task = await draw_progress_bar(ctx)
     response = await iask(question, facts=10, u4=True, debug=False)
     ic(response)
