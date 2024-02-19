@@ -55,11 +55,18 @@ def chunk_documents_recursive(documents, chunk_size=chunk_size_5k_tokens):
     splitter = recursive_splitter
 
     for document in documents:
-        for chunk in splitter.split_text(document.page_content):
-            yield Document(
+        chunks = splitter.split_text(document.page_content)
+        for chunk in chunks:
+            d = Document(
                 page_content=chunk,
-                metadata={"source": document.metadata["source"]},
+                metadata={
+                    "chunk_method": "recursive_char",
+                    "source": document.metadata["source"],
+                    "is_entire_document": len(chunks) == 1,
+                },
             )
+            ic(d.metadata)
+            yield d
 
 
 def chunk_documents_as_md(documents, chunk_size=chunk_size_5k_tokens):
@@ -78,21 +85,53 @@ def chunk_documents_as_md(documents, chunk_size=chunk_size_5k_tokens):
     splitter = markdown_splitter
 
     for document in documents:
-        candidate_chunk = Document(
-            page_content="", metadata={"source": document.metadata["source"]}
-        )
+        base_metadata = {
+            "source": document.metadata["source"],
+            "chunk_method": "md_simple",
+            "is_entire_document": False,
+        }
+        for chunk in splitter.split_text(document.page_content):
+            yield Document(
+                page_content=chunk.page_content,
+                metadata={**chunk.metadata, **base_metadata},
+            )
+
+
+def chunk_documents_as_md_large(documents, chunk_size=chunk_size_5k_tokens):
+    # TODO: Use UnstructuredMarkdownParser
+    # Interesting trade off here, if we make chunks bigger we can have more context
+    # If we make chunk smaller we can inject more chunks
+    headers_to_split_on = [
+        ("#", "H1"),
+        ("##", "H2"),
+        ("###", "H3"),
+        ("####", "H4"),
+    ]
+    markdown_splitter = text_splitter.MarkdownHeaderTextSplitter(
+        headers_to_split_on=headers_to_split_on, strip_headers=False
+    )
+    splitter = markdown_splitter
+
+    for document in documents:
+        base_metadata = {
+            "source": document.metadata["source"],
+            "chunk_method": "md_merge",
+        }
+        candidate_chunk = Document(page_content="", metadata=base_metadata)
+        is_entire_document = True
         for chunk in splitter.split_text(document.page_content):
             candidate_big_enough = len(candidate_chunk.page_content) > chunk_size
             if candidate_big_enough:
+                is_entire_document = False
+                candidate_chunk.metadata["is_entire_document"] = is_entire_document
                 yield candidate_chunk
-                candidate_chunk = Document(
-                    page_content="", metadata={"source": document.metadata["source"]}
-                )
+                candidate_chunk = Document(page_content="", metadata=base_metadata)
 
             # grow the candate chunk with current chunk
             candidate_chunk.page_content += chunk.page_content
 
         # yield the last chunk, regardless of its size
+        candidate_chunk.metadata["is_entire_document"] = is_entire_document
         yield candidate_chunk
 
 
@@ -109,19 +148,40 @@ def get_blog_content(path):
             )
 
 
+def dedup_chunks(chunks):
+    # chunks is a list of documents created by multiple chunkers
+    # if we have multiple chunks from the same source and that contain the full document
+    # only keep the first one
+    unique_chunks = []
+    seen_full_size = set()
+    for chunk in chunks:
+        source = chunk.metadata["source"]
+        whole_doc = chunk.metadata["is_entire_document"]
+        if whole_doc and source in seen_full_size:
+            continue
+        if whole_doc:
+            seen_full_size.add(source)
+        unique_chunks.append(chunk)
+    return unique_chunks
+
+
 @app.command()
 def build():
     docs = list(get_blog_content("~/blog"))
-    # db = Path(chroma_db_dir)
-    # erase the db directory
+
+    # It's OK, start by erasing the db
+    # db_path = pathlib.Path(chroma_db_dir)
+    # db_path.rmdir()
 
     ic(len(docs))
     chunks = list(chunk_documents_as_md(docs))
-    ic(len(chunks))
+    chunks += list(chunk_documents_as_md_large(docs))
     chunks += list(chunk_documents_recursive(docs))
-    ic(len(chunks))
+    deduped_chunks = dedup_chunks(chunks)
+    ic(len(chunks), len(deduped_chunks))
+
     search_index = Chroma.from_documents(
-        chunks, embeddings, persist_directory=chroma_db_dir
+        deduped_chunks, embeddings, persist_directory=chroma_db_dir
     )
     search_index.persist()
 
@@ -172,6 +232,17 @@ def fixup_ig66_path_to_url(src):
     return src
 
 
+def get_document(path):
+    blog_content_db = Chroma(
+        persist_directory=chroma_db_dir, embedding_function=embeddings
+    )
+    all = blog_content_db.get()
+    for i, m in enumerate(all["metadatas"]):
+        if m["source"] == path and m["is_entire_document"]:
+            return Document(page_content=all["documents"][i], metadata=m)
+    raise Exception(f"{path} document found")
+
+
 @app.command()
 def ask_eulogy(
     question: Annotated[
@@ -181,7 +252,7 @@ def ask_eulogy(
     u4: bool = typer.Option(False),
     debug: bool = typer.Option(True),
 ):
-    model, max_tokens = choose_model(u4)
+    model, _ = choose_model(u4)
     if debug:
         ic(model)
         ic(facts)
@@ -213,8 +284,10 @@ Before your answer, repeat the question as an H2 header
 
 After you answer, return the list of sources and why they were relevant in order of relevance.
 Be sure to include the % relvanace of each source
+
 '_' is a valid part of the source file path, do not remove it
 If there are multiple facts with the same source, combine them with indented bullet points
+
     """
 
     # give an example instead of trying to describe everything.
@@ -229,7 +302,7 @@ your answer here
 
 ### Sources
 
-* source file path - Your reasoning on why it's  relevant (% relevance,  e.g. 20%)
+* source file path - Your reasoning on why it's relevant (% relevance,  e.g. 20%)
     """
 
     system_prompt = system_instructions + system_example
@@ -318,8 +391,8 @@ def ask(
 async def iask(
     question: str,
     facts: int,
-    u4: bool,
-    debug: bool,
+    u4: bool = True,
+    debug: bool = True,
 ):
     model, _ = choose_model(u4)
     if debug:
@@ -355,6 +428,10 @@ your answer here
     llm = ChatOpenAI(model=model_name)
     simple_retriever = blog_content_db.as_retriever(search_kwargs={"k": facts})
     included_facts = simple_retriever.get_relevant_documents(question)
+    included_facts += [get_document("_ig66/605.md")]
+    included_facts += [get_document("_posts/2020-04-01-Igor-Eulogy.md")]
+    included_facts += [get_document("_d/operating-manual-2.md")]
+
     print("Source Documents")
     for doc in included_facts:
         # Remap metadata to url
@@ -423,7 +500,7 @@ async def ask_discord_command(ctx, question: str):
     await ctx.defer()
     await ctx.send(f"User asked: {question}")
     progress_bar_task = await draw_progress_bar(ctx)
-    response = await iask(question, facts=5, u4=True, debug=False)
+    response = await iask(question, facts=10, u4=True, debug=False)
     ic(response)
     progress_bar_task.cancel()
     ic(response)
