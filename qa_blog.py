@@ -25,7 +25,6 @@ from langchain.prompts.chat import (
     SystemMessagePromptTemplate,
 )
 from langchain.schema.output_parser import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
 import json
 import discord
 from discord_helper import draw_progress_bar, get_bot_token, send
@@ -232,6 +231,17 @@ def fixup_ig66_path_to_url(src):
     return src
 
 
+def has_whole_document(path):
+    blog_content_db = Chroma(
+        persist_directory=chroma_db_dir, embedding_function=embeddings
+    )
+    all = blog_content_db.get()
+    for m in all["metadatas"]:
+        if m["source"] == path and m["is_entire_document"]:
+            return True
+    return False
+
+
 def get_document(path):
     blog_content_db = Chroma(
         persist_directory=chroma_db_dir, embedding_function=embeddings
@@ -426,9 +436,21 @@ your answer here
 
     model_name = get_model(u4=True)
     llm = ChatOpenAI(model=model_name)
-    simple_retriever = blog_content_db.as_retriever(search_kwargs={"k": facts})
-    included_facts = simple_retriever.get_relevant_documents(question)
-    included_facts += [get_document("_ig66/605.md")]
+    # simple_retriever = blog_content_db.as_retriever(search_kwargs={"k": facts})
+
+    # We can improve our relevance by getting the md_simple_chunks, but that loses context
+    # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
+
+    docs_and_scores = blog_content_db.similarity_search_with_relevance_scores(
+        question, k=4 * facts
+    )
+    for doc, score in docs_and_scores:
+        ic(doc.metadata, score)
+    included_facts = [d for d, _ in docs_and_scores[:facts]]
+
+    # included_facts = simple_retriever.get_relevant_documents(question)
+    # included_facts = simple_retriever.get_relevant_documents(question)
+
     included_facts += [get_document("_posts/2020-04-01-Igor-Eulogy.md")]
     included_facts += [get_document("_d/operating-manual-2.md")]
 
@@ -439,16 +461,12 @@ your answer here
         path = fixup_markdown_path_to_url(doc.metadata["source"])
         ic(path)
 
-    chain = (
-        {
-            "context": simple_retriever | docs_to_prompt,
-            "question": RunnablePassthrough(),
-        }
-        | prompt
-        | llm
-        | StrOutputParser()
+    chain = prompt | llm | StrOutputParser()
+
+    response = chain.ainvoke(
+        {"question": question, "context": docs_to_prompt(included_facts)}
     )
-    response = chain.ainvoke(question)
+
     return await response
 
 
