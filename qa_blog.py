@@ -3,7 +3,6 @@ import requests
 from functools import lru_cache
 import pathlib
 from langchain_openai.chat_models import ChatOpenAI
-from pydantic import BaseModel
 from rich.console import Console
 from icecream import ic
 import typer
@@ -21,8 +20,6 @@ from fastapi import FastAPI
 from openai_wrapper import setup_gpt, get_model
 from langchain.prompts.chat import (
     ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    SystemMessagePromptTemplate,
 )
 from langchain.schema.output_parser import StrOutputParser
 import json
@@ -40,6 +37,8 @@ bot = discord.Bot()
 chroma_db_dir = "blog.chroma.db"
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 # embeddings = OpenAIEmbeddings()
+
+g_debug_out = ""
 
 
 chunk_size_5k_tokens = (
@@ -195,40 +194,25 @@ def chunk_md(
     ic(elements)
 
 
-class Fact(BaseModel):
-    source: str
-    content: str
+def fixup_markdown_path(src):
+    # We built the file_path from source markdown
+    def fixup_markdown_path_to_url(src):
+        markdown_to_url = build_markdown_to_url_map()
+        for md_file_path, url in markdown_to_url.items():
+            # url starts with a /
+            url = url[1:]
+            md_link = f"[{url}](https://idvork.in/{url})"
+            src = src.replace(md_file_path, md_link)
+        return src
 
-    def to_prompt(self):
-        return f"""---(FACT)---
-SOURCE FILE PATH:
-{self.source}
-FACT:
-{self.content}
----"""
+    def fixup_ig66_path_to_url(src):
+        for i in range(100 * 52):
+            src = src.replace(
+                f"_ig66/{i}.md", f"[Family Journal {i}](https://idvork.in/ig66/{i})"
+            )
+        return src
 
-
-def facts_to_prompt(facts):
-    return "\n".join([f.to_prompt() for f in facts])
-
-
-# We built the file_path from source markdown
-def fixup_markdown_path_to_url(src):
-    markdown_to_url = build_markdown_to_url_map()
-    for md_file_path, url in markdown_to_url.items():
-        # url starts with a /
-        url = url[1:]
-        md_link = f"[{url}](https://idvork.in/{url})"
-        src = src.replace(md_file_path, md_link)
-    return src
-
-
-def fixup_ig66_path_to_url(src):
-    for i in range(100 * 52):
-        src = src.replace(
-            f"_ig66/{i}.md", f"[Family Journal {i}](https://idvork.in/ig66/{i})"
-        )
-    return src
+    return fixup_ig66_path_to_url(fixup_markdown_path_to_url(src))
 
 
 def has_whole_document(path):
@@ -253,95 +237,6 @@ def get_document(path):
     raise Exception(f"{path} document found")
 
 
-@app.command()
-def ask_eulogy(
-    question: Annotated[
-        str, typer.Argument()
-    ] = "What are the roles from Igor's Eulogy, answer in bullet form",
-    facts: Annotated[int, typer.Option()] = 5,
-    u4: bool = typer.Option(False),
-    debug: bool = typer.Option(True),
-):
-    model, _ = choose_model(u4)
-    if debug:
-        ic(model)
-        ic(facts)
-
-    # load chroma from DB
-    blog_content_db = Chroma(
-        persist_directory=chroma_db_dir, embedding_function=embeddings
-    )
-
-    nearest_documents = blog_content_db.similarity_search(question, k=facts)
-
-    # set_trace()
-    for f in nearest_documents:
-        if debug:
-            ic(f.metadata["source"])
-
-    thefacts = [
-        Fact(source=f.metadata["source"], content=f.page_content)
-        for f in nearest_documents
-    ]
-
-    # explain what you want
-    system_instructions = """
-You are an expert at answering questions.
-Use the passed in facts from Igor's blog to answer provided questions.
-
-You give output in markdown
-Before your answer, repeat the question as an H2 header
-
-After you answer, return the list of sources and why they were relevant in order of relevance.
-Be sure to include the % relvanace of each source
-
-'_' is a valid part of the source file path, do not remove it
-If there are multiple facts with the same source, combine them with indented bullet points
-
-    """
-
-    # give an example instead of trying to describe everything.
-    system_example = """
-E.g.
-
-## the question the user asked here
-
-### Answer
-
-your answer here
-
-### Sources
-
-* source file path - Your reasoning on why it's relevant (% relevance,  e.g. 20%)
-    """
-
-    system_prompt = system_instructions + system_example
-
-    prompt = f"""
-    ### Facts
-{facts_to_prompt(thefacts)}
-    ### Question
-        {question}
-    """
-
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            SystemMessagePromptTemplate.from_template(system_prompt),
-            HumanMessagePromptTemplate.from_template(prompt),
-        ],
-    )
-    model_name = get_model(u4=True)
-    model = ChatOpenAI(model=model_name)
-    ic(model_name)
-
-    chain = prompt | model | StrOutputParser()
-    response = chain.invoke({})
-
-    out = fixup_markdown_path_to_url(response)
-    out = fixup_ig66_path_to_url(out)
-    print(out)
-
-
 # cache this so it's memoized
 @lru_cache
 def build_markdown_to_url_map():
@@ -360,25 +255,11 @@ def build_markdown_to_url_map():
     return source_file_to_url
 
 
-@server.get("/remap/{source_file}")
-def remap_to_url(source_file):
-    return {"url": source_file_to_url(source_file)}
-    # return {"url":"It works"}
-
-
-@app.command()
-@server.get("/remap/{source_file}")
-def source_file_to_url(source_file):
-    source_file_to_url = build_markdown_to_url_map()
-    blog_base = "https://idvork.in"
-    return blog_base + source_file_to_url[source_file]
-
-
 def docs_to_prompt(docs):
     ic(len(docs))
     ret = []
     for d in docs:
-        d.metadata["source"] = fixup_markdown_path_to_url(d.metadata["source"])
+        d.metadata["source"] = fixup_markdown_path(d.metadata["source"])
         ret.append({"content": d.page_content, "metadata": d.metadata})
 
     return json.dumps(ret)
@@ -415,18 +296,21 @@ async def iask(
 
     prompt = ChatPromptTemplate.from_template(
         """
-    You are an assistant for question-answering tasks.
-    Use the following pieces of retrieved context to answer the question.
-    The content is all from Igor's blog
-    If you don't know the answer, just say that you don't know. Keep the answer under 10 lines
-    Question: {question}
-    Context: {context}
+You are an assistant for question-answering tasks.
+Use the following pieces of retrieved context to answer the question.
+The content is all from Igor's blog
+If you don't know the answer, just say that you don't know. Keep the answer under 10 lines
 
-## the question the user asked here
+# The User's Questions
+{question}
 
-### Answer
+# Context
+{context}
 
-your answer here
+# Instruction
+
+* Your answer should include sources like those listed below. The source files are markdown so if the have a header make an HTML anchor link when you make the source link. E.g. if it's in idvork.in, with header  # Foo , set it to http://idvork.in#foo
+
 
 ### Sources
 
@@ -458,8 +342,6 @@ your answer here
     for doc in included_facts:
         # Remap metadata to url
         ic(doc.metadata)
-        path = fixup_markdown_path_to_url(doc.metadata["source"])
-        ic(path)
 
     chain = prompt | llm | StrOutputParser()
 
@@ -525,7 +407,7 @@ async def ask_discord_command(ctx, question: str):
     await ctx.respond(response)
 
 
-@bot.command(name="ask", description="Get Debgu Info from last call")
+@bot.command(name="debug", description="Get Debgu Info from last call")
 async def debug(ctx):
     await ctx.defer()
     await ctx.respond("Todo implement this")
