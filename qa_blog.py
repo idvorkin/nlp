@@ -17,7 +17,7 @@ from langchain import (
 from typing_extensions import Annotated
 from openai_wrapper import choose_model
 from fastapi import FastAPI
-from openai_wrapper import setup_gpt, get_model
+from openai_wrapper import setup_gpt, get_model, num_tokens_from_string
 from langchain.prompts.chat import (
     ChatPromptTemplate,
 )
@@ -320,7 +320,6 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
 
     model_name = get_model(u4=True)
     llm = ChatOpenAI(model=model_name)
-    # simple_retriever = blog_content_db.as_retriever(search_kwargs={"k": facts})
 
     # We can improve our relevance by getting the md_simple_chunks, but that loses context
     # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
@@ -330,24 +329,52 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     )
     for doc, score in docs_and_scores:
         ic(doc.metadata, score)
-    included_facts = [d for d, _ in docs_and_scores[:facts]]
 
-    # included_facts = simple_retriever.get_relevant_documents(question)
-    # included_facts = simple_retriever.get_relevant_documents(question)
+    candidate_facts = [d for d, _ in docs_and_scores]
 
-    included_facts += [get_document("_posts/2020-04-01-Igor-Eulogy.md")]
-    included_facts += [get_document("_d/operating-manual-2.md")]
+    facts_to_inject = []
+    # build a set of facts to inject
+    # if we got suggested partial files, try to find the full size version
+    # if we can inject full size version, include that.
+    # include upto fact docs
+
+    def facts_to_append_contains_whole_file(path):
+        for fact in facts_to_inject:
+            if fact.metadata["source"] == path and fact.metadata["is_entire_document"]:
+                return True
+        return False
+
+    # We can improve our relevance by getting the md_simple_chunks, but that loses context
+    # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
+    for fact in candidate_facts:
+        if len(facts_to_inject) >= facts:
+            break
+        fact_path = fact.metadata["source"]
+        # Already added
+        if facts_to_append_contains_whole_file(fact_path):
+            ic("Whole file already present", fact_path)
+            continue
+        # Whole document is available
+        if has_whole_document(fact_path):
+            ic("Adding whole file instead", fact.metadata)
+            facts_to_inject.append(get_document(fact_path))
+            continue
+        # All we have is the partial
+        facts_to_inject.append(fact)
+
+    good_docs = ["_posts/2020-04-01-Igor-Eulogy.md", "_d/operating-manual-2.md"]
+    facts_to_inject += [get_document(d) for d in good_docs]
 
     print("Source Documents")
-    for doc in included_facts:
+    for doc in facts_to_inject:
         # Remap metadata to url
         ic(doc.metadata)
 
+    context = docs_to_prompt(facts_to_inject)
+    ic(num_tokens_from_string(context))
     chain = prompt | llm | StrOutputParser()
 
-    response = chain.ainvoke(
-        {"question": question, "context": docs_to_prompt(included_facts)}
-    )
+    response = chain.ainvoke({"question": question, "context": context})
 
     return await response
 
