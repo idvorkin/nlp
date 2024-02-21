@@ -43,19 +43,34 @@ class BotState(Generic[T]):
         ic("bot reset")
 
 
+def smart_split(src, max_length):
+    # split upto max_length, split on new lines only
+    lines = src.split("\n")
+    if len(lines) == 1:
+        yield src
+        return
+
+    candidate_output = ""
+    for line in lines:
+        if len(candidate_output + line) > max_length:
+            yield candidate_output
+            candidate_output = ""
+        candidate_output += line + "\n"
+    yield candidate_output
+
+
 async def send(ctx, message):
-    # truncate message if required
-
-    if len(message) > 1900:
-        message = message[:1900] + "... (truncated)"
-
     has_send = hasattr(ctx, "send")
-    if has_send:
-        return await ctx.send(message)
     has_channel = hasattr(ctx, "channel")
-    if has_channel:
-        return await ctx.channel.send(message)
-    ic("Error")
+    last_message = None
+    for line in smart_split(message, 1900):
+        if has_send:
+            last_message = await ctx.send(line)
+        elif has_channel:
+            last_message = await ctx.channel.send(line)
+        else:
+            raise Exception("No send method found")
+    return last_message
 
 
 async def draw_progress_bar(ctx):

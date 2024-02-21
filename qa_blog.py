@@ -452,19 +452,25 @@ async def ask_discord_command(ctx, question: str):
     ic(response)
     progress_bar_task.cancel()
     ic(response)
-    await ctx.respond(response)
+    await send(ctx, response)
+    await ctx.respond(".")
 
 
-@bot.command(name="debug", description="Get Debgu Info from last call")
+@bot.command(name="debug", description="Debug info the last call")
 async def debug(ctx):
     await ctx.defer()
-
     process = discord_helper.get_debug_process_info()
     await send(ctx, process)
     await send(ctx, f"Tokens: {g_debug_info.count_tokens}")
-    await send(ctx, "Last documents")
-    docs_meta = [doc.metadata for doc in g_debug_info.documents]
-    await send(ctx, json.dumps(docs_meta))
+    await send(ctx, "Last documents:")
+    for doc in g_debug_info.documents:
+        await send(
+            ctx,
+            f"""`
+{json.dumps(doc.metadata, indent=4)}`
+                   """,
+        )
+    await ctx.respond(".")
 
 
 # @logger.catch()
