@@ -44,6 +44,11 @@ class BotState(Generic[T]):
 
 
 async def send(ctx, message):
+    # truncate message if required
+
+    if len(message) > 1900:
+        message = message[:1900] + "... (truncated)"
+
     has_send = hasattr(ctx, "send")
     if has_send:
         return await ctx.send(message)
