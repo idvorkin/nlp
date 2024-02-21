@@ -8,6 +8,7 @@ from icecream import ic
 import typer
 import os
 from rich import print
+from typing import List
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -25,6 +26,8 @@ from langchain.schema.output_parser import StrOutputParser
 import json
 import discord
 from discord_helper import draw_progress_bar, get_bot_token, send
+import discord_helper
+from pydantic import BaseModel
 
 
 gpt_model = setup_gpt()
@@ -38,7 +41,14 @@ chroma_db_dir = "blog.chroma.db"
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 # embeddings = OpenAIEmbeddings()
 
-g_debug_out = ""
+
+class DebugInfo(BaseModel):
+    documents: List[Document] = []
+    question: str = ""
+    count_tokens: int = 0
+
+
+g_debug_info = DebugInfo()
 
 
 chunk_size_5k_tokens = (
@@ -226,7 +236,7 @@ def has_whole_document(path):
     return False
 
 
-def get_document(path):
+def get_document(path) -> Document:
     blog_content_db = Chroma(
         persist_directory=chroma_db_dir, embedding_function=embeddings
     )
@@ -324,7 +334,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     # We can improve our relevance by getting the md_simple_chunks, but that loses context
     # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
 
-    docs_and_scores = blog_content_db.similarity_search_with_relevance_scores(
+    docs_and_scores = await blog_content_db.asimilarity_search_with_relevance_scores(
         question, k=4 * facts
     )
     for doc, score in docs_and_scores:
@@ -332,7 +342,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
 
     candidate_facts = [d for d, _ in docs_and_scores]
 
-    facts_to_inject = []
+    facts_to_inject: List[Document] = []
     # build a set of facts to inject
     # if we got suggested partial files, try to find the full size version
     # if we can inject full size version, include that.
@@ -373,6 +383,17 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     context = docs_to_prompt(facts_to_inject)
     ic(num_tokens_from_string(context))
     chain = prompt | llm | StrOutputParser()
+    global g_debug_info
+    # dunno why this isn't working, to lazy to fix.
+    # g_debug_info = DebugInfo(
+    # documents = facts_to_inject,
+    # count_tokens = num_tokens_from_string(context),
+    # question = question
+    # )
+    g_debug_info = DebugInfo()
+    g_debug_info.documents = facts_to_inject
+    g_debug_info.count_tokens = num_tokens_from_string(context)
+    g_debug_info.question = question
 
     response = chain.ainvoke({"question": question, "context": context})
 
@@ -437,7 +458,13 @@ async def ask_discord_command(ctx, question: str):
 @bot.command(name="debug", description="Get Debgu Info from last call")
 async def debug(ctx):
     await ctx.defer()
-    await ctx.respond("Todo implement this")
+
+    process = discord_helper.get_debug_process_info()
+    await send(ctx, process)
+    await send(ctx, f"Tokens: {g_debug_info.count_tokens}")
+    await send(ctx, "Last documents")
+    docs_meta = [doc.metadata for doc in g_debug_info.documents]
+    await send(ctx, json.dumps(docs_meta))
 
 
 # @logger.catch()
