@@ -226,24 +226,22 @@ def fixup_markdown_path(src):
 
 
 def has_whole_document(path):
-    blog_content_db = Chroma(
-        persist_directory=chroma_db_dir, embedding_function=embeddings
-    )
-    all = blog_content_db.get()
-    for m in all["metadatas"]:
+    for m in g_all_documents["metadatas"]:
         if m["source"] == path and m["is_entire_document"]:
             return True
     return False
 
 
+g_blog_content_db = Chroma(
+    persist_directory=chroma_db_dir, embedding_function=embeddings
+)
+g_all_documents = g_blog_content_db.get()
+
+
 def get_document(path) -> Document:
-    blog_content_db = Chroma(
-        persist_directory=chroma_db_dir, embedding_function=embeddings
-    )
-    all = blog_content_db.get()
-    for i, m in enumerate(all["metadatas"]):
+    for i, m in enumerate(g_all_documents["metadatas"]):
         if m["source"] == path and m["is_entire_document"]:
-            return Document(page_content=all["documents"][i], metadata=m)
+            return Document(page_content=g_all_documents["documents"][i], metadata=m)
     raise Exception(f"{path} document found")
 
 
@@ -300,9 +298,6 @@ async def iask(
         ic(model)
         ic(facts)
     # load chroma from DB
-    blog_content_db = Chroma(
-        persist_directory=chroma_db_dir, embedding_function=embeddings
-    )
 
     prompt = ChatPromptTemplate.from_template(
         """
@@ -334,7 +329,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     # We can improve our relevance by getting the md_simple_chunks, but that loses context
     # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
 
-    docs_and_scores = await blog_content_db.asimilarity_search_with_relevance_scores(
+    docs_and_scores = await g_blog_content_db.asimilarity_search_with_relevance_scores(
         question, k=4 * facts
     )
     for doc, score in docs_and_scores:
@@ -452,6 +447,61 @@ async def ask_discord_command(ctx, question: str):
     ic(response)
     progress_bar_task.cancel()
     ic(response)
+    await send(ctx, response)
+    await ctx.respond(".")
+
+
+@bot.command(
+    name="enjoy", description="Ask the bot something Igor should do that he'll enjoy"
+)
+async def enjoy(ctx):
+    await ctx.defer()
+
+    # load chroma from DB
+
+    prompt = ChatPromptTemplate.from_template(
+        """
+You are Igor's life coach. You help him do things he enjoys.  Give him a recommendation on  a concrete task to do (from todo_enjoy), add a paragrah on why he should do it.
+
+# Context
+{context}
+
+
+# Examle output
+
+**Igor should**: <action>
+
+Igor will enjoy this because ..
+
+    """
+    )
+
+    model_name = get_model(u4=True)
+    llm = ChatOpenAI(model=model_name)
+
+    # We can improve our relevance by getting the md_simple_chunks, but that loses context
+    # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
+
+    good_docs = [
+        "_posts/2020-04-01-Igor-Eulogy.md",
+        "_d/operating-manual-2.md",
+        "_d/sublime.md",
+        "_d/enjoy2.md",
+    ]
+    facts_to_inject = [get_document(d) for d in good_docs]
+
+    print("Source Documents")
+    for doc in facts_to_inject:
+        # Remap metadata to url
+        ic(doc.metadata)
+
+    context = docs_to_prompt(facts_to_inject)
+    ic(num_tokens_from_string(context))
+    chain = prompt | llm | StrOutputParser()
+
+    response = await chain.ainvoke({"context": context})
+    ic(response)
+
     await send(ctx, response)
     await ctx.respond(".")
 
