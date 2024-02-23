@@ -225,21 +225,23 @@ def fixup_markdown_path(src):
     return fixup_ig66_path_to_url(fixup_markdown_path_to_url(src))
 
 
-def has_whole_document(path):
-    for m in g_all_documents["metadatas"]:
-        if m["source"] == path and m["is_entire_document"]:
-            return True
-    return False
-
-
 g_blog_content_db = Chroma(
     persist_directory=chroma_db_dir, embedding_function=embeddings
 )
 g_all_documents = g_blog_content_db.get()
 
 
+def has_whole_document(path):
+    all_documents = g_blog_content_db.get()
+    for m in all_documents["metadatas"]:
+        if m["source"] == path and m["is_entire_document"]:
+            return True
+    return False
+
+
 def get_document(path) -> Document:
-    for i, m in enumerate(g_all_documents["metadatas"]):
+    all_documents = g_blog_content_db.get()
+    for i, m in enumerate(all_documents["metadatas"]):
         if m["source"] == path and m["is_entire_document"]:
             return Document(page_content=g_all_documents["documents"][i], metadata=m)
     raise Exception(f"{path} document found")
@@ -329,6 +331,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     # We can improve our relevance by getting the md_simple_chunks, but that loses context
     # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
 
+    global g_blog_content_db
     docs_and_scores = await g_blog_content_db.asimilarity_search_with_relevance_scores(
         question, k=4 * facts
     )
@@ -499,8 +502,10 @@ Igor will enjoy this because ..
     ic(num_tokens_from_string(context))
     chain = prompt | llm | StrOutputParser()
 
+    progress_bar_task = await draw_progress_bar(ctx)
     response = await chain.ainvoke({"context": context})
     ic(response)
+    progress_bar_task.cancel()
 
     await send(ctx, response)
     await ctx.respond(".")
