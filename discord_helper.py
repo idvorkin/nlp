@@ -73,10 +73,10 @@ async def send(ctx, message):
     return last_message
 
 
-async def draw_progress_bar(ctx):
-    progress_message = await send(ctx, ".")
+async def draw_progress_bar(ctx, initial_message="."):
+    progress_message = await send(ctx, initial_message)
     return asyncio.create_task(
-        edit_message_to_append_dots_every_second(progress_message, ".")
+        edit_message_to_append_dots_every_second(progress_message, initial_message)
     )
 
 

@@ -444,10 +444,8 @@ async def help(ctx):
 @bot.command(name="ask", description="Message the bot")
 async def ask_discord_command(ctx, question: str):
     await ctx.defer()
-    await send(ctx, f"User asked: {question}")
-    progress_bar_task = await draw_progress_bar(ctx)
+    progress_bar_task = await draw_progress_bar(ctx, f"User asked: {question}")
     response = await iask(question, facts=10, u4=True, debug=False)
-    ic(response)
     progress_bar_task.cancel()
     ic(response)
     await send(ctx, response)
@@ -457,25 +455,28 @@ async def ask_discord_command(ctx, question: str):
 @bot.command(
     name="enjoy", description="Ask the bot something Igor should do that he'll enjoy"
 )
-async def enjoy(ctx):
+async def enjoy(ctx, extra: str = ""):
     await ctx.defer()
 
     # load chroma from DB
 
     prompt = ChatPromptTemplate.from_template(
         """
-You are Igor's life coach. You help him do things he enjoys.  Give him a recommendation on  a concrete task to do (from todo_enjoy), add a paragrah on why he should do it.
+You are Igor's life coach. You help him do things he enjoys.  Give him a recommendation on  a concrete task to do (from todo_enjoy), add bullet points on why he should do it. Include context from his affirmations.
+
+# Extra commands
+{extra}
+
 
 # Context
 {context}
 
 
-# Examle output
-
+# Example output
 **Igor should**: <action>
 
 Igor will enjoy this because ..
-
+< 0-4 bullet points>
     """
     )
 
@@ -490,6 +491,7 @@ Igor will enjoy this because ..
         "_d/operating-manual-2.md",
         "_d/sublime.md",
         "_d/enjoy2.md",
+        "_d/affirmations2.md",
     ]
     facts_to_inject = [get_document(d) for d in good_docs]
 
@@ -502,10 +504,13 @@ Igor will enjoy this because ..
     ic(num_tokens_from_string(context))
     chain = prompt | llm | StrOutputParser()
 
-    progress_bar_task = await draw_progress_bar(ctx)
-    response = await chain.ainvoke({"context": context})
-    ic(response)
+    extra_if_present = f"({extra})" if extra else ""
+    progress_bar_task = await draw_progress_bar(
+        ctx, f"Finding activities for Igor to enjoy {extra_if_present}"
+    )
+    response = await chain.ainvoke({"context": context, "extra": extra})
     progress_bar_task.cancel()
+    ic(response)
 
     await send(ctx, response)
     await ctx.respond(".")
