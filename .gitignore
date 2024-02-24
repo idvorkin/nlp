@@ -36,7 +36,7 @@ var/
 pip-log.txt
 pip-delete-this-directory.txt
 
-blog.chorma.db/
+blog.chroma.db/
 # Unit test / coverage reports
 htmlcov/
 .tox/
