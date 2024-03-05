@@ -12,7 +12,6 @@ import typer
 from icecream import ic
 from langchain.agents import AgentType, initialize_agent, load_tools
 from langchain.chat_models import ChatOpenAI
-from langchain.llms import OpenAI
 from langchain.output_parsers.openai_functions import (
     JsonKeyOutputFunctionsParser,
 )
@@ -42,7 +41,6 @@ def setup_secret():
 setup_secret()
 
 
-llm = OpenAI(temperature=0.9)
 chat = ChatOpenAI(temperature=0)
 chat_model = chat
 
@@ -59,7 +57,7 @@ def app_wrap_loguru():
 @app.command()
 def financial_agent(stock: str):
     # tools = load_tools(["serpapi", "llm-math"], llm=llm)
-    tools = load_tools(["bing-search"], llm=llm)
+    tools = load_tools(["bing-search"], llm=chat)
     # braveSearch = BraveSearch()
     # tools += [braveSearch]
     agent = initialize_agent(
