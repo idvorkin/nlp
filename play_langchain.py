@@ -5,16 +5,14 @@ import os
 import pickle
 import sys
 from typing import List
-import subprocess
 
-from langchain_core.messages.human import HumanMessage
 
 import openai_wrapper
 import pudb
 import typer
 from icecream import ic
-from langchain.agents import AgentType, initialize_agent, load_tools
-from langchain_openai import ChatOpenAI
+from langchain_openai.chat_models import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.output_parsers.openai_functions import (
     JsonKeyOutputFunctionsParser,
 )
@@ -45,10 +43,6 @@ def setup_secret():
 setup_secret()
 
 
-chat = ChatOpenAI(temperature=0)
-chat_model = chat
-
-
 @logger.catch()
 def app_wrap_loguru():
     app()
@@ -59,35 +53,13 @@ def app_wrap_loguru():
 
 
 @app.command()
-def financial_agent(stock: str):
-    # tools = load_tools(["serpapi", "llm-math"], llm=llm)
-    tools = load_tools(["bing-search"], llm=chat)
-    # braveSearch = BraveSearch()
-    # tools += [braveSearch]
-    agent = initialize_agent(
-        tools=tools, llm=chat, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True
+def tell_me_a_joke(count=4):
+    chat = ChatGoogleGenerativeAI(model="gemini-1.5.-pro-latest")
+    template = ChatPromptTemplate.from_template(
+        "Generate a list of exactly {count} joke about software engineers"
     )
-
-    agent.run(
-        f"""
-              What's the price outlook for : {stock}?, What are the top 3 reasons for the stock to go up?, What are the top 3 reasons for the stock to go down?
-
-The output should be of the form:
-
-Stock: XXX
-Price: XXX
-Price 1 year ago: XXX
-Price 1 year ahead: XXX
-Price goes up because:
-- Point 1
-- Point 2
-- Point 3
-Price goes down because:
-- Point 1
-- Point 2
-- Point 3
-"""
-    )
+    response = (template | chat).invoke({"count": count})
+    ic(response)
 
 
 def load_cached_prompt(prompt_name):
@@ -132,100 +104,6 @@ def summarize():
 
 class GetHypotheticalQuestionsFromDoc(BaseModel):
     Questions: List[str]
-
-
-@app.command()
-def changes(revision_spec="HEAD@{7 days ago}"):
-    """
-    Summarize the changes to all files in a given git revision specification.
-
-    Args:
-      revision_spec (str): The git revision specification to summarize changes for.
-
-    This function will:
-    - List out the changes to all files in the given revision specification.
-    - Use the diff content to concisely explain the changes to each file.
-    - Assume the function call_llm(prompt) exists for processing the diff summaries.
-    """
-    # First, we need to get a list of changed files for the given revision spec.
-    model = ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
-
-    result = subprocess.run(
-        ["git", "remote", "get-url", "origin"], capture_output=True, text=True
-    )
-
-    # Assuming the URL is in the form: https://github.com/idvorkin/bob or git@github.com:idvorkin/bob
-    repo_url = result.stdout.strip()
-    if repo_url.startswith("https"):
-        base_path = repo_url.split("/")[-2] + "/" + repo_url.split("/")[-1]
-    elif repo_url.startswith("git@"):
-        base_path = repo_url.split(":")[1]
-        base_path = base_path.replace(".git", "")
-
-    print(f"# Changes in {base_path} from {revision_spec}")
-
-    changed_files_command = ["git", "diff", "--name-only", revision_spec]
-    ic(changed_files_command)
-    result = subprocess.run(changed_files_command, capture_output=True, text=True)
-    changed_files = result.stdout.split("\n")
-
-    # Iterate through the list of changed files and generate summaries.
-    file_diffs = []
-    for file in changed_files:
-        if file.strip() == "":
-            continue
-        file_path = Path(file)
-        # Verify the file exists before proceeding.
-        if not file_path.exists():
-            ic(f"File {file} does not exist or has been deleted.")
-            continue
-
-        diff_command = ["git", "diff", revision_spec, "--", file]
-        diff_result = subprocess.run(
-            diff_command, capture_output=True, text=True, check=True
-        )
-        diff_content = diff_result.stdout
-        file_diffs += [(file, diff_content)]
-
-    # sort by length to do biggest changes first
-    file_diffs.sort(key=lambda x: len(x[1]), reverse=True)
-    for file, diff_content in file_diffs:
-        ic(file)
-
-        prompt1 = f"""Summarize the changes for {file}
-
-## Instructions
-
-Have the first line be ### Filename on a single line
-Have second line be lines_added, lines_removed, lines change (but exclude changes in comments) on a single line
-For the remaining lines use a markdown list
-When having larger changes add details by including sub bullets.
-List the changes in the list in order of impact. The most impactful/major changes should go first, and minor changes should go last.
-Really minor changes should **not be listed**. Minor changes include.
-* Changes to imports
-* Exclude changes to spelling, grammar or punctuation in the summary
-* Changes to wording, for example, exclude Changed "inprogress" to "in progress"
-
-E.g. for the file foo.md
-
-### foo.md
-+ 5, -3, * 34:
-- xyz changed from a to b
-
-
-## Diff Contents
-{diff_content}"""
-        result = (
-            ChatPromptTemplate.from_messages([HumanMessage(content=prompt1)]) | model
-        ).invoke({})
-        print(result.content)
-
-        # ic (diff_content)
-        # Call the language model (or another service) to get a summary of the changes.
-        # summary = call_llm(prompt)
-
-        # Output the file name and its summary.
-        # print(f"File: {file}\nSummary:\n{summary}\n")
 
 
 @app.command()
