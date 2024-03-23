@@ -195,16 +195,18 @@ def changes(revision_spec="HEAD@{7 days ago}"):
         prompt1 = f"""Summarize the changes for {file}
 
 ## Instructions
-    Have the first line be ### Filename on a single line
-    Have second line be lines_added, lines_removed, lines change (but exclude changes in comments) on a single line
 
-    Use a markdown list
-    List the changes in order of impact, most impactful/major changes should go first.
-    Exclude changes to imports
-    Exclude changes to spelling, grammar or punctuation in the summary
-    Exclude minor changes to wording, for example, exclude Changed "inprogress" to "in progress"
-    When having larger changes include sub bullets.
-    E.g. for the file foo.md
+Have the first line be ### Filename on a single line
+Have second line be lines_added, lines_removed, lines change (but exclude changes in comments) on a single line
+For the remaining lines use a markdown list
+When having larger changes add details by including sub bullets.
+List the changes in the list in order of impact. The most impactful/major changes should go first, and minor changes should go last.
+Really minor changes should **not be listed**. Minor changes include.
+* Changes to imports
+* Exclude changes to spelling, grammar or punctuation in the summary
+* Changes to wording, for example, exclude Changed "inprogress" to "in progress"
+
+E.g. for the file foo.md
 
 ### foo.md
 + 5, -3, * 34:
