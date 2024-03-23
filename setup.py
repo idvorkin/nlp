@@ -12,6 +12,7 @@ setup(
         "openai_wrapper",
         "tts",
         "pbf",
+        "play_langchain",
     ],
     install_requires=[],
     entry_points="""
@@ -21,6 +22,7 @@ setup(
             ij=igor_journal:app
             dg=dump_grateful:app
             improv=improv:app
+            plc=play_langchain:app
             life=life:app
             tts=tts:app
             pbf=pbf:app

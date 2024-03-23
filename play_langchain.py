@@ -149,6 +149,21 @@ def changes(revision_spec="HEAD@{7 days ago}"):
     """
     # First, we need to get a list of changed files for the given revision spec.
     model = ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
+
+    result = subprocess.run(
+        ["git", "remote", "get-url", "origin"], capture_output=True, text=True
+    )
+
+    # Assuming the URL is in the form: https://github.com/idvorkin/bob or git@github.com:idvorkin/bob
+    repo_url = result.stdout.strip()
+    if repo_url.startswith("https"):
+        base_path = repo_url.split("/")[-2] + "/" + repo_url.split("/")[-1]
+    elif repo_url.startswith("git@"):
+        base_path = repo_url.split(":")[1]
+        base_path = base_path.replace(".git", "")
+
+    print(f"# Changes in {base_path} from {revision_spec}")
+
     changed_files_command = ["git", "diff", "--name-only", revision_spec]
     ic(changed_files_command)
     result = subprocess.run(changed_files_command, capture_output=True, text=True)
@@ -184,9 +199,13 @@ def changes(revision_spec="HEAD@{7 days ago}"):
     Have second line be lines_added, lines_removed, lines change (but exclude changes in comments) on a single line
 
     Use a markdown list
-    List the changes in order of impact, most impactful first.
-    DO not include changes to spelling, grammar or punctuation in the summary
+    List the changes in order of impact, most impactful/major changes should go first.
+    Exclude changes to imports
+    Exclude changes to spelling, grammar or punctuation in the summary
+    Exclude minor changes to wording, for example, exclude Changed "inprogress" to "in progress"
+    When having larger changes include sub bullets.
     E.g. for the file foo.md
+
 ### foo.md
 + 5, -3, * 34:
 - xyz changed from a to b
