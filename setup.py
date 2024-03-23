@@ -13,6 +13,7 @@ setup(
         "tts",
         "pbf",
         "play_langchain",
+        "changes",
     ],
     install_requires=[],
     entry_points="""
@@ -26,5 +27,6 @@ setup(
             life=life:app
             tts=tts:app
             pbf=pbf:app
+            changes=changes:app
         """,
 )
