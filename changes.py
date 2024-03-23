@@ -12,6 +12,7 @@ import pudb
 import typer
 from icecream import ic
 from langchain_openai.chat_models import ChatOpenAI
+import re
 from langchain.prompts import ChatPromptTemplate
 
 from loguru import logger
@@ -63,7 +64,7 @@ def is_skip_file(file):
     if file.endswith("ipynb"):
         ic("ipynb not supported yet")
         return True
-    if file == "backlinks.json":
+    if file == "back-links.json":
         return True
 
     return False
@@ -107,7 +108,7 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash):
     )
     stdout_diff, _ = await diff_process.communicate()
 
-    return file, stdout_diff.decode(), first_commit_hash, last_commit_hash
+    return file, stdout_diff.decode()
 
 
 @app.command()
@@ -152,14 +153,13 @@ async def get_changed_files(first_commit, last_commit):
 
 
 # Function to create the prompt
-def diff_summary_prompt(repo_origin, file, diff_content, first, last):
-    text = f"""Summarize the changes for {file}, in repo {repo_origin},  from {first} to  {last} revision
+def diff_summary_prompt(file, diff_content):
+    text = f"""Summarize the changes for {file}
 
 ## Instructions
 
 Have the first line be ### Filename on a single line
 Have second line be lines_added, lines_removed, lines change (but exclude changes in comments) on a single line
-Have the third line be a github url
 For the remaining lines use a markdown list
 When having larger changes add details by including sub bullets.
 List the changes in the list in order of impact. The most impactful/major changes should go first, and minor changes should go last.
@@ -173,12 +173,37 @@ E.g. for the file foo.md
 ### foo.md
 + 5, -3, * 34:
 - xyz changed from a to b
-- [Changes](https://github.com/rust-lang/rust/commit/691d5f533d7e1833301d0b52b2e7cc5762f6c365#diff-0fa1b127737e773b364e5867e256323f8d020a6bf18bbe6419d9e1ad913eef18)
 
 
 ## Diff Contents
 {diff_content}"""
     return ChatPromptTemplate.from_messages([HumanMessage(content=text)])
+
+
+def diff_size(diff_summary):
+    # Split the input into lines
+    lines = diff_summary.splitlines()
+    # Iterate through each line
+    for line in lines:
+        # Use a regular expression to find a line with exactly three numbers
+        # The pattern is looking for optional spaces, optional non-digit characters (excluding the minus sign),
+        # followed by an optional minus sign and one or more digits. This is repeated three times for the three numbers.
+        line = line.replace("+", " ")
+        line = line.replace("-", " ")
+        line = line.replace("*", " ")
+        line = line.replace(":", " ")
+        line = line.replace(",", " ")
+
+        pattern = r"^\s*(\d+)\s+(\d+)\s+(\d+).*$"
+        match = re.search(pattern, line)
+        if match:
+            ic(match.groups())
+            # If a match is found, sum the numbers
+            # match.groups() contains all capturing groups of the match, which are the three numbers we're interested in
+            total_sum = sum(int(number) for number in match.groups())
+            return total_sum
+    # If no matching line is found, return 0 or an appropriate value indicating no valid line was found
+    return 0
 
 
 async def achanges(before, after):
@@ -187,10 +212,11 @@ async def achanges(before, after):
 
     repo, base_path = get_repo_path()
 
-    print(f"# Changes in {base_path} after {after} before {before}")
+    print(f"# Changes in {base_path} after [{after}] but before [{before}]")
 
     first, last = await first_last_commit(before, after)
     changed_files = await get_changed_files(first, last)
+    print(f"[Changes in {base_path}]({repo}/compare/{first}...{last})")
 
     # Iterate through the list of changed files and generate summaries.
 
@@ -205,13 +231,12 @@ async def achanges(before, after):
     # sort by length to do biggest changes first
     file_diffs.sort(key=lambda x: len(x[1]), reverse=True)
     ai_invoke_tasks = [
-        (
-            diff_summary_prompt(repo, file, diff_content, first_diff, last_diff) | model
-        ).ainvoke({})
-        for file, diff_content, first_diff, last_diff in file_diffs
+        (diff_summary_prompt(file, diff_content) | model).ainvoke({})
+        for file, diff_content in file_diffs
     ]
 
     results = await asyncio.gather(*ai_invoke_tasks)
+    results.sort(key=lambda x: diff_size(x.content), reverse=True)
     for result in results:
         print(result.content)
 
