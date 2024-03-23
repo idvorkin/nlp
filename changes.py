@@ -4,6 +4,7 @@
 import os
 import asyncio
 import subprocess
+from contextlib import contextmanager
 
 from langchain_core import messages
 
@@ -110,9 +111,22 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash):
     return file, stdout_diff.decode()
 
 
+@contextmanager
+def noop_context():
+    yield
+
+
 @app.command()
-def changes(before="", after="7 days ago"):
-    asyncio.run(achanges(before, after))
+def changes(before="", after="7 days ago", trace: bool = False):
+    tracer_function = noop_context
+    if trace:
+        ic("using wandb", trace)
+        from langchain_community.callbacks import wandb_tracing_enabled
+
+        tracer_function = wandb_tracing_enabled
+
+    with tracer_function():
+        asyncio.run(achanges(before, after))
 
 
 async def first_last_commit(before, after):
