@@ -85,7 +85,7 @@ def get_repo_path():
     return repo_url, base_path
 
 
-async def get_file_diff(file, revision_spec):
+async def get_file_diff(file, first_commit_hash, last_commit_hash):
     """
     Asynchronously get the diff for a file, including the begin and end revision,
     and perform string parsing in Python to avoid using shell-specific commands.
@@ -93,27 +93,6 @@ async def get_file_diff(file, revision_spec):
     if not Path(file).exists():
         ic(f"File {file} does not exist or has been deleted.")
         return file, "", "", ""
-    ic(" ".join(["git", "log", "--reverse", "--format=%H", revision_spec, "--", file]))
-
-    # Retrieve the entire commit history affecting the file within the revision_spec
-    commit_process = await asyncio.create_subprocess_exec(
-        "git",
-        "log",
-        "--reverse",
-        "--format=%H",
-        revision_spec,
-        "--",
-        file,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout_commits, _ = await commit_process.communicate()
-    commit_hashes = stdout_commits.decode().strip().split("\n")
-    ic(commit_hashes)
-
-    # Parse the commit hashes to find the first (oldest) and last (most recent)
-    first_commit_hash = commit_hashes[0] if commit_hashes else ""
-    last_commit_hash = commit_hashes[-1] if commit_hashes else ""
 
     # Now retrieve the diff using the first and last commit hashes
     diff_process = await asyncio.create_subprocess_exec(
@@ -133,39 +112,62 @@ async def get_file_diff(file, revision_spec):
 
 
 @app.command()
-def changes(revision_spec="HEAD@{7 days ago}"):
-    asyncio.run(achanges(revision_spec=revision_spec))
+def changes(before="", after="7 days ago"):
+    asyncio.run(achanges(before, after))
 
 
-async def achanges(revision_spec):
-    """
-    Summarize the changes to all files in a given git revision specification.
+async def first_last_commit(before, after):
+    git_log_command = f"git log --since='{after}' --until='{before}' --pretty='%H'"
 
-    Args:
-      revision_spec (str): The git revision specification to summarize changes for.
+    # Execute the git log command
+    process = await asyncio.create_subprocess_shell(
+        git_log_command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    stdout, _ = await process.communicate()
+    git_output = stdout.decode().strip().split("\n")
 
-    This function will:
-    - List out the changes to all files in the given revision specification.
-    - Use the diff content to concisely explain the changes to each file.
-    - Assume the function call_llm(prompt) exists for processing the diff summaries.
-    """
+    if not git_output or len(git_output) < 2:
+        print("Insufficient commits found for the specified date range.")
+        return
+
+    # Extract the first and last commit hashes
+    first_commit = git_output[-1]
+    last_commit = git_output[0]
+    return first_commit, last_commit
+
+
+async def get_changed_files(first_commit, last_commit):
+    git_diff_command = f"git diff --name-only {first_commit} {last_commit}"
+
+    # Execute the git diff command
+    process = await asyncio.create_subprocess_shell(
+        git_diff_command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    stdout, _ = await process.communicate()
+    changed_files_output = stdout.decode().strip()
+
+    # Split the output into a list of file paths
+    changed_files = changed_files_output.split("\n") if changed_files_output else []
+
+    return changed_files
+
+
+async def achanges(before, after):
     # First, we need to get a list of changed files for the given revision spec.
     model = ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
 
     _, base_path = get_repo_path()
 
-    print(f"# Changes in {base_path} from {revision_spec}")
+    print(f"# Changes in {base_path} after {after} before {before}")
 
-    changed_files_command = ["git", "diff", "--name-only", revision_spec]
-    ic(changed_files_command)
-    result = subprocess.run(changed_files_command, capture_output=True, text=True)
-    changed_files = result.stdout.split("\n")
+    first, last = await first_last_commit(before, after)
+    changed_files = await get_changed_files(first, last)
 
     # Iterate through the list of changed files and generate summaries.
 
     file_diffs = await asyncio.gather(
         *[
-            get_file_diff(file, revision_spec)
+            get_file_diff(file, first, last)
             for file in changed_files
             if not is_skip_file(file)
         ]
