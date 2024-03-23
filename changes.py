@@ -5,14 +5,13 @@ import os
 import asyncio
 import subprocess
 
-from langchain_core.messages.human import HumanMessage
+from langchain_core import messages
 
 import openai_wrapper
 import pudb
 import typer
 from icecream import ic
 from langchain_openai.chat_models import ChatOpenAI
-import re
 from langchain.prompts import ChatPromptTemplate
 
 from loguru import logger
@@ -153,6 +152,29 @@ async def get_changed_files(first_commit, last_commit):
 
 
 # Function to create the prompt
+
+
+def reorder_diff_summary(diff_summary):
+    text = """You are given a diff summary including what files changed, you will re-write it to be in the order of maximum importance
+
+## Instructions
+
+Maintain the input file format, but just change the order of files and the lines within files.
+The second line with 3 numbers indicates the diff addition, removal and file changes.
+Really minor changes should **not be listed**. Minor changes include.
+* Changes to imports
+* Exclude changes to spelling, grammar or punctuation in the summary
+* Changes to wording, for example, exclude Changed "inprogress" to "in progress"
+"""
+    return ChatPromptTemplate.from_messages(
+        [
+            messages.SystemMessage(content=text),
+            messages.HumanMessage(content=diff_summary),
+        ]
+    )
+
+
+# Function to create the prompt
 def diff_summary_prompt(file, diff_content):
     text = f"""Summarize the changes for {file}
 
@@ -177,48 +199,21 @@ E.g. for the file foo.md
 
 ## Diff Contents
 {diff_content}"""
-    return ChatPromptTemplate.from_messages([HumanMessage(content=text)])
-
-
-def diff_size(diff_summary):
-    # Split the input into lines
-    lines = diff_summary.splitlines()
-    # Iterate through each line
-    for line in lines:
-        # Use a regular expression to find a line with exactly three numbers
-        # The pattern is looking for optional spaces, optional non-digit characters (excluding the minus sign),
-        # followed by an optional minus sign and one or more digits. This is repeated three times for the three numbers.
-        line = line.replace("+", " ")
-        line = line.replace("-", " ")
-        line = line.replace("*", " ")
-        line = line.replace(":", " ")
-        line = line.replace(",", " ")
-
-        pattern = r"^\s*(\d+)\s+(\d+)\s+(\d+).*$"
-        match = re.search(pattern, line)
-        if match:
-            ic(match.groups())
-            # If a match is found, sum the numbers
-            # match.groups() contains all capturing groups of the match, which are the three numbers we're interested in
-            total_sum = sum(int(number) for number in match.groups())
-            return total_sum
-    # If no matching line is found, return 0 or an appropriate value indicating no valid line was found
-    return 0
+    return ChatPromptTemplate.from_messages([messages.HumanMessage(content=text)])
 
 
 async def achanges(before, after):
-    # First, we need to get a list of changed files for the given revision spec.
     model = ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
 
     repo, base_path = get_repo_path()
-
     print(f"# Changes in {base_path} after [{after}] but before [{before}]")
 
     first, last = await first_last_commit(before, after)
     changed_files = await get_changed_files(first, last)
+
     print(f"[Changes in {base_path}]({repo}/compare/{first}...{last})")
 
-    # Iterate through the list of changed files and generate summaries.
+    print("## Pass 1 Diff Summary")
 
     file_diffs = await asyncio.gather(
         *[
@@ -227,25 +222,28 @@ async def achanges(before, after):
             if not is_skip_file(file)
         ]
     )
-
-    # sort by length to do biggest changes first
-    file_diffs.sort(key=lambda x: len(x[1]), reverse=True)
     ai_invoke_tasks = [
         (diff_summary_prompt(file, diff_content) | model).ainvoke({})
         for file, diff_content in file_diffs
     ]
 
     results = await asyncio.gather(*ai_invoke_tasks)
-    results.sort(key=lambda x: diff_size(x.content), reverse=True)
-    for result in results:
-        print(result.content)
 
-        # ic (diff_content)
-        # Call the language model (or another service) to get a summary of the changes.
-        # summary = call_llm(prompt)
+    # I think this can be done by the reorder_diff_summary command
+    # results.sort(key=lambda x: diff_size(x.content), reverse=True)
 
-        # Output the file name and its summary.
-        # print(f"File: {file}\nSummary:\n{summary}\n")
+    initial_diff_report = "\n".join([result.content for result in results])
+
+    print(initial_diff_report)
+
+    print("## Re-Ranked Diff Summary ")
+
+    ranked_output = (
+        (reorder_diff_summary(initial_diff_report) | model).invoke({}).content
+    )
+    print(ranked_output)
+
+    # print ("## Operational Stats ")
 
 
 if __name__ == "__main__":
