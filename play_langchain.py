@@ -5,17 +5,21 @@ import os
 import pickle
 import sys
 from typing import List
+import subprocess
+
+from langchain_core.messages.human import HumanMessage
 
 import openai_wrapper
 import pudb
 import typer
 from icecream import ic
 from langchain.agents import AgentType, initialize_agent, load_tools
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.output_parsers.openai_functions import (
     JsonKeyOutputFunctionsParser,
 )
 from langchain.prompts import ChatPromptTemplate
+
 from loguru import logger
 from pydantic import BaseModel
 from rich import print
@@ -128,6 +132,79 @@ def summarize():
 
 class GetHypotheticalQuestionsFromDoc(BaseModel):
     Questions: List[str]
+
+
+@app.command()
+def changes(revision_spec="HEAD@{7 days ago}"):
+    """
+    Summarize the changes to all files in a given git revision specification.
+
+    Args:
+      revision_spec (str): The git revision specification to summarize changes for.
+
+    This function will:
+    - List out the changes to all files in the given revision specification.
+    - Use the diff content to concisely explain the changes to each file.
+    - Assume the function call_llm(prompt) exists for processing the diff summaries.
+    """
+    # First, we need to get a list of changed files for the given revision spec.
+    model = ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
+    changed_files_command = ["git", "diff", "--name-only", revision_spec]
+    ic(changed_files_command)
+    result = subprocess.run(changed_files_command, capture_output=True, text=True)
+    changed_files = result.stdout.split("\n")
+
+    # Iterate through the list of changed files and generate summaries.
+    file_diffs = []
+    for file in changed_files:
+        if file.strip() == "":
+            continue
+        file_path = Path(file)
+        # Verify the file exists before proceeding.
+        if not file_path.exists():
+            ic(f"File {file} does not exist or has been deleted.")
+            continue
+
+        diff_command = ["git", "diff", revision_spec, "--", file]
+        diff_result = subprocess.run(
+            diff_command, capture_output=True, text=True, check=True
+        )
+        diff_content = diff_result.stdout
+        file_diffs += [(file, diff_content)]
+
+    # sort by length to do biggest changes first
+    file_diffs.sort(key=lambda x: len(x[1]), reverse=True)
+    for file, diff_content in file_diffs:
+        ic(file)
+
+        prompt1 = f"""Summarize the changes for {file}
+
+## Instructions
+    Have the first line be ### Filename on a single line
+    Have second line be lines_added, lines_removed, lines change (but exclude changes in comments) on a single line
+
+    Use a markdown list
+    List the changes in order of impact, most impactful first.
+    DO not include changes to spelling, grammar or punctuation in the summary
+    E.g. for the file foo.md
+### foo.md
++ 5, -3, * 34:
+- xyz changed from a to b
+
+
+## Diff Contents
+{diff_content}"""
+        result = (
+            ChatPromptTemplate.from_messages([HumanMessage(content=prompt1)]) | model
+        ).invoke({})
+        print(result.content)
+
+        # ic (diff_content)
+        # Call the language model (or another service) to get a summary of the changes.
+        # summary = call_llm(prompt)
+
+        # Output the file name and its summary.
+        # print(f"File: {file}\nSummary:\n{summary}\n")
 
 
 @app.command()
