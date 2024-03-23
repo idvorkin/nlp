@@ -107,7 +107,6 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash):
     )
     stdout_diff, _ = await diff_process.communicate()
 
-    ic(file, stdout_diff.decode(), first_commit_hash, last_commit_hash)
     return file, stdout_diff.decode(), first_commit_hash, last_commit_hash
 
 
@@ -152,11 +151,41 @@ async def get_changed_files(first_commit, last_commit):
     return changed_files
 
 
+# Function to create the prompt
+def diff_summary_prompt(repo_origin, file, diff_content, first, last):
+    text = f"""Summarize the changes for {file}, in repo {repo_origin},  from {first} to  {last} revision
+
+## Instructions
+
+Have the first line be ### Filename on a single line
+Have second line be lines_added, lines_removed, lines change (but exclude changes in comments) on a single line
+Have the third line be a github url
+For the remaining lines use a markdown list
+When having larger changes add details by including sub bullets.
+List the changes in the list in order of impact. The most impactful/major changes should go first, and minor changes should go last.
+Really minor changes should **not be listed**. Minor changes include.
+* Changes to imports
+* Exclude changes to spelling, grammar or punctuation in the summary
+* Changes to wording, for example, exclude Changed "inprogress" to "in progress"
+
+E.g. for the file foo.md
+
+### foo.md
++ 5, -3, * 34:
+- xyz changed from a to b
+- [Changes](https://github.com/rust-lang/rust/commit/691d5f533d7e1833301d0b52b2e7cc5762f6c365#diff-0fa1b127737e773b364e5867e256323f8d020a6bf18bbe6419d9e1ad913eef18)
+
+
+## Diff Contents
+{diff_content}"""
+    return ChatPromptTemplate.from_messages([HumanMessage(content=text)])
+
+
 async def achanges(before, after):
     # First, we need to get a list of changed files for the given revision spec.
     model = ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
 
-    _, base_path = get_repo_path()
+    repo, base_path = get_repo_path()
 
     print(f"# Changes in {base_path} after {after} before {before}")
 
@@ -172,39 +201,18 @@ async def achanges(before, after):
             if not is_skip_file(file)
         ]
     )
-    ic(file_diffs[1])
 
     # sort by length to do biggest changes first
     file_diffs.sort(key=lambda x: len(x[1]), reverse=True)
-    for file, diff_content, first_diff, last_diff in file_diffs:
-        ic(file)
+    ai_invoke_tasks = [
+        (
+            diff_summary_prompt(repo, file, diff_content, first_diff, last_diff) | model
+        ).ainvoke({})
+        for file, diff_content, first_diff, last_diff in file_diffs
+    ]
 
-        prompt1 = f"""Summarize the changes for {file}
-
-## Instructions
-
-Have the first line be ### Filename on a single line
-Have second line be lines_added, lines_removed, lines change (but exclude changes in comments) on a single line
-For the remaining lines use a markdown list
-When having larger changes add details by including sub bullets.
-List the changes in the list in order of impact. The most impactful/major changes should go first, and minor changes should go last.
-Really minor changes should **not be listed**. Minor changes include.
-* Changes to imports
-* Exclude changes to spelling, grammar or punctuation in the summary
-* Changes to wording, for example, exclude Changed "inprogress" to "in progress"
-
-E.g. for the file foo.md
-
-### foo.md
-+ 5, -3, * 34:
-- xyz changed from a to b
-
-
-## Diff Contents
-{diff_content}"""
-        result = (
-            ChatPromptTemplate.from_messages([HumanMessage(content=prompt1)]) | model
-        ).invoke({})
+    results = await asyncio.gather(*ai_invoke_tasks)
+    for result in results:
         print(result.content)
 
         # ic (diff_content)
