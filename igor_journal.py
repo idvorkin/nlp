@@ -201,7 +201,7 @@ class JournalEntry:
 
         # Sometimes I create an empty entry, skip those
         body_content = "\n".join(self.body())
-        is_super_short_entry = len(body_content) < 750
+        is_super_short_entry = len(body_content) < 200
         return not is_super_short_entry
 
     def init_from_date(self, for_date: date):
