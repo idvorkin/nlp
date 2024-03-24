@@ -4,7 +4,6 @@
 import os
 import asyncio
 import subprocess
-from contextlib import contextmanager
 
 from langchain_core import messages
 
@@ -111,22 +110,34 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash):
     return file, stdout_diff.decode()
 
 
-@contextmanager
-def noop_context():
-    yield
+def project_name():
+    import inspect
+    from pathlib import Path
+
+    ic([s.function for s in inspect.stack()])
+    caller_function = inspect.stack()[1].function
+
+    def get_current_file_name():
+        return Path(inspect.getfile(inspect.currentframe())).name  # noqa
+
+    return f"{get_current_file_name()}:{caller_function}"
 
 
 @app.command()
 def changes(before="", after="7 days ago", trace: bool = False):
-    tracer_function = noop_context
-    if trace:
-        ic("using wandb", trace)
-        from langchain_community.callbacks import wandb_tracing_enabled
-
-        tracer_function = wandb_tracing_enabled
-
-    with tracer_function():
+    if not trace:
         asyncio.run(achanges(before, after))
+        return
+
+    from langchain_core.tracers.context import tracing_v2_enabled
+    from langchain.callbacks.tracers.langchain import wait_for_all_tracers
+
+    trace_name = project_name()
+    with tracing_v2_enabled(project_name=trace_name) as tracer:
+        ic("Using Langsmith:", trace_name)
+        asyncio.run(achanges(before, after))  # don't forget the second run
+        ic(tracer.get_run_url())
+    wait_for_all_tracers()
 
 
 async def first_last_commit(before, after):
