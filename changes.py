@@ -166,8 +166,8 @@ async def get_changed_files(first_commit, last_commit):
 # Function to create the prompt
 
 
-def create_report_from_diff_summary(diff_summary):
-    text = """You are given a diff summary including what files changed, you will re-write it to be in the order of maximum importance
+def prompt_report_from_diff_summary(diff_summary):
+    instructions = """You are given a diff summary including what files changed, you will re-write it to be in the order of maximum importance
 
 ## Instructions
 
@@ -190,15 +190,15 @@ Really minor changes should **not be listed**. Minor changes include.
 """
     return ChatPromptTemplate.from_messages(
         [
-            messages.SystemMessage(content=text),
+            messages.SystemMessage(content=instructions),
             messages.HumanMessage(content=diff_summary),
         ]
     )
 
 
 # Function to create the prompt
-def diff_summary_prompt(file, diff_content, repo_path, end_rev):
-    text = f"""Summarize the changes for: {file}, permalink:{repo_path}/blob/{end_rev}/{file}
+def prompt_summarize_diff(file, diff_content, repo_path, end_rev):
+    instructions = f"""Summarize the changes for: {file}, permalink:{repo_path}/blob/{end_rev}/{file}
 
 ## Instructions
 
@@ -219,11 +219,13 @@ E.g. for the file foo.md
 * + 5, -3, * 34:
 * [foo.md](https://github.com/idvorkin/idvorkin.github.io/blob/3e8ee0cf75f9455c4f5da38d6bf36b221daca8cc/foo.md)
 * xyz changed from a to b
-
-
-## Diff Contents
-{diff_content}"""
-    return ChatPromptTemplate.from_messages([messages.HumanMessage(content=text)])
+"""
+    return ChatPromptTemplate.from_messages(
+        [
+            messages.SystemMessage(content=instructions),
+            messages.HumanMessage(content=diff_content),
+        ]
+    )
 
 
 async def achanges(before, after):
@@ -246,31 +248,31 @@ async def achanges(before, after):
     )
     ai_invoke_tasks = [
         (
-            diff_summary_prompt(file, diff_content, repo_path=repo, end_rev=last)
+            prompt_summarize_diff(file, diff_content, repo_path=repo, end_rev=last)
             | model
         ).ainvoke({})
         for file, diff_content in file_diffs
     ]
 
-    results = await asyncio.gather(*ai_invoke_tasks)
+    results = [result.content for result in await asyncio.gather(*ai_invoke_tasks)]
 
     # I think this can be done by the reorder_diff_summary command
     # results.sort(key=lambda x: diff_size(x.content), reverse=True)
 
-    initial_diff_report = "\n".join([result.content for result in results])
+    unranked_diff_report = "---\n".join(results)
 
-    ic(initial_diff_report)
+    ic(unranked_diff_report)
 
-    ranked_output = (
-        (create_report_from_diff_summary(initial_diff_report) | model)
+    diff_report = (
+        (prompt_report_from_diff_summary(unranked_diff_report) | model)
         .invoke({})
         .content
     )
-    print(ranked_output)
+    print(diff_report)
 
     ## Pre-ranked output
-    print("## Pre-ranked output")
-    print(initial_diff_report)
+    print("## Unranked diff report")
+    print(unranked_diff_report)
 
 
 if __name__ == "__main__":
