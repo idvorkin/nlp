@@ -110,19 +110,6 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash):
     return file, stdout_diff.decode()
 
 
-def project_name():
-    import inspect
-    from pathlib import Path
-
-    ic([s.function for s in inspect.stack()])
-    caller_function = inspect.stack()[1].function
-
-    def get_current_file_name():
-        return Path(inspect.getfile(inspect.currentframe())).name  # noqa
-
-    return f"{get_current_file_name()}:{caller_function}"
-
-
 @app.command()
 def changes(before="", after="7 days ago", trace: bool = False):
     if not trace:
@@ -132,7 +119,7 @@ def changes(before="", after="7 days ago", trace: bool = False):
     from langchain_core.tracers.context import tracing_v2_enabled
     from langchain.callbacks.tracers.langchain import wait_for_all_tracers
 
-    trace_name = project_name()
+    trace_name = openai_wrapper.tracer_project_name()
     with tracing_v2_enabled(project_name=trace_name) as tracer:
         ic("Using Langsmith:", trace_name)
         asyncio.run(achanges(before, after))  # don't forget the second run
