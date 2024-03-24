@@ -257,7 +257,7 @@ async def achanges(before, after):
     results = [result.content for result in await asyncio.gather(*ai_invoke_tasks)]
 
     # I think this can be done by the reorder_diff_summary command
-    # results.sort(key=lambda x: diff_size(x.content), reverse=True)
+    results.sort(key=lambda x: len(x), reverse=True)
 
     unranked_diff_report = "---\n".join(results)
 
