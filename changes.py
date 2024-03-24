@@ -110,8 +110,19 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash):
     return file, stdout_diff.decode()
 
 
+def tomorrow():
+    from datetime import datetime, timedelta
+
+    # Get today's date
+    today = datetime.now()
+    # Calculate tomorrow's date by adding one day to today
+    tomorrow_date = today + timedelta(days=1)
+    # Format the date as a string in the format YYYY-MM-DD
+    return tomorrow_date.strftime("%Y-%m-%d")
+
+
 @app.command()
-def changes(before="", after="7 days ago", trace: bool = False):
+def changes(before=tomorrow(), after="7 days ago", trace: bool = False):
     if not trace:
         asyncio.run(achanges(before, after))
         return
@@ -232,7 +243,7 @@ async def achanges(before, after):
     model = ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
 
     repo, base_path = get_repo_path()
-    print(f"# Changes in {base_path} after [{after}] but before [{before}]")
+    print(f"# Changes to {base_path} Between [{before}] and [{after}]")
 
     first, last = await first_last_commit(before, after)
     changed_files = await get_changed_files(first, last)
