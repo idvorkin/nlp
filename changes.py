@@ -206,6 +206,7 @@ def diff_summary_prompt(file, diff_content, repo_path, end_rev):
 
 Have the first line be ### Filename on a single line
 Have second line be lines_added, lines_removed, lines change (but exclude changes in comments) on a single line
+Have the third line be a link the permalink
 For the remaining lines use a markdown list
 When having larger changes add details by including sub bullets.
 List the changes in the list in order of impact. The most impactful/major changes should go first, and minor changes should go last.
@@ -216,9 +217,10 @@ Really minor changes should **not be listed**. Minor changes include.
 
 E.g. for the file foo.md
 
-### [foo.md](https://github.com/idvorkin/idvorkin.github.io/blob/3e8ee0cf75f9455c4f5da38d6bf36b221daca8cc/_d/foo.md)
-+ 5, -3, * 34:
-- xyz changed from a to b
+### foo.md
+* + 5, -3, * 34:
+* [foo.md](https://github.com/idvorkin/idvorkin.github.io/blob/3e8ee0cf75f9455c4f5da38d6bf36b221daca8cc/foo.md)
+* xyz changed from a to b
 
 
 ## Diff Contents
@@ -268,7 +270,9 @@ async def achanges(before, after):
     )
     print(ranked_output)
 
-    # print ("## Operational Stats ")
+    ## Pre-ranked output
+    print("## Pre-ranked output")
+    print(initial_diff_report)
 
 
 if __name__ == "__main__":
