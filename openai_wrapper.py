@@ -50,12 +50,11 @@ def tracer_project_name():
     import inspect
     from pathlib import Path
 
-    caller_function = inspect.stack()[1].function
+    caller_frame = inspect.stack()[1]
+    caller_function = caller_frame.function
+    caller_filename = Path(inspect.getfile(caller_frame.frame)).name  # type:ignore
 
-    def get_current_file_name():
-        return Path(inspect.getfile(inspect.currentframe())).name  # type:ignore
-
-    return f"{get_current_file_name()}:{caller_function}"
+    return f"{caller_filename}:{caller_function}"
 
 
 def get_model_type(u4: bool) -> CompletionModel:
