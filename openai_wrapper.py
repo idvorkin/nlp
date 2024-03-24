@@ -46,6 +46,19 @@ gpt35 = CompletionModel(
 )
 
 
+def tracer_project_name():
+    import inspect
+    from pathlib import Path
+
+    ic([s.function for s in inspect.stack()])
+    caller_function = inspect.stack()[1].function
+
+    def get_current_file_name():
+        return Path(inspect.getfile(inspect.currentframe())).name  # type:ignore
+
+    return f"{get_current_file_name()}:{caller_function}"
+
+
 def get_model_type(u4: bool) -> CompletionModel:
     if u4:
         return gpt4
@@ -154,10 +167,10 @@ def ask_gpt_n(
 
     start = time.time()
     responses = n
-    response_contents = ["" for x in range(responses)]
-    for chunk in client.chat.completions.create(
+    response_contents = ["" for _ in range(responses)]
+    for chunk in client.chat.completions.create(  # type: Ignore
         model=text_model_best,
-        messages=messages,
+        messages=messages,  # type: ignore
         max_tokens=output_tokens,
         n=responses,
         temperature=0.7,
