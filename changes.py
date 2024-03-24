@@ -168,17 +168,27 @@ async def get_changed_files(first_commit, last_commit):
 # Function to create the prompt
 
 
-def reorder_diff_summary(diff_summary):
+def create_report_from_diff_summary(diff_summary):
     text = """You are given a diff summary including what files changed, you will re-write it to be in the order of maximum importance
 
 ## Instructions
 
-Maintain the input file format, but just change the order of files and the lines within files.
-The second line with 3 numbers indicates the diff addition, removal and file changes.
+Begin by creating a a clickable markdown table of contents for all files. As an example
+
+- [The first file](#the-first-file)
+- [The second file](#the-second-file)
+
+After the table of contents
+
+* Maintain the input file format, but just change the order of files and the lines within files.
+* The second line with 3 numbers indicates the diff addition, removal and file changes.
+* Ensure all files listed in the input diff summary are still listed
+
 Really minor changes should **not be listed**. Minor changes include.
 * Changes to imports
 * Exclude changes to spelling, grammar or punctuation in the summary
 * Changes to wording, for example, exclude Changed "inprogress" to "in progress"
+
 """
     return ChatPromptTemplate.from_messages(
         [
@@ -189,8 +199,8 @@ Really minor changes should **not be listed**. Minor changes include.
 
 
 # Function to create the prompt
-def diff_summary_prompt(file, diff_content):
-    text = f"""Summarize the changes for {file}
+def diff_summary_prompt(file, diff_content, repo_path, end_rev):
+    text = f"""Summarize the changes for: {file}, permalink:{repo_path}/blob/{end_rev}/{file}
 
 ## Instructions
 
@@ -206,7 +216,7 @@ Really minor changes should **not be listed**. Minor changes include.
 
 E.g. for the file foo.md
 
-### foo.md
+### [foo.md](https://github.com/idvorkin/idvorkin.github.io/blob/3e8ee0cf75f9455c4f5da38d6bf36b221daca8cc/_d/foo.md)
 + 5, -3, * 34:
 - xyz changed from a to b
 
@@ -227,8 +237,6 @@ async def achanges(before, after):
 
     print(f"[Changes in {base_path}]({repo}/compare/{first}...{last})")
 
-    print("## Pass 1 Diff Summary")
-
     file_diffs = await asyncio.gather(
         *[
             get_file_diff(file, first, last)
@@ -237,7 +245,10 @@ async def achanges(before, after):
         ]
     )
     ai_invoke_tasks = [
-        (diff_summary_prompt(file, diff_content) | model).ainvoke({})
+        (
+            diff_summary_prompt(file, diff_content, repo_path=repo, end_rev=last)
+            | model
+        ).ainvoke({})
         for file, diff_content in file_diffs
     ]
 
@@ -248,12 +259,12 @@ async def achanges(before, after):
 
     initial_diff_report = "\n".join([result.content for result in results])
 
-    print(initial_diff_report)
-
-    print("## Re-Ranked Diff Summary ")
+    ic(initial_diff_report)
 
     ranked_output = (
-        (reorder_diff_summary(initial_diff_report) | model).invoke({}).content
+        (create_report_from_diff_summary(initial_diff_report) | model)
+        .invoke({})
+        .content
     )
     print(ranked_output)
 
