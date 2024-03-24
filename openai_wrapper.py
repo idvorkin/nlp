@@ -50,7 +50,6 @@ def tracer_project_name():
     import inspect
     from pathlib import Path
 
-    ic([s.function for s in inspect.stack()])
     caller_function = inspect.stack()[1].function
 
     def get_current_file_name():
