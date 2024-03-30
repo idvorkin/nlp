@@ -550,24 +550,10 @@ def commit_message(
     text_model_best, tokens = choose_model(u4)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     system_prompt = """
-As an expert in version control with Git, write a descriptive and informative commit message for a recent code change, which is presented as the output of git diff --staged
+You are an expert programmer, write a descriptive and informative commit message for a recent code change, which is presented as the output of git diff --staged.
 
-### Instructions:
-
-1. Start the commit message with a concise summary of the change (e.g., "Fix bug in login functionality").
-
-2. Provide context for the change, explaining why it was necessary and what problem it solves (e.g., "The login process was failing for users with special characters in their passwords,
-causing authentication issues").
-
-3. Include any relevant details about the implementation or approach used to address the issue (e.g., "Modified the password validation regex pattern to allow special characters and updated
-the authentication logic accordingly").
-
-4. If applicable, mention any related issues or tickets that are being addressed by this commit (e.g., "Fixes #123").
-
-5. Keep the commit message concise and to the point, using clear and specific language.
-
-Remember, a well-crafted commit message helps other developers understand the purpose and impact of the code change, making collaboration and debugging easier in the future.
-
+Start with a commit 1 line summary. Be concise, but informative.
+Then add details,
 
     """
     prompt_to_gpt = f"""{user_text}"""
