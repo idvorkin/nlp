@@ -139,7 +139,8 @@ def changes(before=tomorrow(), after="7 days ago", trace: bool = False):
 
 
 async def first_last_commit(before, after):
-    git_log_command = f"git log --since='{after}' --until='{before}' --pretty='%H'"
+    git_log_command = f"git log --after='{after}' --before='{before}' --pretty='%H'"
+    ic(git_log_command)
 
     # Execute the git log command
     process = await asyncio.create_subprocess_shell(
@@ -148,13 +149,26 @@ async def first_last_commit(before, after):
     stdout, _ = await process.communicate()
     git_output = stdout.decode().strip().split("\n")
 
-    if not git_output or len(git_output) < 2:
-        print("Insufficient commits found for the specified date range.")
+    if not git_output:
+        print("No commits found for the specified date range.")
         return
 
     # Extract the first and last commit hashes
     first_commit = git_output[-1]
     last_commit = git_output[0]
+
+    # Get the diff before the last commit
+    git_cli_diff_before = f"git logp {first_commit}^ -1 --pretty='%H'"
+    # call it from a simple shell command
+    first_diff = await asyncio.create_subprocess_shell(
+        git_cli_diff_before,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, _ = await first_diff.communicate()
+    first_commit = stdout.decode().strip()
+
+    ic(first_commit, last_commit)
     return first_commit, last_commit
 
 
@@ -243,7 +257,7 @@ async def achanges(before, after):
     model = ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
 
     repo, base_path = get_repo_path()
-    print(f"# Changes to {base_path} Between [{before}] and [{after}]")
+    print(f"# Changes to {base_path} From [{after}] To [{before}]")
 
     first, last = await first_last_commit(before, after)
     changed_files = await get_changed_files(first, last)
