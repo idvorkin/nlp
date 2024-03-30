@@ -49,12 +49,14 @@ gpt35 = CompletionModel(
 def tracer_project_name():
     import inspect
     from pathlib import Path
+    import socket
 
     caller_frame = inspect.stack()[1]
     caller_function = caller_frame.function
     caller_filename = Path(inspect.getfile(caller_frame.frame)).name  # type:ignore
+    hostname = socket.gethostname()  # Get the hostname
 
-    return f"{caller_filename}:{caller_function}"
+    return f"{caller_filename}:{caller_function}[{hostname}]"
 
 
 def get_model_type(u4: bool) -> CompletionModel:
