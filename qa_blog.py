@@ -1,4 +1,5 @@
 #!python3
+from langchain.callbacks.tracers.langchain import LangChainTracer
 import requests
 from functools import lru_cache
 import pathlib
@@ -8,7 +9,7 @@ from icecream import ic
 import typer
 import os
 from rich import print
-from typing import List
+from typing import List, Optional
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -39,6 +40,7 @@ console = Console()
 bot = discord.Bot()
 chroma_db_dir = "blog.chroma.db"
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+g_tracer: Optional[LangChainTracer] = None
 # embeddings = OpenAIEmbeddings()
 
 
@@ -530,12 +532,25 @@ async def debug(ctx):
 {json.dumps(doc.metadata, indent=4)}`
                    """,
         )
+    if g_tracer:
+        await send(ctx, f"Trace URL: f{g_tracer.get_run_url()}")
     await ctx.respond(".")
 
 
 # @logger.catch()
 def app_wrap_loguru():
-    app()
+    from langchain_core.tracers.context import tracing_v2_enabled
+    from langchain.callbacks.tracers.langchain import wait_for_all_tracers
+    import openai_wrapper
+
+    trace_name = openai_wrapper.tracer_project_name()
+    with tracing_v2_enabled(project_name=trace_name) as tracer:
+        global g_tracer
+        g_tracer = tracer
+        ic("Using Langsmith:", trace_name)
+        app()
+        wait_for_all_tracers()
+        ic(tracer.get_run_url())
 
 
 if __name__ == "__main__":
