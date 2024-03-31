@@ -6,6 +6,7 @@ import asyncio
 import subprocess
 
 from langchain_core import messages
+from typing import Tuple
 
 import openai_wrapper
 import pudb
@@ -85,14 +86,14 @@ def get_repo_path():
     return repo_url, base_path
 
 
-async def get_file_diff(file, first_commit_hash, last_commit_hash):
+async def get_file_diff(file, first_commit_hash, last_commit_hash) -> Tuple[str, str]:
     """
     Asynchronously get the diff for a file, including the begin and end revision,
     and perform string parsing in Python to avoid using shell-specific commands.
     """
     if not Path(file).exists():
         ic(f"File {file} does not exist or has been deleted.")
-        return file, "", "", ""
+        return file, ""
 
     # Now retrieve the diff using the first and last commit hashes
     diff_process = await asyncio.create_subprocess_exec(
@@ -122,9 +123,12 @@ def tomorrow():
 
 
 @app.command()
-def changes(before=tomorrow(), after="7 days ago", trace: bool = False):
+def changes(
+    before=tomorrow(), after="7 days ago", trace: bool = False, gist: bool = False
+):
+    achanges_params = before, after, gist
     if not trace:
-        asyncio.run(achanges(before, after))
+        asyncio.run(achanges(*achanges_params))
         return
 
     from langchain_core.tracers.context import tracing_v2_enabled
@@ -133,12 +137,12 @@ def changes(before=tomorrow(), after="7 days ago", trace: bool = False):
     trace_name = openai_wrapper.tracer_project_name()
     with tracing_v2_enabled(project_name=trace_name) as tracer:
         ic("Using Langsmith:", trace_name)
-        asyncio.run(achanges(before, after))  # don't forget the second run
+        asyncio.run(achanges(*achanges_params))  # don't forget the second run
         ic(tracer.get_run_url())
     wait_for_all_tracers()
 
 
-async def first_last_commit(before, after):
+async def first_last_commit(before: str, after: str) -> Tuple[str, str]:
     git_log_command = f"git log --after='{after}' --before='{before}' --pretty='%H'"
     ic(git_log_command)
 
@@ -151,14 +155,14 @@ async def first_last_commit(before, after):
 
     if not git_output:
         print("No commits found for the specified date range.")
-        return
+        return ("", "")
 
     # Extract the first and last commit hashes
     first_commit = git_output[-1]
     last_commit = git_output[0]
 
     # Get the diff before the last commit
-    git_cli_diff_before = f"git logp {first_commit}^ -1 --pretty='%H'"
+    git_cli_diff_before = f"git log {first_commit}^ -1 --pretty='%H'"
     # call it from a simple shell command
     first_diff = await asyncio.create_subprocess_shell(
         git_cli_diff_before,
@@ -228,21 +232,20 @@ def prompt_summarize_diff(file, diff_content, repo_path, end_rev):
 ## Instructions
 
 Have the first line be ### Filename on a single line
-Have second line be lines_added, lines_removed, lines change (but exclude changes in comments) on a single line
-Have the third line be a link the permalink
+Have second line be file link, lines_added, lines_removed, ~lines change (but exclude changes in comments) on a single line
 For the remaining lines use a markdown list
 When having larger changes add details by including sub bullets.
 List the changes in the list in order of impact. The most impactful/major changes should go first, and minor changes should go last.
-Really minor changes should **not be listed**. Minor changes include.
-* Changes to imports
+Really minor changes should **not be listed**. For example
+* Exclude Changes to imports
 * Exclude changes to spelling, grammar or punctuation in the summary
-* Changes to wording, for example, exclude Changed "inprogress" to "in progress"
+* Exclude Changes to wording, for example, exclude Changed "inprogress" to "in progress"
 
-E.g. for the file foo.md
+E.g. for the file _d/foo.md
 
-### foo.md
-* + 5, -3, * 34:
-* [foo.md](https://github.com/idvorkin/idvorkin.github.io/blob/3e8ee0cf75f9455c4f5da38d6bf36b221daca8cc/foo.md)
+### _d/foo.md
+
+* [_d/foo.md](https://github.com/idvorkin/idvorkin.github.io/blob/3e8ee0cf75f9455c4f5da38d6bf36b221daca8cc/foo.md): +5, -3, ~34
 * xyz changed from a to b
 """
     return ChatPromptTemplate.from_messages(
@@ -253,16 +256,25 @@ E.g. for the file foo.md
     )
 
 
-async def achanges(before, after):
+def create_markdown_table_of_contents(markdown_headers):
+    def link_to_markdown(markdown_header):
+        # '-' to "-", remove / and . from the link
+        return (
+            markdown_header.lower().replace(" ", "-").replace("/", "").replace(".", "")
+        )
+
+    return "\n".join(
+        [f"- [{link}](#{link_to_markdown(link)})" for link in markdown_headers]
+    )
+
+
+async def achanges(before, after, gist):
     model = ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
 
-    repo, base_path = get_repo_path()
-    print(f"# Changes to {base_path} From [{after}] To [{before}]")
+    repo_url, repo_name = get_repo_path()
 
     first, last = await first_last_commit(before, after)
     changed_files = await get_changed_files(first, last)
-
-    print(f"[Changes in {base_path}]({repo}/compare/{first}...{last})")
 
     file_diffs = await asyncio.gather(
         *[
@@ -273,7 +285,7 @@ async def achanges(before, after):
     )
     ai_invoke_tasks = [
         (
-            prompt_summarize_diff(file, diff_content, repo_path=repo, end_rev=last)
+            prompt_summarize_diff(file, diff_content, repo_path=repo_url, end_rev=last)
             | model
         ).ainvoke({})
         for file, diff_content in file_diffs
@@ -288,16 +300,39 @@ async def achanges(before, after):
 
     ic(unranked_diff_report)
 
-    diff_report = (
-        (prompt_report_from_diff_summary(unranked_diff_report) | model)
-        .invoke({})
-        .content
-    )
-    print(diff_report)
+    # diff_report = (
+    #     (prompt_report_from_diff_summary(unranked_diff_report) | model)
+    #     .invoke({})
+    #     .content
+    # )
+    # print(diff_report)
 
     ## Pre-ranked output
-    print("## Unranked diff report")
-    print(unranked_diff_report)
+    output = ""
+    github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
+    output = f"""
+# Changes to {github_repo_diff_link} From [{after}] To [{before}]"
+---
+{create_markdown_table_of_contents(changed_files)}
+---
+{unranked_diff_report}
+    """
+    print(output)
+
+    output_file_path = Path(f"summary_{repo_name.split('/')[-1]}.md")
+    with output_file_path.open("w", encoding="utf-8"):
+        output_file_path.write_text(output)
+
+    if gist:
+        gist = subprocess.run(
+            ["gh", "gist", "create", output_file_path.name],
+            check=True,
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        ic(gist)
+        ic(gist.stdout.strip())
+        subprocess.run(["open", gist.stdout.strip()])
 
 
 if __name__ == "__main__":
