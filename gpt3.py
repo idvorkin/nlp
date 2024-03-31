@@ -554,6 +554,9 @@ You are an expert programmer, write a descriptive and informative commit message
 
 Start with a commit 1 line summary. Be concise, but informative.
 Then add details,
+When listing  changes,
+    * Put them in the order of importance
+    * Use unnumbered lists as the user will want to reorder them
 
     """
     prompt_to_gpt = f"""{user_text}"""
