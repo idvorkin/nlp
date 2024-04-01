@@ -36,8 +36,5 @@ ruff = "*"
 # I can't find certain imports, so keeping it all in packages for now
 # since I'm not creating a module
 
-[requires]
-python_version = "3.11"
-
 [scripts]
 bot = "./bestie-bot.py"

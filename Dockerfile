@@ -2,14 +2,18 @@
 ARG BUILD_TYPE=dev
 
 # Use an official Python base image from the Docker Hub
-FROM python:3.11
+FROM ubuntu:22.04
 
 EXPOSE 8888
 
+RUN apt-get update
+RUN apt-get install -y python3-pip
+RUN apt-get install -y zsh tmux neovim git
 RUN pip3 install pipenv
 
-COPY Pipfile* .
-RUN pipenv install --system
+COPY *py .
+COPY Pipfile .
+RUN pipenv install
 
 #
 # Helpful to debug
