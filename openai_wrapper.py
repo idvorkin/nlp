@@ -22,7 +22,7 @@ def setup_secret():
 
 def setup_gpt():
     setup_secret()
-    return OpenAI(api_key=os.envinron["OPENAI_API_KEY"])
+    return OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 
 client = setup_gpt()
