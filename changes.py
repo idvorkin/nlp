@@ -1,7 +1,6 @@
 #!python3
 
 
-import os
 import asyncio
 import subprocess
 
@@ -20,7 +19,6 @@ from pydantic import BaseModel
 from rich import print
 from rich.console import Console
 from pathlib import Path
-import json
 
 console = Console()
 app = typer.Typer()
@@ -38,13 +36,7 @@ def process_shared_app_options(ctx: typer.Context):
         pudb.set_trace()
 
 
-def setup_secret():
-    secret_file = Path.home() / "gits/igor2/secretBox.json"
-    SECRETS = json.loads(secret_file.read_text())
-    os.environ["OPENAI_API_KEY"] = SECRETS["openai"]
-
-
-setup_secret()
+openai_wrapper.setup_secret()
 
 
 @logger.catch()

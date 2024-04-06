@@ -11,6 +11,10 @@ from pathlib import Path
 
 
 def setup_secret():
+    # do nothing if already set
+    if os.environ.get("OPENAI_API_KEY"):
+        return
+
     secret_file = Path.home() / "gits/igor2/secretBox.json"
     SECRETS = json.loads(secret_file.read_text())
     os.environ["OPENAI_API_KEY"] = SECRETS["openai"]
@@ -20,7 +24,7 @@ def setup_gpt():
     PASSWORD = "replaced_from_secret_box"
     with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
         SECRETS = json.load(json_data)
-        PASSWORD = SECRETS["openai"]
+        PASSWORD = SECRETS["OPENAI_API_KEY"]
 
     return OpenAI(api_key=PASSWORD)
 
