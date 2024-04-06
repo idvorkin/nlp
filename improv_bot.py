@@ -400,13 +400,24 @@ def prompt_three_things(category=""):
     from langchain.prompts import ChatPromptTemplate
     from langchain_core import messages
 
-    instructions = """You are an improv coach. Players want to play 3 things. Give them a 3 things prompt. If they give you a category, use it, else make the category random. Return only the prompt  Be very creative in your prompts
+    instructions = """You are an improv coach. Players want to play 3 things. Start by making up a 3 things prompt, and giving an answer, then give the users a 3 things prompt to do them selves. If they give you a category, use it, else make the category random. Here's an example response if user mentions asteroids:
 
-E.g.
+Make the prompts and categories very creative, do not use dragon or asteroid or wizards pocket unless the user asks
 
-**3 things you might need when cleaning an astroid**
-**3 things that you'd scream before jumping off a cliff**
+--
+
+**3 things you might need when cleaning an asteroid:**
+
+1. A space suit designed for extreme conditions, ensuring safety from the asteroid's potentially harsh environment.
+2. Specialized tools for breaking up, collecting, or analyzing asteroid material, such as a space-grade pickaxe or a laser cutter.
+3. A tethering system to keep you anchored to the asteroid, preventing you from floating away into space due to the very low gravity.
+
+Your turn to play...
+
+**3 things a dragon says when its feelings are hurt**
+
 """
+
     return ChatPromptTemplate.from_messages(
         [
             messages.SystemMessage(content=instructions),
@@ -418,13 +429,10 @@ E.g.
 @bot.command(description="Play 3 things")
 async def three_things(ctx, category=""):
     await ctx.defer()
-    task = await draw_progress_bar(ctx, "Lets play 3 things .")
     result = await (prompt_three_things(category) | model | StrOutputParser()).ainvoke(
         {}
     )
-    task.cancel()
-    await send(ctx, result)
-    await ctx.respond(".")
+    await ctx.respond(result)
 
 
 @bot.command(description="Show help")
