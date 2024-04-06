@@ -38,3 +38,5 @@ ruff = "*"
 
 [scripts]
 bestie-bot = "python3 bestie-bot.py"
+qa-bot = "python3 qa_blog.py run-bot"
+improv-bot = "python3 improv_bot.py"
