@@ -30,6 +30,9 @@ typer = "*"
 tiktoken = "*"
 jupyter = "*"
 ruff = "*"
+asyncer = "*"
+fastapi = "*"
+chromadb = "*"
 
 [dev-packages]
 # I'm not sure why, but when I put some of the packges in dev packages
