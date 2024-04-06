@@ -37,4 +37,4 @@ ruff = "*"
 # since I'm not creating a module
 
 [scripts]
-bot = "./bestie-bot.py"
+bestie-bot = "python3 bestie-bot.py"

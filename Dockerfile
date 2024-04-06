@@ -11,12 +11,13 @@ RUN apt-get install -y python3-pip
 RUN apt-get install -y zsh tmux neovim git
 RUN pip3 install pipenv
 
-COPY *py .
 COPY Pipfile .
 RUN pipenv install
+# copy py files last to avoid re-pipinstal
+COPY *py .
+
 
 #
 # Helpful to debug
 
 # Enable root since running in container
-# RUN jupyter-lab --allow-root
