@@ -11,8 +11,6 @@ RUN apt-get install -y python3-pip
 RUN apt-get install -y zsh tmux neovim git
 RUN pip3 install pipenv
 
-# HACK Copy Vector store
-COPY blog.chroma.db .
 
 # HACK Copy in weird tmp file
 # COPY latest_state.txt /tmp/latest_state.txt
@@ -22,6 +20,9 @@ RUN pipenv install
 
 # copy py files last to avoid re-pipinstal
 COPY *py .
+
+# HACK Copy Vector store
+COPY blog.chroma.db .
 
 
 
