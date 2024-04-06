@@ -21,12 +21,8 @@ def setup_secret():
 
 
 def setup_gpt():
-    PASSWORD = "replaced_from_secret_box"
-    with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
-        SECRETS = json.load(json_data)
-        PASSWORD = SECRETS["OPENAI_API_KEY"]
-
-    return OpenAI(api_key=PASSWORD)
+    setup_secret()
+    return OpenAI(api_key=os.envinron["OPENAI_API_KEY"])
 
 
 client = setup_gpt()
