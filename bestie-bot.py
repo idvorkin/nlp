@@ -144,7 +144,7 @@ app = typer.Typer()
 
 @app.command()
 def run_bot():
-    bot.run(get_bot_token("discord-bestie-bot"))
+    bot.run(get_bot_token("DISCORD_BESTIE_BOT"))
 
 
 if __name__ == "__main__":

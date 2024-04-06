@@ -422,7 +422,7 @@ async def on_message(ctx):
 
 @app.command()
 def run_bot():
-    bot.run(get_bot_token("IGBLOG-DISCORD-BOT"))
+    bot.run(get_bot_token("DISCORD_IGBLOG_BOT"))
 
 
 @bot.event
