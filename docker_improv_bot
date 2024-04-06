@@ -1,1 +1,1 @@
-docker run -e "DISCORD_BOT_TOKEN=$(jq -r '.DISCORD_BESTIE_BOT' ~/gits/igor2/secretBox.json)" -e "OPENAI_API_KEY=$(jq -r '.BOT_OPENAI_API_KEY' ~/gits/igor2/secretBox.json)" nlp pipenv run bestie-bot
+docker run -e "DISCORD_BOT_TOKEN=$(jq -r '.DISCORD_IMPROV_BOT' ~/gits/igor2/secretBox.json)" -e "OPENAI_API_KEY=$(jq -r '.BOT_OPENAI_API_KEY' ~/gits/igor2/secretBox.json)" nlp pipenv run bestie-bot
