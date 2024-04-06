@@ -26,6 +26,7 @@ import openai_wrapper
 from openai_wrapper import setup_secret
 from langchain_openai.chat_models import ChatOpenAI
 from langchain import prompts
+import discord_helper
 
 setup_secret()
 
@@ -463,18 +464,7 @@ Other Stories
 
 @app.command()
 def run_bot():
-    # read token from environment variable, or from the secret box, if in neither throw
-    token = os.environ.get("DISCORD_BOT_TOKEN")
-    if not token:
-        with open(os.path.expanduser("~/gits/igor2/secretBox.json")) as json_data:
-            SECRETS = json.load(json_data)
-            token = SECRETS["discord-improv-bot"]
-
-    # throw if token not found
-    if not token:
-        raise ValueError("DISCORD_BOT_TOKEN environment variable not set")
-    bot.add_cog(MentionListener(bot))
-    bot.run(token)
+    bot.run(discord_helper.get_bot_token("DISCORD_IMPROV_BOT"))
 
 
 async def download_image(url):
