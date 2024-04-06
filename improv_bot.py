@@ -26,13 +26,16 @@ from openai_wrapper import setup_secret
 from langchain_openai.chat_models import ChatOpenAI
 from langchain import prompts
 from discord_helper import draw_progress_bar, get_bot_token, send, BotState
+from langchain.schema.output_parser import StrOutputParser
 
 setup_secret()
 
 console = Console()
 
-model = openai_wrapper.setup_gpt()
 app = typer.Typer()
+
+openai_wrapper.setup_secret()
+model = ChatOpenAI(temperature=1.0, model=openai_wrapper.gpt4.name)
 
 u4 = True
 
@@ -211,6 +214,7 @@ Commands:
  /story  - print or continue the story
  /help - show this help
  /debug - show debug info
+ /three-things - play three things
  /visualize - show a visualization of the story so far
  /explore - do a choose a your own adventure completion
 When you DM the bot directly, or include a @{bot.user.display_name} in a channel
@@ -331,7 +335,7 @@ async def llm_extend_story(active_story):
 
     chain = prompts.ChatPromptTemplate.from_messages(
         [("system", system_prompt), ("user", str(active_story))]
-    ) | ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name).bind(
+    ) | model.bind(
         tools=[extendStory], tool_choice=openai_wrapper.tool_choice(extendStory)
     )
     r = await chain.ainvoke({})
@@ -390,6 +394,37 @@ async def extend(
     ctx, with_: discord.Option(str, name="with", description="continue story with")
 ):
     await extend_story_for_bot(ctx, with_)
+
+
+def prompt_three_things(category=""):
+    from langchain.prompts import ChatPromptTemplate
+    from langchain_core import messages
+
+    instructions = """You are an improv coach. Players want to play 3 things. Give them a 3 things prompt. If they give you a category, use it, else make the category random. Return only the prompt  Be very creative in your prompts
+
+E.g.
+
+**3 things you might need when cleaning an astroid**
+**3 things that you'd scream before jumping off a cliff**
+"""
+    return ChatPromptTemplate.from_messages(
+        [
+            messages.SystemMessage(content=instructions),
+            messages.HumanMessage(content=category),
+        ]
+    )
+
+
+@bot.command(description="Play 3 things")
+async def three_things(ctx, category=""):
+    await ctx.defer()
+    task = await draw_progress_bar(ctx, "Lets play 3 things .")
+    result = await (prompt_three_things(category) | model | StrOutputParser()).ainvoke(
+        {}
+    )
+    task.cancel()
+    await send(ctx, result)
+    await ctx.respond(".")
 
 
 @bot.command(description="Show help")
