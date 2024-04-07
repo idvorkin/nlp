@@ -223,7 +223,7 @@ def prompt_summarize_diff(file, diff_content, repo_path, end_rev):
 
 ## Instructions
 
-Have the first line be ### Filename on a single line
+Have the first line be #### Filename on a single line
 Have second line be file link, lines_added, lines_removed, ~lines change (but exclude changes in comments) on a single line
 For the remaining lines use a markdown list
 When having larger changes add details by including sub bullets.
@@ -233,9 +233,9 @@ Really minor changes should **not be listed**. For example
 * Exclude changes to spelling, grammar or punctuation in the summary
 * Exclude Changes to wording, for example, exclude Changed "inprogress" to "in progress"
 
-E.g. for the file _d/foo.md
+E.g. for the file _d/foo.md, with 5 lines added, 3 lines removed, and 34 lines changed (excluding changes to comments)
 
-### _d/foo.md
+#### _d/foo.md
 
 * [_d/foo.md](https://github.com/idvorkin/idvorkin.github.io/blob/3e8ee0cf75f9455c4f5da38d6bf36b221daca8cc/foo.md): +5, -3, ~34
 * xyz changed from a to b
@@ -303,7 +303,7 @@ async def achanges(before, after, gist):
     output = ""
     github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
     output = f"""
-# Changes to {github_repo_diff_link} From [{after}] To [{before}]"
+### Changes to {github_repo_diff_link} From [{after}] To [{before}]
 ---
 {create_markdown_table_of_contents(changed_files)}
 ---
