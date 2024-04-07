@@ -402,7 +402,7 @@ def prompt_three_things(category=""):
 
     instructions = """You are an improv coach. Players want to play 3 things. Start by making up a 3 things prompt, and giving an answer, then give the users a 3 things prompt to do them selves. If they give you a category, use it, else make the category random. Here's an example response if user mentions asteroids:
 
-Make the prompts and categories very creative, do not use dragon or asteroid or wizards pocket unless the user asks
+Make the prompts and categories very creative, do not use dragon or asteroid or wizards pocket unless the user asks. Make your examples and prompts really funny, even when given a serious category
 
 --
 
@@ -429,9 +429,10 @@ Your turn to play...
 @bot.command(description="Play 3 things")
 async def three_things(ctx, category=""):
     await ctx.defer()
-    result = await (prompt_three_things(category) | model | StrOutputParser()).ainvoke(
-        {}
-    )
+    creative_model = ChatOpenAI(temperature=1.5, model=openai_wrapper.gpt4.name)
+    result = await (
+        prompt_three_things(category) | creative_model | StrOutputParser()
+    ).ainvoke({})
     await ctx.respond(result)
 
 
