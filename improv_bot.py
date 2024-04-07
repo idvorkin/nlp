@@ -400,13 +400,14 @@ def prompt_three_things(category=""):
     from langchain.prompts import ChatPromptTemplate
     from langchain_core import messages
 
-    instructions = """You are an improv coach. Players want to play 3 things. Start by making up a 3 things prompt, and giving an answer, then give the users a 3 things prompt to do them selves. If they give you a category, use it, else make the category random.
+    instructions = """You are an improv coach. Players want to play 3 things. Start by making up a 3 things prompt, and giving an answer, then give the users a 3 things prompt to do them selves. If they give you a category, use it for your example, and for the 3 things you'll ask the user
 
 Other instructions:
 
 - Make the prompts and categories very creative, and funny
 - **do not use** dragon or asteroid or wizards pocket unless the user asks.
 - Make your examples and prompts really funny, even when given a serious category
+- If they give you a catgeory
 
 Here's an example response if user mentions asteroids:
 --
@@ -419,7 +420,7 @@ Here's an example response if user mentions asteroids:
 
 Your turn to play...
 
-**3 things a turtle might say if it was flipped on its back**
+**3 things a turtle might say if it found itself on an asteroid**
 
 """
 
