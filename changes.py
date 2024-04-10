@@ -124,7 +124,7 @@ def changes(
     gist: bool = False,
     openai: bool = False,
     google: bool = False,
-    claude: bool = False,
+    claude: bool = True,
 ):
     llm = langchain_helper.get_model(openai=openai, google=google, claude=claude)
     achanges_params = llm, before, after, gist
@@ -228,19 +228,21 @@ Really minor changes should **not be listed**. Minor changes include.
 
 # Function to create the prompt
 def prompt_summarize_diff(file, diff_content, repo_path, end_rev):
-    instructions = f"""Summarize the changes for: {file}, permalink:{repo_path}/blob/{end_rev}/{file}
+    instructions = f""" You are an expert programmer.
+
+    Summarize the changes for: {file}, permalink:{repo_path}/blob/{end_rev}/{file}
 
 ## Instructions
 
 Have the first line be #### Filename on a single line
 Have second line be file link, lines_added, lines_removed, ~lines change (but exclude changes in comments) on a single line
-For the remaining lines use a markdown list
-When having larger changes add details by including sub bullets.
-List the changes in the list in order of impact. The most impactful/major changes should go first, and minor changes should go last.
-Really minor changes should **not be listed**. For example
-* Exclude Changes to imports
-* Exclude changes to spelling, grammar or punctuation in the summary
-* Exclude Changes to wording, for example, exclude Changed "inprogress" to "in progress"
+* When listing  changes,
+    * Put them in the order of importance
+    * Use unnumbered lists as the user will want to reorder them
+* If you see any of the following, skip them, or at most list them last as a single line
+    * Changes to formatting/whitespace
+    * Changes to imports
+    * Changes to comments
 
 E.g. for the file _d/foo.md, with 5 lines added, 3 lines removed, and 34 lines changed (excluding changes to comments)
 
