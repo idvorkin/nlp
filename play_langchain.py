@@ -46,7 +46,7 @@ def app_wrap_loguru():
 
 @app.command()
 def tell_me_a_joke(count=4):
-    chat = ChatGoogleGenerativeAI(model="gemini-1.5.-pro-latest")
+    chat = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest")
     template = ChatPromptTemplate.from_template(
         "Generate a list of exactly {count} joke about software engineers"
     )
