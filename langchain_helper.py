@@ -2,6 +2,7 @@ from langchain_core.language_models.chat_models import (
     BaseChatModel,
 )
 import openai_wrapper
+from icecream import ic
 
 
 def get_model_name(model: BaseChatModel):
@@ -43,3 +44,28 @@ def get_model(
         model = ChatOpenAI(model=openai_wrapper.gpt4.name)
 
     return model
+
+
+def tracer_project_name():
+    import inspect
+    from pathlib import Path
+    import socket
+
+    caller_frame = inspect.stack()[1]
+    caller_function = caller_frame.function
+    caller_filename = Path(inspect.getfile(caller_frame.frame)).name  # type:ignore
+    hostname = socket.gethostname()  # Get the hostname
+
+    return f"{caller_filename}:{caller_function}[{hostname}]"
+
+
+def langsmith_trace(the_call):
+    from langchain_core.tracers.context import tracing_v2_enabled
+    from langchain.callbacks.tracers.langchain import wait_for_all_tracers
+
+    trace_name = tracer_project_name()
+    with tracing_v2_enabled(project_name=trace_name) as tracer:
+        ic("Using Langsmith:", trace_name)
+        the_call()
+        ic(tracer.get_run_url())
+    wait_for_all_tracers()

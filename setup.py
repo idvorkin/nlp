@@ -12,6 +12,7 @@ setup(
         "openai_wrapper",
         "tts",
         "pbf",
+        "commit",
         "play_langchain",
         "changes",
     ],
@@ -27,6 +28,7 @@ setup(
             life=life:app
             tts=tts:app
             pbf=pbf:app
+            commit=commit:app
             changes=changes:app
         """,
 )
