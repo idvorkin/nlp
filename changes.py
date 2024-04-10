@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from rich import print
 from rich.console import Console
 from pathlib import Path
+import langchain_helper
 
 console = Console()
 app = typer.Typer()
@@ -125,7 +126,7 @@ def changes(
     google: bool = False,
     claude: bool = False,
 ):
-    llm = get_model(openai=openai, google=google, claude=claude)
+    llm = langchain_helper.get_model(openai=openai, google=google, claude=claude)
     achanges_params = llm, before, after, gist
     if not trace:
         asyncio.run(achanges(*achanges_params))
@@ -312,7 +313,7 @@ async def achanges(llm: BaseChatModel, before, after, gist):
     github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
     output = f"""
 ### Changes to {github_repo_diff_link} From [{after}] To [{before}]
-* Model: {langchain_get_model_name(llm)}
+* Model: {langchain_helper.get_model_name(llm)}
 * Duration: {int((datetime.now() - start).total_seconds())} seconds
 * Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S") }
 ---
@@ -336,47 +337,6 @@ async def achanges(llm: BaseChatModel, before, after, gist):
         ic(gist)
         ic(gist.stdout.strip())
         subprocess.run(["open", gist.stdout.strip()])
-
-
-def get_model(
-    openai: bool = False, google: bool = False, claude: bool = False
-) -> BaseChatModel:
-    """
-    See changes in diff
-    """
-    # if more then one is true, exit and fail
-    count_true = sum([openai, google, claude])
-    if count_true > 1:
-        print("Only one model can be selected")
-        exit(1)
-    if count_true == 1:
-        # default to openai
-        openai = True
-
-    if google:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        model = ChatGoogleGenerativeAI(model="gemini-1.5.-pro-latest")
-    elif claude:
-        from langchain_anthropic import ChatAnthropic
-
-        model = ChatAnthropic(model="claude-3-opus-20240229")
-    else:
-        from langchain_openai.chat_models import ChatOpenAI
-
-        model = ChatOpenAI(model=openai_wrapper.gpt4.name)
-
-    return model
-
-
-def langchain_get_model_name(model: BaseChatModel):
-    # if model has model_name, return that
-    if hasattr(model, "model_name") and model.model_name != "":
-        return model.model_name
-    if hasattr(model, "model") and model.model != "":
-        return model.model
-    else:
-        return str(model)
 
 
 if __name__ == "__main__":
