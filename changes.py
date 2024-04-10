@@ -11,8 +11,11 @@ import openai_wrapper
 import pudb
 import typer
 from icecream import ic
-from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
+from datetime import datetime, timedelta
+from langchain_core.language_models.chat_models import (
+    BaseChatModel,
+)
 
 from loguru import logger
 from pydantic import BaseModel
@@ -104,8 +107,6 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash) -> Tuple[str,
 
 
 def tomorrow():
-    from datetime import datetime, timedelta
-
     # Get today's date
     today = datetime.now()
     # Calculate tomorrow's date by adding one day to today
@@ -116,9 +117,16 @@ def tomorrow():
 
 @app.command()
 def changes(
-    before=tomorrow(), after="7 days ago", trace: bool = False, gist: bool = False
+    before=tomorrow(),
+    after="7 days ago",
+    trace: bool = False,
+    gist: bool = False,
+    openai: bool = False,
+    google: bool = False,
+    claude: bool = False,
 ):
-    achanges_params = before, after, gist
+    llm = get_model(openai=openai, google=google, claude=claude)
+    achanges_params = llm, before, after, gist
     if not trace:
         asyncio.run(achanges(*achanges_params))
         return
@@ -260,9 +268,9 @@ def create_markdown_table_of_contents(markdown_headers):
     )
 
 
-async def achanges(before, after, gist):
-    model = ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name)
-
+async def achanges(llm: BaseChatModel, before, after, gist):
+    # time the task
+    start = datetime.now()
     repo_url, repo_name = get_repo_path()
 
     first, last = await first_last_commit(before, after)
@@ -278,7 +286,7 @@ async def achanges(before, after, gist):
     ai_invoke_tasks = [
         (
             prompt_summarize_diff(file, diff_content, repo_path=repo_url, end_rev=last)
-            | model
+            | llm
         ).ainvoke({})
         for file, diff_content in file_diffs
     ]
@@ -293,7 +301,7 @@ async def achanges(before, after, gist):
     ic(unranked_diff_report)
 
     # diff_report = (
-    #     (prompt_report_from_diff_summary(unranked_diff_report) | model)
+    #     (prompt_report_from_diff_summary(unranked_diff_report) | g_model)
     #     .invoke({})
     #     .content
     # )
@@ -304,6 +312,9 @@ async def achanges(before, after, gist):
     github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
     output = f"""
 ### Changes to {github_repo_diff_link} From [{after}] To [{before}]
+* Model: {langchain_get_model_name(llm)}
+* Duration: {int((datetime.now() - start).total_seconds())} seconds
+* Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S") }
 ---
 {create_markdown_table_of_contents(changed_files)}
 ---
@@ -325,6 +336,47 @@ async def achanges(before, after, gist):
         ic(gist)
         ic(gist.stdout.strip())
         subprocess.run(["open", gist.stdout.strip()])
+
+
+def get_model(
+    openai: bool = False, google: bool = False, claude: bool = False
+) -> BaseChatModel:
+    """
+    See changes in diff
+    """
+    # if more then one is true, exit and fail
+    count_true = sum([openai, google, claude])
+    if count_true > 1:
+        print("Only one model can be selected")
+        exit(1)
+    if count_true == 1:
+        # default to openai
+        openai = True
+
+    if google:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        model = ChatGoogleGenerativeAI(model="gemini-1.5.-pro-latest")
+    elif claude:
+        from langchain_anthropic import ChatAnthropic
+
+        model = ChatAnthropic(model="claude-3-opus-20240229")
+    else:
+        from langchain_openai.chat_models import ChatOpenAI
+
+        model = ChatOpenAI(model=openai_wrapper.gpt4.name)
+
+    return model
+
+
+def langchain_get_model_name(model: BaseChatModel):
+    # if model has model_name, return that
+    if hasattr(model, "model_name") and model.model_name != "":
+        return model.model_name
+    if hasattr(model, "model") and model.model != "":
+        return model.model
+    else:
+        return str(model)
 
 
 if __name__ == "__main__":
