@@ -37,7 +37,7 @@ class CompletionModel(BaseModel):
 gpt4 = CompletionModel(
     max_input_only_tokens=100 * 1000,
     max_output_tokens=4 * 1000,
-    name="gpt-4-0125-preview",
+    name="gpt-4-turbo",
 )
 gpt35 = CompletionModel(
     max_input_only_tokens=12 * 1000,
