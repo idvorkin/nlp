@@ -15,27 +15,30 @@ from enum import Enum
 from typing import Annotated, Dict, List
 
 import pydantic
+from langchain_core.pydantic_v1 import BaseModel, validator
+
+# from pydantic import BaseModel, field_validator
 import typer
 from icecream import ic
 from langchain.docstore.document import Document
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
-from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
 from langchain.schema.output_parser import StrOutputParser
-from pydantic import BaseModel, field_validator
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.progress import track
 from langchain_community.vectorstores import Chroma
+# from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
+
 
 import igor_journal
-from pathlib import Path
 from openai_wrapper import num_tokens_from_string, setup_gpt, get_model, setup_secret
+from pathlib import Path
 
 setup_secret()
 
@@ -233,7 +236,7 @@ class CategorySummary(BaseModel):
     TheCategory: Category
     Observations: List[str]
 
-    @field_validator("TheCategory", mode="before")
+    @validator("TheCategory", pre="True")
     @classmethod
     def parse_category(cls, value):
         if value in Category.__members__:
@@ -275,7 +278,7 @@ class GetPychiatristReport(BaseModel):
     Recommendations: List[Recommendation]
     CategorySummaries: List[CategorySummary]
 
-    @field_validator("Date", mode="before")
+    @validator("Date", pre="True")
     @classmethod
     def parse_date(cls, value):
         date_formats = [
@@ -289,7 +292,7 @@ class GetPychiatristReport(BaseModel):
 
         for date_format in date_formats:
             try:
-                return datetime.strptime(value, date_format).date()
+                return datetime.strptime(value, date_format)
             except ValueError:
                 continue
         raise ValueError(f"Date {value} is not a valid date format")
@@ -499,8 +502,6 @@ async def async_journal_report(u4, journal_for, launch_fx, days):
 
     # remove_trailing_spaces("".join(sys.stdin.readlines()))
 
-    report = openai_func(GetPychiatristReport)
-
     system_prompt = f""" You are an expert psychologist named Dr {{model}} who writes reports after reading patient's journal entries
 
 You task it to write a report based on the journal entry that is going to be passed in
@@ -525,11 +526,7 @@ You task it to write a report based on the journal entry that is going to be pas
     model_name = get_model(u4=True)
     model = ChatOpenAI(model=model_name)
     ic(model_name)
-    chain = (
-        prompt
-        | model.bind(function_call={"name": report["name"]}, functions=[report])
-        | JsonOutputFunctionsParser()
-    )
+    chain = prompt | model.with_structured_output(GetPychiatristReport)
 
     corourtine = chain.ainvoke({"model": model_name})
     do_invoke = asyncio.create_task(corourtine)
@@ -541,17 +538,16 @@ You task it to write a report based on the journal entry that is going to be pas
             await asyncio.sleep(1)  # Simulate work being done
 
     # should now be done!
-    response = await do_invoke
-    with open(os.path.expanduser("~/tmp/journal_report/latest.json"), "w") as f:
-        json.dump(response, f, indent=2)
+    pych_report: GetPychiatristReport = await do_invoke  # noqa
+    (Path.home() / "tmp/journal_report/latest.json").write_text(
+        pych_report.json(indent=2)
+    )
 
-    # Sometimes date had a time on it, starting with T, remove that.
-    report_date = response["Date"].split("T")[0]
+    report_date = pych_report.Date.strftime("%Y-%m-%d")
 
     perma_path = journal_report_path(report_date, model=model_name)
-    with open(perma_path, "w") as f:
-        json.dump(response, f, indent=2)
-    print(json.dumps(response, indent=2))
+    (Path.home() / perma_path).write_text(pych_report.json(indent=2))
+    print(pych_report.json())
     print(perma_path)
 
     total = time.time() - start
