@@ -60,6 +60,9 @@ def is_skip_file(file):
     if file.endswith("ipynb"):
         ic("ipynb not supported yet")
         return True
+    if file.endswith("pdf"):
+        ic("ipynb not supported yet")
+        return True
     if file == "back-links.json":
         return True
 
@@ -286,12 +289,21 @@ async def achanges(llm: BaseChatModel, before, after, gist):
             if not is_skip_file(file)
         ]
     )
+    # add some rate limiting
+    max_parallel = asyncio.Semaphore(100)
+
+    async def concurrent_llm_call(file, diff_content):
+        async with max_parallel:
+            ic(f"running on {file}")
+            return await (
+                prompt_summarize_diff(
+                    file, diff_content, repo_path=repo_url, end_rev=last
+                )
+                | llm
+            ).ainvoke({})
+
     ai_invoke_tasks = [
-        (
-            prompt_summarize_diff(file, diff_content, repo_path=repo_url, end_rev=last)
-            | llm
-        ).ainvoke({})
-        for file, diff_content in file_diffs
+        concurrent_llm_call(file, diff_content) for file, diff_content in file_diffs
     ]
 
     results = [result.content for result in await asyncio.gather(*ai_invoke_tasks)]

@@ -10,6 +10,7 @@ setup(
         "dump_grateful",
         "improv",
         "openai_wrapper",
+        "langchain_helper",
         "tts",
         "pbf",
         "commit",
