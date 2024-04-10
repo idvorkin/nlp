@@ -27,6 +27,8 @@ from langchain_openai.chat_models import ChatOpenAI
 from langchain import prompts
 from discord_helper import draw_progress_bar, get_bot_token, send, BotState
 from langchain.schema.output_parser import StrOutputParser
+from langchain.prompts import ChatPromptTemplate
+from langchain_core import messages
 
 setup_secret()
 
@@ -397,9 +399,6 @@ async def extend(
 
 
 def prompt_three_things(category=""):
-    from langchain.prompts import ChatPromptTemplate
-    from langchain_core import messages
-
     instructions = """You are an improv coach. Players want to play 3 things. Start by making up a 3 things prompt, and giving an answer, then give the users a 3 things prompt to do them selves. If they give you a category, use it for your example, and for the 3 things you'll ask the user
 
 Other instructions:
@@ -549,6 +548,23 @@ class MentionListener(commands.Cog):
         # check if message is a DM
 
     # TODO: Refactor to be with extend_story_for_bot
+
+
+def prompt_to_flat(m):
+    # if m is a of type Systemmesssage return m
+    message = {"role": "user", "content": m.content}
+    if isinstance(m, messages.SystemMessage):
+        message["role"] = "system"
+    return message
+
+
+# @app.command() -- uncomment to be able to export to the prompts
+def pf_3t():
+    prompt = prompt_three_things()
+    import json
+
+    messages = [prompt_to_flat(m) for m in prompt.messages]
+    print(json.dumps(messages))
 
 
 async def on_mention(message):

@@ -1,0 +1,22 @@
+# This configuration compares LLM output of 2 prompts x 2 GPT models across 3 test cases.
+# Learn more: https://promptfoo.dev/docs/configuration/guide
+description: 'My first eval'
+
+prompts:
+  - threethings.json
+
+providers:
+  - openai:chat:gpt-3.5-turbo
+  - openai:chat:gpt-4-0125-preview
+  - anthropic:messages:claude-3-opus-20240229
+
+tests:
+
+  - vars:
+      topic:
+          - computer programmer interviews during depression
+          - brain surgeon
+    assert:
+      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded
+      - type: llm-rubric
+        value: ensure that the output is funny
