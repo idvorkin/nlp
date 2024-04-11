@@ -63,7 +63,8 @@ def langsmith_trace_if_requested(trace: bool, the_call):
     if trace:
         return langsmith_trace(the_call)
     else:
-        return the_call
+        the_call()
+        return
 
 
 def langsmith_trace(the_call):
