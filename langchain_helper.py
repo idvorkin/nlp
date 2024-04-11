@@ -59,6 +59,13 @@ def tracer_project_name():
     return f"{caller_filename}:{caller_function}[{hostname}]"
 
 
+def langsmith_trace_if_requested(trace: bool, the_call):
+    if trace:
+        return langsmith_trace(the_call)
+    else:
+        return the_call
+
+
 def langsmith_trace(the_call):
     from langchain_core.tracers.context import tracing_v2_enabled
     from langchain.callbacks.tracers.langchain import wait_for_all_tracers

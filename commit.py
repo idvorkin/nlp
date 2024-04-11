@@ -60,32 +60,29 @@ Descriptive message
 def build_commit(
     trace: bool = False,
 ):
-    user_text = "".join(sys.stdin.readlines())
+    langchain_helper.langsmith_trace_if_requested(
+        trace, lambda: asyncio.run(a_build_commit())
+    )
 
-    def do_work():
-        asyncio.run(a_do_work())
+
+async def a_build_commit():
+    llms = [
+        langchain_helper.get_model(openai=True),
+        langchain_helper.get_model(claude=True),
+    ]
+    # google = langchain_helper.get_model(google=True)
 
     async def describe_diff(user_text, llm):
         description = await (prompt_summarize_diff(user_text) | llm).ainvoke({})
         return description.content, llm
 
-    async def a_do_work():
-        openai = langchain_helper.get_model(openai=True)
-        claude = langchain_helper.get_model(claude=True)
-        llms = [openai, claude]
-        # google = langchain_helper.get_model(google=True)
-        describe_diff_tasks = [describe_diff(user_text, llm) for llm in llms]
-        describe_diffs = [
-            result for result in await asyncio.gather(*describe_diff_tasks)
-        ]
-        for description, llm in describe_diffs:
-            print(f"# -- {langchain_helper.get_model_name(llm)} --")
-            print(description)
+    user_text = "".join(sys.stdin.readlines())
+    describe_diff_tasks = [describe_diff(user_text, llm) for llm in llms]
+    describe_diffs = [result for result in await asyncio.gather(*describe_diff_tasks)]
 
-    if not trace:
-        return do_work()
-
-    langchain_helper.langsmith_trace(do_work)
+    for description, llm in describe_diffs:
+        print(f"# -- model: {langchain_helper.get_model_name(llm)} --")
+        print(description)
 
 
 if __name__ == "__main__":
