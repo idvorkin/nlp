@@ -3,13 +3,15 @@ from langchain_core.language_models.chat_models import (
 )
 import openai_wrapper
 from icecream import ic
+from types import FrameType
 
 
 def get_model_name(model: BaseChatModel):
     # if model has model_name, return that
-    if hasattr(model, "model_name") and model.model_name != "":
+    if hasattr(model, "model_name") and model.model_name != "":  # type: ignore
         return model.model_name
-    if hasattr(model, "model") and model.model != "":
+        return model.model_name
+    if hasattr(model, "model") and model.model != "":  # type: ignore
         return model.model
     else:
         return str(model)
@@ -51,9 +53,18 @@ def tracer_project_name():
     from pathlib import Path
     import socket
 
-    caller_frame = inspect.stack()[1]
-    caller_function = caller_frame.function
+    # get the first caller name that is not in langchain_helper
+    def app_frame(stack) -> FrameType:
+        for frame in stack:
+            if frame.filename != __file__:
+                return frame
+        # if can't find  anything  use my parent
+        return stack[1]
+
+    caller_frame = app_frame(inspect.stack())
+    caller_function = caller_frame.function  # type:ignore
     caller_filename = Path(inspect.getfile(caller_frame.frame)).name  # type:ignore
+
     hostname = socket.gethostname()  # Get the hostname
 
     return f"{caller_filename}:{caller_function}[{hostname}]"
