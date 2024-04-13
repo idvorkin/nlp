@@ -240,12 +240,15 @@ def prompt_summarize_diff(file, diff_content, repo_path, end_rev):
 Have the first line be #### Filename on a single line
 Have second line be file link, lines_added, lines_removed, ~lines change (but exclude changes in comments) on a single line
 * When listing  changes,
+    * Include the reason for the change if you can figure it out
     * Put them in the order of importance
     * Use unnumbered lists as the user will want to reorder them
 * If you see any of the following, skip them, or at most list them last as a single line
     * Changes to formatting/whitespace
     * Changes to imports
     * Changes to comments
+* If it's a new file, try to guess the purpose of the file
+* Don't be tenative in your language
 
 E.g. for the file _d/foo.md, with 5 lines added, 3 lines removed, and 34 lines changed (excluding changes to comments)
 
@@ -311,7 +314,7 @@ async def achanges(llm: BaseChatModel, before, after, gist):
     # I think this can be done by the reorder_diff_summary command
     results.sort(key=lambda x: len(x), reverse=True)
 
-    unranked_diff_report = "---\n".join(results)
+    unranked_diff_report = "\n\n___\n\n".join(results)
 
     ic(unranked_diff_report)
 
@@ -330,9 +333,9 @@ async def achanges(llm: BaseChatModel, before, after, gist):
 * Model: {langchain_helper.get_model_name(llm)}
 * Duration: {int((datetime.now() - start).total_seconds())} seconds
 * Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S") }
----
+___
 {create_markdown_table_of_contents(changed_files)}
----
+___
 {unranked_diff_report}
     """
     print(output)
