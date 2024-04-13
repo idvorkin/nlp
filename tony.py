@@ -16,9 +16,12 @@ import langchain_helper
 import httpx
 from icecream import ic
 from datetime import datetime, timedelta
+import os
 
 console = Console()
 app = typer.Typer()
+
+TONY_ASSISTANT_ID = "f5fe3b31-0ff6-4395-bc08-bc8ebbbf48a6"
 
 
 @logger.catch()
@@ -69,7 +72,6 @@ def parse_call(call) -> Call:
 def vapi_calls() -> list[Call]:
     # list all calls from VAPI
     # help:  https://api.vapi.ai/api#/Calls/CallController_findAll
-    import os
 
     headers = {
         "authorization": f"{os.environ['VAPI_API_KEY']}",
@@ -88,6 +90,35 @@ def calls():
     for call in calls:
         ic(call.Caller, call.Start.strftime("%Y-%m-%d %H:%M"), len(call.Transcript))
     ic(len(calls))
+
+
+@app.command()
+def update_tony():
+    headers = {
+        "authorization": f"{os.environ['VAPI_API_KEY']}",
+    }
+    tony = httpx.get(
+        f"https://api.vapi.ai/assistant/{TONY_ASSISTANT_ID}", headers=headers
+    ).json()
+    # ic (tony)
+    # original = tony["model"]["messages"][0]
+    # print(original)
+    # Run a diff to make sure happy with the path
+    patch_document = [
+        {"op": "replace", "path": "/model/messages", "value": tony["model"]["messages"]}
+    ]
+
+    ic(patch_document)
+
+    patched = httpx.patch(
+        f"https://api.vapi.ai/assistant/{TONY_ASSISTANT_ID}",
+        headers=headers,
+        json=patch_document,
+    )
+    ic(patched)
+    ic(patched.text)
+    # Ha, for now just copy the life convo to the clipboard, and paste it into the uX:
+    # https://dashboard.vapi.ai/assistants
 
 
 @app.command()
