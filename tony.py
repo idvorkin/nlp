@@ -15,7 +15,7 @@ from rich.console import Console
 import langchain_helper
 import httpx
 from icecream import ic
-from datetime import datetime
+from datetime import datetime, timedelta
 
 console = Console()
 app = typer.Typer()
@@ -71,7 +71,10 @@ def vapi_calls() -> list[Call]:
     # help:  https://api.vapi.ai/api#/Calls/CallController_findAll
     import os
 
-    headers = {"authorization": f"{os.environ['VAPI_API_KEY']}"}
+    headers = {
+        "authorization": f"{os.environ['VAPI_API_KEY']}",
+        "createdAtGE": (datetime.now() - timedelta(days=1)).isoformat(),
+    }
     # future add createdAtGe
     return [
         parse_call(c)
@@ -97,28 +100,22 @@ def parse_calls(
 
 
 async def a_parse_calls():
-    llms = [
-        langchain_helper.get_model(openai=True),
-        langchain_helper.get_model(claude=True),
-    ]
-    # google = langchain_helper.get_model(google=True)
-
-    async def transcribe_call(user_text, llm):
+    async def transcribe_call(user_text):
+        llm = langchain_helper.get_model(openai=True)
         callSummary: CallSummary = await (
             prompt_transcribe_call(user_text) | llm.with_structured_output(CallSummary)
-        ).ainvoke({})
-        return callSummary, llm
+        ).ainvoke({})  # type:ignore
+        return callSummary
 
     calls = vapi_calls()
-    # first call of length > 1000
-    call = next((c for c in calls if len(c.Transcript) > 1000))
 
-    describe_diff_tasks = [transcribe_call(call.Transcript, llm) for llm in llms]
-    describe_diffs = [result for result in await asyncio.gather(*describe_diff_tasks)]
+    def interesting_call(call):
+        return len(call.Transcript) > 100 and "4339" in call.Caller
 
-    for description, llm in describe_diffs:
-        print(f"# -- model: {langchain_helper.get_model_name(llm)} --")
-        print(description)
+    interesting_calls = [call for call in calls if interesting_call(call)]
+    for call in interesting_calls[:5]:  # clip at 5
+        call_summary = await transcribe_call(call.Transcript)
+        print(call_summary)
 
 
 if __name__ == "__main__":
