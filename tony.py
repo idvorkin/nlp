@@ -104,12 +104,10 @@ async def a_parse_calls():
     # google = langchain_helper.get_model(google=True)
 
     async def transcribe_call(user_text, llm):
-        description = (
-            await (prompt_transcribe_call(user_text) | llm)
-            .with_structured_output(CallSummary)
-            .ainvoke({})
-        )
-        return description.content, llm
+        callSummary: CallSummary = await (
+            prompt_transcribe_call(user_text) | llm.with_structured_output(CallSummary)
+        ).ainvoke({})
+        return callSummary, llm
 
     calls = vapi_calls()
     # first call of length > 1000
