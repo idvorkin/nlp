@@ -16,6 +16,7 @@ setup(
         "commit",
         "play_langchain",
         "changes",
+        "fix",
     ],
     install_requires=[],
     entry_points="""
@@ -31,5 +32,6 @@ setup(
             pbf=pbf:app
             commit=commit:app
             changes=changes:app
+            fix=fix:app
         """,
 )
