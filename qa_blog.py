@@ -3,7 +3,6 @@ from langchain.callbacks.tracers.langchain import LangChainTracer
 import requests
 from functools import lru_cache
 import pathlib
-from langchain_openai.chat_models import ChatOpenAI
 from rich.console import Console
 from icecream import ic
 import typer
@@ -13,13 +12,14 @@ from typing import List, Optional
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
+import langchain_helper
 from langchain import (
     text_splitter,
 )  # import CharacterTextSplitter, RecursiveCharacterTextSplitter, Markdown
 from typing_extensions import Annotated
 from openai_wrapper import choose_model
 from fastapi import FastAPI
-from openai_wrapper import setup_gpt, get_model, num_tokens_from_string
+from openai_wrapper import setup_gpt, num_tokens_from_string
 from langchain.prompts.chat import (
     ChatPromptTemplate,
 )
@@ -327,8 +327,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     """
     )
 
-    model_name = get_model(u4=True)
-    llm = ChatOpenAI(model=model_name)
+    llm = langchain_helper.get_model(claude=True)
 
     # We can improve our relevance by getting the md_simple_chunks, but that loses context
     # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
@@ -482,8 +481,7 @@ Igor will enjoy this because ..
     """
     )
 
-    model_name = get_model(u4=True)
-    llm = ChatOpenAI(model=model_name)
+    llm = langchain_helper.get_model(claude=True)
 
     # We can improve our relevance by getting the md_simple_chunks, but that loses context
     # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
@@ -539,18 +537,7 @@ async def debug(ctx):
 
 # @logger.catch()
 def app_wrap_loguru():
-    from langchain_core.tracers.context import tracing_v2_enabled
-    from langchain.callbacks.tracers.langchain import wait_for_all_tracers
-    import openai_wrapper
-
-    trace_name = openai_wrapper.tracer_project_name()
-    with tracing_v2_enabled(project_name=trace_name) as tracer:
-        global g_tracer
-        g_tracer = tracer
-        ic("Using Langsmith:", trace_name)
-        app()
-        wait_for_all_tracers()
-        ic(tracer.get_run_url())
+    langchain_helper.langsmith_trace(app)
 
 
 if __name__ == "__main__":
