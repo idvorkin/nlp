@@ -1,1 +1,6 @@
-docker run -e "LANGCHAIN_API_KEY=$(jq -r '.LANGCHAIN_API_KEY' ~/gits/igor2/secretBox.json)" -e "DISCORD_BOT_TOKEN=$(jq -r '.DISCORD_IGBLOG_BOT' ~/gits/igor2/secretBox.json)" -e "ANTHROPIC_API_KEY=$(jq -r '.ANTHROPIC_API_KEY' ~/gits/igor2/secretBox.json)" nlp pipenv run qa-bot
+docker run \
+-e "LANGCHAIN_API_KEY=$(jq -r '.LANGCHAIN_API_KEY' ~/gits/igor2/secretBox.json)" \
+-e "DISCORD_BOT_TOKEN=$(jq -r '.DISCORD_IGBLOG_BOT' ~/gits/igor2/secretBox.json)"  \
+-e "ANTHROPIC_API_KEY=$(jq -r '.ANTHROPIC_API_KEY' ~/gits/igor2/secretBox.json)"  \
+-e "OPENAI_API_KEY=$(jq -r '.BOT_OPENAI_API_KEY' ~/gits/igor2/secretBox.json)"  \
+nlp pipenv run qa-bot
