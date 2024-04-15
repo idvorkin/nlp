@@ -21,7 +21,6 @@ ___
 
 ### As a magic coach.
 
-
 Help Igor Learn Tamiriz, here is his memory palace
 
 Location 1: Tower - Door falling on little Shrews (1 2 4C 2H)

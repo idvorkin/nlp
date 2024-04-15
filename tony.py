@@ -17,6 +17,8 @@ import httpx
 from icecream import ic
 from datetime import datetime, timedelta
 import os
+import json
+from pathlib import Path
 
 console = Console()
 app = typer.Typer()
@@ -104,6 +106,8 @@ def update_tony():
     # original = tony["model"]["messages"][0]
     # print(original)
     # Run a diff to make sure happy with the path
+    Path("tony.json").write_text(json.dumps(tony, indent=4))
+
     patch_document = [
         {"op": "replace", "path": "/model/messages", "value": tony["model"]["messages"]}
     ]
