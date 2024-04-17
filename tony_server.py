@@ -26,6 +26,13 @@ modal_storage = "modal_readonly"
 @web_endpoint(method="POST")
 def assistant(input: Dict):
     ic(input)
-    tony = json.loads(Path("/{modal_storage}/tony_soul.json").read_text())
-    ic(tony)
+    base = Path(f"/{modal_storage}")
+    assistant_txt = '{"a":"b"}'
+    # (base/"tony_assistant_spec.json").read_text()
+    ic(assistant_txt)
+    tony = json.loads(assistant_txt)
+    tony_prompt = json.loads((base / "tony_system_prompt.md").read_text())
+    # update system prompt
+    tony["assistant"]["model"]["messages"][0]["content"] = tony_prompt
+    ic(len(tony))
     return tony

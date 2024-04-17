@@ -134,6 +134,21 @@ def parse_calls(
     )
 
 
+@app.command()
+def local_debug():
+    modal_storage = "modal_readonly"
+    base = Path(f"{modal_storage}")
+    assistant_txt = (base / "tony_assistant_spec.json").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    ic(assistant_txt)
+    tony = json.loads(assistant_txt)
+    tony_prompt = json.loads((base / "tony_system_prompt.md").read_text())
+    # update system prompt
+    tony["assistant"]["model"]["messages"][0]["content"] = tony_prompt
+    ic(len(tony))
+
+
 async def a_parse_calls():
     async def transcribe_call(user_text):
         llm = langchain_helper.get_model(openai=True)
