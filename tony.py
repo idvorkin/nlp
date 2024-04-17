@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 import os
 import json
 from pathlib import Path
+from dateutil import tz
 
 console = Console()
 app = typer.Typer()
@@ -57,6 +58,10 @@ class Call(BaseModel):
     Caller: str
     Transcript: str
     Start: datetime
+    End: datetime
+
+    def length_in_seconds(self):
+        return (self.End - self.Start).total_seconds()
 
 
 def parse_call(call) -> Call:
@@ -64,10 +69,20 @@ def parse_call(call) -> Call:
     if "customer" in call:
         customer = call["customer"]["number"]
 
+    start = call.get("createdAt")
+    # there is no end in some failure conditions
+    end = call.get("endedAt", start)
+    start_dt = datetime.strptime(start, "%Y-%m-%dT%H:%M:%S.%fZ")
+    end_dt = datetime.strptime(end, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+    start_dt = start_dt.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
+    end_dt = end_dt.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
+
     return Call(
         Caller=customer,
         Transcript=call.get("transcript", ""),
-        Start=datetime.strptime(call["createdAt"], "%Y-%m-%dT%H:%M:%S.%fZ"),
+        Start=start_dt,
+        End=end_dt,
     )
 
 
@@ -159,11 +174,13 @@ async def a_parse_calls():
 
     calls = vapi_calls()
 
-    def interesting_call(call):
-        return len(call.Transcript) > 100 and "4339" in call.Caller
+    def interesting_call(call: Call):
+        return call.length_in_seconds() > 90 and "4339" in call.Caller
 
     interesting_calls = [call for call in calls if interesting_call(call)]
-    for call in interesting_calls[:5]:  # clip at 5
+    for call in interesting_calls:
+        start = call.Start.strftime("%Y-%m-%d %H:%M")
+        ic(call.length_in_seconds(), call.Caller, start)
         call_summary = await transcribe_call(call.Transcript)
         print(call_summary)
 
