@@ -1,1 +1,46 @@
-{"assistant":{"a":"b"}}
+{
+    "assistant":
+{
+    "name": "Tony",
+    "voice": {
+        "voiceId": "IKne3meq5aSn9XLyUdCD",
+        "provider": "11labs",
+        "stability": 0.5,
+        "similarityBoost": 0.75
+    },
+    "model": {
+        "model": "claude-3-opus-20240229",
+        "messages": [
+            {
+                "role": "system",
+                "content": "REPLACE ME"
+            }
+        ],
+        "provider": "anthropic",
+        "functions": [],
+        "maxTokens": 250,
+        "temperature": 0.7
+    },
+    "recordingEnabled": true,
+    "firstMessage": "Tony Here. What can I do you for?",
+    "voicemailMessage": "Hi, you've reached Leo at SmartHome Innovations. Sorry I missed your call. Please leave a message, and I'll get back to you as soon as possible.",
+    "endCallFunctionEnabled": false,
+    "endCallMessage": "Thanks for reaching out to SmartHome Innovations. It was great assisting you. Have a wonderful day!",
+    "transcriber": {
+        "model": "nova-2",
+        "language": "en",
+        "provider": "deepgram"
+    },
+    "serverMessages": [
+        "function-call"
+    ],
+    "dialKeypadFunctionEnabled": false,
+    "endCallPhrases": [
+        "bye for now",
+        "talk soon",
+        "hang up",
+        "end call"
+    ],
+    "hipaaEnabled": false
+}
+}
