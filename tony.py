@@ -57,6 +57,7 @@ class CallSummary(BaseModel):
 class Call(BaseModel):
     Caller: str
     Transcript: str
+    Summary: str
     Start: datetime
     End: datetime
 
@@ -68,12 +69,14 @@ def parse_call(call) -> Call:
     customer = ""
     if "customer" in call:
         customer = call["customer"]["number"]
+    # ic(call)
 
     start = call.get("createdAt")
     # there is no end in some failure conditions
     end = call.get("endedAt", start)
     start_dt = datetime.strptime(start, "%Y-%m-%dT%H:%M:%S.%fZ")
     end_dt = datetime.strptime(end, "%Y-%m-%dT%H:%M:%S.%fZ")
+    summary = call.get("summary", "")
 
     start_dt = start_dt.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
     end_dt = end_dt.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
@@ -83,6 +86,7 @@ def parse_call(call) -> Call:
         Transcript=call.get("transcript", ""),
         Start=start_dt,
         End=end_dt,
+        Summary=summary,
     )
 
 
@@ -104,9 +108,11 @@ def vapi_calls() -> list[Call]:
 @app.command()
 def calls():
     calls = vapi_calls()
-    for call in calls:
-        ic(call.Caller, call.Start.strftime("%Y-%m-%d %H:%M"), len(call.Transcript))
     ic(len(calls))
+    for call in calls:
+        start = call.Start.strftime("%Y-%m-%d %H:%M")
+        ic(call.Caller, start, call.length_in_seconds(), len(call.Transcript))
+        ic(call.Summary)
 
 
 @app.command()
