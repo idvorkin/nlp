@@ -9,17 +9,17 @@
         "similarityBoost": 0.75
     },
     "model": {
-        "model": "claude-3-opus-20240229",
+        "model": "gpt-4",
+        "provider": "openai",
+        "functions": [],
+        "maxTokens": 150,
+        "temperature": 1.0,
         "messages": [
             {
                 "role": "system",
                 "content": "REPLACE ME"
             }
-        ],
-        "provider": "anthropic",
-        "functions": [],
-        "maxTokens": 250,
-        "temperature": 0.7
+        ]
     },
     "recordingEnabled": true,
     "firstMessage": "Tony Here. What can I do you for?",
