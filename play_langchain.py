@@ -2,6 +2,7 @@
 
 
 import os
+from pathlib import Path
 import pickle
 import sys
 from typing import List
@@ -11,15 +12,11 @@ import openai_wrapper
 import pudb
 import typer
 from icecream import ic
-from langchain_openai.chat_models import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.output_parsers.openai_functions import (
-    JsonKeyOutputFunctionsParser,
-)
+import langchain_helper
 from langchain.prompts import ChatPromptTemplate
 
 from loguru import logger
-from pydantic import BaseModel
+from langchain_core.pydantic_v1 import BaseModel
 from rich import print
 from rich.console import Console
 
@@ -46,7 +43,7 @@ def app_wrap_loguru():
 
 @app.command()
 def tell_me_a_joke(count=4):
-    chat = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest")
+    chat = langchain_helper.get_model(google=True)
     template = ChatPromptTemplate.from_template(
         "Generate a list of exactly {count} joke about software engineers"
     )
@@ -78,7 +75,7 @@ def load_cached_prompt(prompt_name):
 @app.command()
 def great_prompt(prompt):
     prompt_maker_template = load_cached_prompt("hardkothari/prompt-maker")
-    model = ChatOpenAI(temperature=0.9)
+    model = langchain_helper.get_model(openai=True)
     chain = prompt_maker_template | model
     result = chain.invoke({"lazy_prompt": prompt, "task": prompt})
     print(result.content)
@@ -88,32 +85,41 @@ def great_prompt(prompt):
 def summarize():
     prompt_maker_template = load_cached_prompt("langchain-ai/chain-of-density:ba34ae10")
     user_text = "".join(sys.stdin.readlines())
-    model = ChatOpenAI(temperature=0.9, model="gpt-4")
+    model = langchain_helper.get_model(openai=True)
     chain = prompt_maker_template | model
     result = chain.invoke({"ARTICLE": user_text})
     print(result.content)
 
 
-class GetHypotheticalQuestionsFromDoc(BaseModel):
-    Questions: List[str]
+class GroupedPoints(BaseModel):
+    GroupDescription: str
+    Points: List[str]
+
+
+class AugmentThinking(BaseModel):
+    SummaryInPointForm: List[GroupedPoints]
+    Questions: List[GroupedPoints]
+    RelatedTopics: List[GroupedPoints]
+
+
+@app.command()
+def cat_pdf(path: Path):
+    ic(path)
+    pass
 
 
 @app.command()
 def q_for_doc(questions: int = 10):
-    get_questions = openai_wrapper.openai_func(GetHypotheticalQuestionsFromDoc)
-
+    model = langchain_helper.get_model(openai=True)
     chain = (
         ChatPromptTemplate.from_template(
             "Generate a list of exactly {count} hypothetical questions that the below document could be used to answer:\n\n{doc}"
         )
-        | ChatOpenAI(max_retries=0, model=openai_wrapper.gpt4.name).bind(
-            functions=[get_questions], function_call={"name": get_questions["name"]}
-        )
-        | JsonKeyOutputFunctionsParser(key_name="Questions")
+        | model.with_structured_output(AugmentThinking)  # type:ignore
     )
     user_text = "".join(sys.stdin.readlines())
-    r = chain.invoke({"doc": user_text, "count": questions})
-    ic(r)
+    thinking: AugmentThinking = chain.invoke({"doc": user_text, "count": questions})  # type:ignore
+    print(thinking)
 
 
 if __name__ == "__main__":
