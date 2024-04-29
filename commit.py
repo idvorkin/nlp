@@ -69,8 +69,8 @@ async def a_build_commit():
     llms = [
         langchain_helper.get_model(openai=True),
         langchain_helper.get_model(claude=True),
+        langchain_helper.get_model(google=True),
     ]
-    # google = langchain_helper.get_model(google=True)
 
     async def describe_diff(user_text, llm):
         description = await (prompt_summarize_diff(user_text) | llm).ainvoke({})
