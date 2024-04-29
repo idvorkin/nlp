@@ -17,11 +17,13 @@ setup(
         "play_langchain",
         "changes",
         "fix",
+        "think",
     ],
     install_requires=[],
     entry_points="""
             [console_scripts]
             gpt=gpt3:app
+            think=think:app
             gpt3=gpt3:app
             ij=igor_journal:app
             dg=dump_grateful:app

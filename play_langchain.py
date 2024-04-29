@@ -5,10 +5,6 @@ import os
 from pathlib import Path
 import pickle
 import sys
-from typing import List
-
-
-import openai_wrapper
 import pudb
 import typer
 from icecream import ic
@@ -16,7 +12,6 @@ import langchain_helper
 from langchain.prompts import ChatPromptTemplate
 
 from loguru import logger
-from langchain_core.pydantic_v1 import BaseModel
 from rich import print
 from rich.console import Console
 
@@ -27,9 +22,6 @@ app = typer.Typer()
 def process_shared_app_options(ctx: typer.Context):
     if ctx.obj.attach:
         pudb.set_trace()
-
-
-openai_wrapper.setup_secret()
 
 
 @logger.catch()
@@ -91,35 +83,10 @@ def summarize():
     print(result.content)
 
 
-class GroupedPoints(BaseModel):
-    GroupDescription: str
-    Points: List[str]
-
-
-class AugmentThinking(BaseModel):
-    SummaryInPointForm: List[GroupedPoints]
-    Questions: List[GroupedPoints]
-    RelatedTopics: List[GroupedPoints]
-
-
 @app.command()
 def cat_pdf(path: Path):
     ic(path)
     pass
-
-
-@app.command()
-def q_for_doc(questions: int = 10):
-    model = langchain_helper.get_model(openai=True)
-    chain = (
-        ChatPromptTemplate.from_template(
-            "Generate a list of exactly {count} hypothetical questions that the below document could be used to answer:\n\n{doc}"
-        )
-        | model.with_structured_output(AugmentThinking)  # type:ignore
-    )
-    user_text = "".join(sys.stdin.readlines())
-    thinking: AugmentThinking = chain.invoke({"doc": user_text, "count": questions})  # type:ignore
-    print(thinking)
 
 
 if __name__ == "__main__":
