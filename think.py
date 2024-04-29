@@ -45,7 +45,7 @@ You will be passed in a text artifcat
     )
 
 
-async def a_think():
+async def a_think(json: bool):
     llms = [
         langchain_helper.get_model(openai=True),
         # langchain_helper.get_model(claude=True),
@@ -62,10 +62,15 @@ async def a_think():
     analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
 
     for analysis, llm, duration in analyzed_artifacts:
-        print(
-            f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
-        )
-        print(analysis)
+        if json:
+            import builtins
+
+            builtins.print(analysis.json(indent=2))
+        else:
+            print(
+                f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
+            )
+            print(analysis)
 
 
 console = Console()
@@ -75,8 +80,11 @@ app = typer.Typer()
 @app.command()
 def think(
     trace: bool = False,
+    json: bool = False,
 ):
-    langchain_helper.langsmith_trace_if_requested(trace, lambda: asyncio.run(a_think()))
+    langchain_helper.langsmith_trace_if_requested(
+        trace, lambda: asyncio.run(a_think(json))
+    )
 
 
 @logger.catch()
