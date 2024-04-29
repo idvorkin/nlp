@@ -1,10 +1,13 @@
 #!python3
 
 
+from datetime import datetime, timedelta
 import sys
 import asyncio
+from typing import Callable, List, TypeVar
 
 from langchain_core import messages
+from langchain_core.language_models.chat_models import BaseChatModel
 
 import typer
 from langchain.prompts import ChatPromptTemplate
@@ -13,14 +16,6 @@ from loguru import logger
 from rich import print
 from rich.console import Console
 import langchain_helper
-
-console = Console()
-app = typer.Typer()
-
-
-@logger.catch()
-def app_wrap_loguru():
-    app()
 
 
 def prompt_summarize_diff(diff_output):
@@ -56,13 +51,21 @@ Descriptive message
     )
 
 
-@app.command()
-def build_commit(
-    trace: bool = False,
-):
-    langchain_helper.langsmith_trace_if_requested(
-        trace, lambda: asyncio.run(a_build_commit())
-    )
+T = TypeVar("T")
+
+
+async def async_run_on_llms(
+    lcel_func: Callable[[BaseChatModel], T], llms
+) -> List[[T, BaseChatModel, timedelta]]:  # type: ignore
+    async def timed_lcel_task(lcel_func, llm):
+        start_time = datetime.now()
+        result = await (lcel_func(llm)).ainvoke({})
+        end_time = datetime.now()
+        time_delta = end_time - start_time
+        return result, llm, time_delta
+
+    tasks = [timed_lcel_task(lcel_func, llm) for llm in llms]
+    return [result for result in await asyncio.gather(*tasks)]
 
 
 async def a_build_commit():
@@ -72,17 +75,36 @@ async def a_build_commit():
         langchain_helper.get_model(google=True),
     ]
 
-    async def describe_diff(user_text, llm):
-        description = await (prompt_summarize_diff(user_text) | llm).ainvoke({})
-        return description.content, llm
-
     user_text = "".join(sys.stdin.readlines())
-    describe_diff_tasks = [describe_diff(user_text, llm) for llm in llms]
-    describe_diffs = [result for result in await asyncio.gather(*describe_diff_tasks)]
 
-    for description, llm in describe_diffs:
-        print(f"# -- model: {langchain_helper.get_model_name(llm)} --")
-        print(description)
+    def describe_diff(llm: BaseChatModel):
+        return prompt_summarize_diff(user_text) | llm
+
+    describe_diffs = await async_run_on_llms(describe_diff, llms)
+
+    for description, llm, duration in describe_diffs:
+        print(
+            f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
+        )
+        print(description.content)
+
+
+console = Console()
+app = typer.Typer()
+
+
+@logger.catch()
+def app_wrap_loguru():
+    app()
+
+
+@app.command()
+def build_commit(
+    trace: bool = False,
+):
+    langchain_helper.langsmith_trace_if_requested(
+        trace, lambda: asyncio.run(a_build_commit())
+    )
 
 
 if __name__ == "__main__":
