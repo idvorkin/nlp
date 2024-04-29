@@ -4,15 +4,17 @@ from langchain_core.language_models.chat_models import (
 import openai_wrapper
 from icecream import ic
 from types import FrameType
+from typing import Callable, List, TypeVar
+from datetime import datetime, timedelta
+import asyncio
 
 
 def get_model_name(model: BaseChatModel):
     # if model has model_name, return that
     if hasattr(model, "model_name") and model.model_name != "":  # type: ignore
-        return model.model_name
-        return model.model_name
+        return model.model_name  # type: ignore
     if hasattr(model, "model") and model.model != "":  # type: ignore
-        return model.model
+        return model.model  # type: ignore
     else:
         return str(model)
 
@@ -41,7 +43,7 @@ def get_model(
     elif claude:
         from langchain_anthropic import ChatAnthropic
 
-        model = ChatAnthropic(model="claude-3-opus-20240229")
+        model = ChatAnthropic(model_name="claude-3-opus-20240229")
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
@@ -78,6 +80,23 @@ def langsmith_trace_if_requested(trace: bool, the_call):
     else:
         the_call()
         return
+
+
+T = TypeVar("T")
+
+
+async def async_run_on_llms(
+    lcel_func: Callable[[BaseChatModel], T], llms
+) -> List[[T, BaseChatModel, timedelta]]:  # type: ignore
+    async def timed_lcel_task(lcel_func, llm):
+        start_time = datetime.now()
+        result = await (lcel_func(llm)).ainvoke({})
+        end_time = datetime.now()
+        time_delta = end_time - start_time
+        return result, llm, time_delta
+
+    tasks = [timed_lcel_task(lcel_func, llm) for llm in llms]
+    return [result for result in await asyncio.gather(*tasks)]
 
 
 def langsmith_trace(the_call):

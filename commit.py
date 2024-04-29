@@ -1,10 +1,8 @@
 #!python3
 
 
-from datetime import datetime, timedelta
 import sys
 import asyncio
-from typing import Callable, List, TypeVar
 
 from langchain_core import messages
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -51,23 +49,6 @@ Descriptive message
     )
 
 
-T = TypeVar("T")
-
-
-async def async_run_on_llms(
-    lcel_func: Callable[[BaseChatModel], T], llms
-) -> List[[T, BaseChatModel, timedelta]]:  # type: ignore
-    async def timed_lcel_task(lcel_func, llm):
-        start_time = datetime.now()
-        result = await (lcel_func(llm)).ainvoke({})
-        end_time = datetime.now()
-        time_delta = end_time - start_time
-        return result, llm, time_delta
-
-    tasks = [timed_lcel_task(lcel_func, llm) for llm in llms]
-    return [result for result in await asyncio.gather(*tasks)]
-
-
 async def a_build_commit():
     llms = [
         langchain_helper.get_model(openai=True),
@@ -80,7 +61,7 @@ async def a_build_commit():
     def describe_diff(llm: BaseChatModel):
         return prompt_summarize_diff(user_text) | llm
 
-    describe_diffs = await async_run_on_llms(describe_diff, llms)
+    describe_diffs = await langchain_helper.async_run_on_llms(describe_diff, llms)
 
     for description, llm, duration in describe_diffs:
         print(
