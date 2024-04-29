@@ -45,14 +45,6 @@ You will be passed in a text artifcat
     )
 
 
-async def do_llm_think(user_text, llm) -> List[[AnalyzeArtifact, BaseChatModel]]:  # type: ignore
-    thinking = await (
-        prompt_think_about_document(user_text)
-        | llm.with_structured_output(AnalyzeArtifact)
-    ).ainvoke({})
-    return thinking, llm  # type: ignore
-
-
 async def a_think():
     llms = [
         langchain_helper.get_model(openai=True),
@@ -61,11 +53,18 @@ async def a_think():
     ]
 
     user_text = "".join(sys.stdin.readlines())
-    thinking_tasks = [do_llm_think(user_text, llm) for llm in llms]
-    analyzed_artifacts = [result for result in await asyncio.gather(*thinking_tasks)]
 
-    for analysis, llm in analyzed_artifacts:
-        print(f"# -- model: {langchain_helper.get_model_name(llm)} --")
+    def do_llm_think(llm) -> List[[AnalyzeArtifact, BaseChatModel]]:  # type: ignore
+        return prompt_think_about_document(user_text) | llm.with_structured_output(
+            AnalyzeArtifact
+        )
+
+    analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
+
+    for analysis, llm, duration in analyzed_artifacts:
+        print(
+            f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
+        )
         print(analysis)
 
 
