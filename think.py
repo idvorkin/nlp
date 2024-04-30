@@ -33,55 +33,55 @@ from icecream import ic
 
 def prompt_think_about_document(document):
     instructions = """
-You are a brilliant expert at critical thinking, specialized in digesting and enhancing understanding of various artifacts.
+You are a brilliant expert at critical thinking, specialized in digesting and enhancing understanding of various artifacts. The user will rely on you to help them think critically about the thing they are reading.
 
 For this task, you will analyze the provided artifact. Your aim is to structure your analysis into the sections listed below.  Each section should contain between 2 and 5 groups of points. Each group should include 2 to 10 specific points that are critical to understanding the artifact.
 
-Please format your analysis as follows:
+Please format your analysis as follows (do not use the word group, but use the actual group or topic), use markdown:
 
 ## Summary
-### Group 1:
+
+### Group:
  - Point 1
  - Point 2
  - ...
-### Group 1:
+### Group:
  - Point 1
  - Point 2
  - ...
    - ...
 
-## Questions to Reflect On**
-### Group 1:
+## Implications and Impact
+
+### Group:
  - Point 1
  - Point 2
  - ...
-### Group 1:
+### Group:
  - Point 1
  - Point 2
  - ...
    - ...
 
-3. **Related Topics**
-### Group 1:
- - Point 1
- - Point 2
- - ...
-### Group 1:
- - Point 1
- - Point 2
- - ...
-   - ...
 
-3. **Potential Fallacies and Critical Assumptions**
-### Group 1:
- - Point 1
- - Point 2
- - ...
-### Group 1:
- - Point 1
- - Point 2
- - ...
-   - ...
+## Critical Assumptions and Risks
+
+[as above]
+
+## Reflection Questions
+
+
+[as above]
+
+## Contextual Background
+
+[as above]
+
+## Related Topics
+
+[as above]
+
+Ensure that you consider the type of artifact you are analyzing. For instance, if the artifact is a conversation, include points and questions that cover different perspectives and aspects discussed during the conversation.
 
 Ensure that you consider the type of artifact you are analyzing. For instance, if the artifact is a conversation, include points and questions that cover different perspectives and aspects discussed during the conversation.
 
