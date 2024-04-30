@@ -5,7 +5,7 @@ import json
 import os
 import pickle
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import backoff
 import numpy as np
@@ -83,6 +83,7 @@ Conversation:
     for m in dfChat.message.tolist():
         text_prompt += f"\n{m['role']}: {m['content']}"
 
+    ic(text_prompt)
     ic(openai_wrapper.num_tokens_from_string(text_prompt))
 
     prompt = ChatPromptTemplate.from_template(text_prompt)
@@ -93,19 +94,48 @@ Conversation:
 
 
 @app.command()
-def recent_state():
+def recent_chats():
     chat_path = os.path.expanduser("~/imessage/chat.db")
     loader = IMessageChatLoader(path=chat_path)
     ic("loading messages")
     raw = loader.load()
+
+    recent_date = datetime.now() - timedelta(days=7)
+    recent_date = recent_date.strftime("%Y-%m-%d")
+    ic(recent_date)
 
     # limit to chats wtih bestie
     # bestie_messages = [c for c in raw_messages if "7091" in c.to_phone]
     df_chats = chats_to_df(raw)
     # filter messaages to last month
     df_chats = df_chats[(df_chats.to_phone.str.contains("7091"))]
-    df_chats = df_chats[df_chats.date > "2024-02-01"]
     df_chats = df_chats.set_index(df_chats.date)
+    df_chats = df_chats[df_chats.date > recent_date]
+
+    convos = ""
+    for m in df_chats.message.tolist():
+        convos += f"\n{m['role']}: {m['content']}"
+    print(convos)
+
+
+@app.command()
+def recent_state():
+    chat_path = os.path.expanduser("~/imessage/chat.db")
+    loader = IMessageChatLoader(path=chat_path)
+    ic("loading messages")
+    raw = loader.load()
+
+    recent_date = datetime.now() - timedelta(days=7)
+    recent_date = recent_date.strftime("%Y-%m-%d")
+    ic(recent_date)
+
+    # limit to chats wtih bestie
+    # bestie_messages = [c for c in raw_messages if "7091" in c.to_phone]
+    df_chats = chats_to_df(raw)
+    # filter messaages to last month
+    df_chats = df_chats[(df_chats.to_phone.str.contains("7091"))]
+    df_chats = df_chats.set_index(df_chats.date)
+    df_chats = df_chats[df_chats.date > recent_date]
 
     summary = llm_summarize_recent_convo(df_chats)
     print(summary)
