@@ -87,7 +87,7 @@ async def a_think(json: bool, fx: bool):
     llms = [
         langchain_helper.get_model(openai=True),
         langchain_helper.get_model(claude=True),
-        # langchain_helper.get_model(google=True),
+        langchain_helper.get_model(google=True),
     ]
 
     user_text = "".join(sys.stdin.readlines())
