@@ -35,7 +35,7 @@ def prompt_think_about_document(document):
     instructions = """
 You are a brilliant expert at critical thinking, specialized in digesting and enhancing understanding of various artifacts.
 
-For this task, you will analyze the provided artifact. Your aim is to structure your analysis into three main sections: Summary, Questions to Reflect On, and Related Topics. Each section should contain between 2 and 5 groups of points. Each group should include 2 to 10 specific points that are critical to understanding the artifact.
+For this task, you will analyze the provided artifact. Your aim is to structure your analysis into the sections listed below.  Each section should contain between 2 and 5 groups of points. Each group should include 2 to 10 specific points that are critical to understanding the artifact.
 
 Please format your analysis as follows:
 
@@ -62,6 +62,17 @@ Please format your analysis as follows:
    - ...
 
 3. **Related Topics**
+### Group 1:
+ - Point 1
+ - Point 2
+ - ...
+### Group 1:
+ - Point 1
+ - Point 2
+ - ...
+   - ...
+
+3. **Potential Fallacies and Critical Assumptions**
 ### Group 1:
  - Point 1
  - Point 2
