@@ -16,6 +16,7 @@ from rich import print
 from rich.console import Console
 import langchain_helper
 from langchain_core.pydantic_v1 import BaseModel
+from icecream import ic
 
 
 class GroupOfPoints(BaseModel):
@@ -45,7 +46,7 @@ You will be passed in a text artifcat
     )
 
 
-async def a_think(json: bool):
+async def a_think(json: bool, fx: bool):
     llms = [
         langchain_helper.get_model(openai=True),
         # langchain_helper.get_model(claude=True),
@@ -62,11 +63,23 @@ async def a_think(json: bool):
     analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
 
     for analysis, llm, duration in analyzed_artifacts:
-        if json:
-            import builtins
+        import builtins
 
+        if json:
             builtins.print(analysis.json(indent=2))
+        if fx:
+            # write to temp, and run fx on it
+            import tempfile
+            import subprocess
+
+            temp = tempfile.NamedTemporaryFile(delete=False)
+            temp.write(analysis.json(indent=2).encode())
+            ic(temp.name)
+            cmd = f"fx {temp.name}"
+            ic(cmd)
+            subprocess.run(cmd, shell=True)
         else:
+            builtins.print(analysis.json(indent=2))
             print(
                 f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
             )
@@ -81,9 +94,10 @@ app = typer.Typer()
 def think(
     trace: bool = False,
     json: bool = False,
+    fx: bool = False,
 ):
     langchain_helper.langsmith_trace_if_requested(
-        trace, lambda: asyncio.run(a_think(json))
+        trace, lambda: asyncio.run(a_think(json, fx))
     )
 
 
