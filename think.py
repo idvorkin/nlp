@@ -15,35 +15,70 @@ from loguru import logger
 from rich import print
 from rich.console import Console
 import langchain_helper
-from langchain_core.pydantic_v1 import BaseModel
 from icecream import ic
 
 
-class GroupOfPoints(BaseModel):
-    GroupDescription: str
-    Points: List[str]
+# class GroupOfPoints(BaseModel):
+# GroupDescription: str
+# Points: List[str]
 
 
-class AnalyzeArtifact(BaseModel):
-    """Each section contains a list of group of points, there should always be 2 or more elements in each list"""
+# class AnalyzeArtifact(BaseModel):
+# """Each section contains a list of group of points, there should always be 2 or more elements in each list"""
 
-    Summary: List[GroupOfPoints]
-    QuestionsToReflectOn: List[GroupOfPoints]
-    RelatedTopics: List[GroupOfPoints]
+# Summary: List[GroupOfPoints]
+# QuestionsToReflectOn: List[GroupOfPoints]
+# RelatedTopics: List[GroupOfPoints]
 
 
-def prompt_think_about_document(diff_output):
+def prompt_think_about_document(document):
     instructions = """
-You are a brilliant expert at critical thinking. You help people digest artificats and enhance their thinking.
-For each section (Summary, QuestionsToReflectOn,RelatedTopics) , return 2-5 groups of points, with each group containing 2-10 points.
-You will be passed in a text artifcat
+You are a brilliant expert at critical thinking, specialized in digesting and enhancing understanding of various artifacts.
 
+For this task, you will analyze the provided artifact. Your aim is to structure your analysis into three main sections: Summary, Questions to Reflect On, and Related Topics. Each section should contain between 2 and 5 groups of points. Each group should include 2 to 10 specific points that are critical to understanding the artifact.
+
+Please format your analysis as follows:
+
+## Summary
+### Group 1:
+ - Point 1
+ - Point 2
+ - ...
+### Group 1:
+ - Point 1
+ - Point 2
+ - ...
+   - ...
+
+## Questions to Reflect On**
+### Group 1:
+ - Point 1
+ - Point 2
+ - ...
+### Group 1:
+ - Point 1
+ - Point 2
+ - ...
+   - ...
+
+3. **Related Topics**
+### Group 1:
+ - Point 1
+ - Point 2
+ - ...
+### Group 1:
+ - Point 1
+ - Point 2
+ - ...
+   - ...
+
+Ensure that you consider the type of artifact you are analyzing. For instance, if the artifact is a conversation, include points and questions that cover different perspectives and aspects discussed during the conversation.
 
 """
     return ChatPromptTemplate.from_messages(
         [
             messages.SystemMessage(content=instructions),
-            messages.HumanMessage(content=diff_output),
+            messages.HumanMessage(content=document),
         ]
     )
 
@@ -51,16 +86,17 @@ You will be passed in a text artifcat
 async def a_think(json: bool, fx: bool):
     llms = [
         langchain_helper.get_model(openai=True),
-        # langchain_helper.get_model(claude=True),
+        langchain_helper.get_model(claude=True),
         # langchain_helper.get_model(google=True),
     ]
 
     user_text = "".join(sys.stdin.readlines())
 
-    def do_llm_think(llm) -> List[[AnalyzeArtifact, BaseChatModel]]:  # type: ignore
-        return prompt_think_about_document(user_text) | llm.with_structured_output(
-            AnalyzeArtifact
-        )
+    def do_llm_think(llm) -> List[[str, BaseChatModel]]:  # type: ignore
+        from langchain.schema.output_parser import StrOutputParser
+
+        # return prompt_think_about_document(user_text) | llm.with_structured_output( AnalyzeArtifact)
+        return prompt_think_about_document(user_text) | llm | StrOutputParser()
 
     analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
 
@@ -72,18 +108,17 @@ async def a_think(json: bool, fx: bool):
         if fx:
             # write to temp, and run fx on it
             import tempfile
-            import subprocess
 
             temp = tempfile.NamedTemporaryFile(delete=False)
             temp.write(analysis.json(indent=2).encode())
             ic(temp.name)
             cmd = f"fx {temp.name}"
-            ic(cmd)
+            print(cmd)
             # XXX: Why is this not working? can debug later
-            ret = subprocess.run(cmd, shell=True)
-            ic(ret)
+            # ret = subprocess.run(cmd, shell=True)
+            # ic(ret)
         else:
-            builtins.print(analysis.json(indent=2))
+            #  builtins.print(analysis.json(indent=2))
             print(
                 f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
             )
