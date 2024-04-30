@@ -25,7 +25,7 @@ class GroupOfPoints(BaseModel):
 
 
 class AnalyzeArtifact(BaseModel):
-    """Each section contains a group of points, there should always be multiple groups when in a list"""
+    """Each section contains a list of group of points, there should always be 2 or more elements in each list"""
 
     Summary: List[GroupOfPoints]
     QuestionsToReflectOn: List[GroupOfPoints]
@@ -35,8 +35,10 @@ class AnalyzeArtifact(BaseModel):
 def prompt_think_about_document(diff_output):
     instructions = """
 You are a brilliant expert at critical thinking. You help people digest artificats and enhance their thinking.
-For each section, return 5 groups of points, with each group containing 5-10 points
+For each section (Summary, QuestionsToReflectOn,RelatedTopics) , return 2-5 groups of points, with each group containing 2-10 points.
 You will be passed in a text artifcat
+
+
 """
     return ChatPromptTemplate.from_messages(
         [
@@ -77,7 +79,9 @@ async def a_think(json: bool, fx: bool):
             ic(temp.name)
             cmd = f"fx {temp.name}"
             ic(cmd)
-            subprocess.run(cmd, shell=True)
+            # XXX: Why is this not working? can debug later
+            ret = subprocess.run(cmd, shell=True)
+            ic(ret)
         else:
             builtins.print(analysis.json(indent=2))
             print(
