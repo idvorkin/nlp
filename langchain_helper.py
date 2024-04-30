@@ -37,9 +37,7 @@ def get_model(
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        model = ChatGoogleGenerativeAI(
-            model="gemini-1.5-pro-latest", convert_system_message_to_human=True
-        )
+        model = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest")
     elif claude:
         from langchain_anthropic import ChatAnthropic
 
