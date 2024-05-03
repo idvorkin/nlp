@@ -13,4 +13,4 @@ providers:
 tests:
     assert:
       - type: llm-rubric
-        value: ensure the diff is described well
+        value: ensure the documents are merged well, and there is nothing beyond the merge documents included
