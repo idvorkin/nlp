@@ -1,12 +1,14 @@
 #!python3
 
 
+from pathlib import Path
 import sys
 import asyncio
 from typing import List
 
 from langchain_core import messages
 from langchain_core.language_models import BaseChatModel
+import requests
 
 import typer
 from langchain.prompts import ChatPromptTemplate
@@ -17,6 +19,7 @@ from rich.console import Console
 import langchain_helper
 from icecream import ic
 from openai_wrapper import num_tokens_from_string
+import html2text
 
 # class GroupOfPoints(BaseModel):
 # GroupDescription: str
@@ -94,15 +97,33 @@ Ensure that you consider the type of artifact you are analyzing. For instance, i
     )
 
 
-async def a_think(json: bool, fx: bool):
+def get_text(path):
+    if not path:  # read from stdin
+        return "".join(sys.stdin.readlines())
+    # check if path is URL
+    if path.startswith("http"):
+        request = requests.get(path)
+        out = html2text.html2text(request.text)
+        return out
+    if path:
+        # try to open the file, using pathlib
+        return Path(path).read_text()
+    # read stdin
+    return str(sys.stdin.readlines())
+
+
+async def a_think(json: bool, fx: bool, path: str):
     llms = [
         langchain_helper.get_model(openai=True),
         langchain_helper.get_model(claude=True),
         langchain_helper.get_model(google=True),
     ]
 
-    user_text = "".join(sys.stdin.readlines())
+    user_text = get_text(path)
     ic("starting to think", num_tokens_from_string(user_text))
+    if path:
+        print(f"*Thinking about {path}*")
+    print("* 🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py).*")
 
     def do_llm_think(llm) -> List[[str, BaseChatModel]]:  # type: ignore
         from langchain.schema.output_parser import StrOutputParser
@@ -135,7 +156,6 @@ async def a_think(json: bool, fx: bool):
                 f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
             )
             print(analysis)
-    print("*created by [think.py](https://github.com/idvorkin/nlp/blob/main/think.py)*")
 
 
 console = Console()
@@ -147,9 +167,10 @@ def think(
     trace: bool = False,
     json: bool = False,
     fx: bool = False,
+    path: str = typer.Argument(None),
 ):
     langchain_helper.langsmith_trace_if_requested(
-        trace, lambda: asyncio.run(a_think(json, fx))
+        trace, lambda: asyncio.run(a_think(json, fx, path))
     )
 
 
