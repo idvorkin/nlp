@@ -113,7 +113,7 @@ def langsmith_trace(the_call):
 
 def to_gist(path: Path):
     gist = subprocess.run(
-        ["gh", "gist", "create", path.name],
+        ["gh", "gist", "create", str(path.absolute())],
         check=True,
         stdout=subprocess.PIPE,
         text=True,
