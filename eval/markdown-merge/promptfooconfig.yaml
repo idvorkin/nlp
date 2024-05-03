@@ -1,17 +1,1 @@
-# This configuration compares LLM output of 2 prompts x 2 GPT models across 3 test cases.
-# Learn more: https://promptfoo.dev/docs/configuration/guide
-description: Validate we can merge markdown files
-
-prompts: ["prompts.py:promptfoo_markdown_test"]
-
-providers:
-  - openai:gpt-4
-  - openai:chat:gpt-3.5-turbo
-  - anthropic:messages:claude-3-sonnet-20240229
-
-tests:
-    topic: ignored
-    assert:
-      - type: llm-rubric
-        value: ensure the documents are merged well, and there is nothing beyond the merge documents included
-
+pf_markdown-merge.yaml
