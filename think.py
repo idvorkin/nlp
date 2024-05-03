@@ -112,7 +112,15 @@ def get_text(path):
     return str(sys.stdin.readlines())
 
 
-async def a_think(json: bool, fx: bool, path: str):
+PRINT_BUFFER = ""
+
+
+def println(s):
+    global PRINT_BUFFER
+    PRINT_BUFFER += s + "\n"
+
+
+async def a_think(gist: bool, path: str):
     llms = [
         langchain_helper.get_model(openai=True),
         langchain_helper.get_model(claude=True),
@@ -122,8 +130,8 @@ async def a_think(json: bool, fx: bool, path: str):
     user_text = get_text(path)
     ic("starting to think", num_tokens_from_string(user_text))
     if path:
-        print(f"*Thinking about {path}*")
-    print("* 🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py).*")
+        println(f"*Thinking about {path}*")
+    println("* 🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py).*")
 
     def do_llm_think(llm) -> List[[str, BaseChatModel]]:  # type: ignore
         from langchain.schema.output_parser import StrOutputParser
@@ -134,28 +142,17 @@ async def a_think(json: bool, fx: bool, path: str):
     analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
 
     for analysis, llm, duration in analyzed_artifacts:
-        import builtins
-
-        if json:
-            builtins.print(analysis.json(indent=2))
-        if fx:
-            # write to temp, and run fx on it
-            import tempfile
-
-            temp = tempfile.NamedTemporaryFile(delete=False)
-            temp.write(analysis.json(indent=2).encode())
-            ic(temp.name)
-            cmd = f"fx {temp.name}"
-            print(cmd)
-            # XXX: Why is this not working? can debug later
-            # ret = subprocess.run(cmd, shell=True)
-            # ic(ret)
-        else:
-            #  builtins.print(analysis.json(indent=2))
-            print(
-                f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
-            )
-            print(analysis)
+        println(
+            f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
+        )
+        println(analysis)
+    if gist:
+        # create temp file and write print buffer to it
+        output = Path("~/tmp/think.md")  # get smarter about naming these.
+        output.write_text(PRINT_BUFFER)
+        langchain_helper.to_gist(output)
+    else:
+        print(PRINT_BUFFER)
 
 
 console = Console()
@@ -165,12 +162,11 @@ app = typer.Typer()
 @app.command()
 def think(
     trace: bool = False,
-    json: bool = False,
-    fx: bool = False,
+    gist: bool = False,
     path: str = typer.Argument(None),
 ):
     langchain_helper.langsmith_trace_if_requested(
-        trace, lambda: asyncio.run(a_think(json, fx, path))
+        trace, lambda: asyncio.run(a_think(gist, path))
     )
 
 
