@@ -345,15 +345,7 @@ ___
         output_file_path.write_text(output)
 
     if gist:
-        gist = subprocess.run(
-            ["gh", "gist", "create", output_file_path.name],
-            check=True,
-            stdout=subprocess.PIPE,
-            text=True,
-        )
-        ic(gist)
-        ic(gist.stdout.strip())
-        subprocess.run(["open", gist.stdout.strip()])
+        langchain_helper.to_gist(output_file_path)
 
 
 if __name__ == "__main__":

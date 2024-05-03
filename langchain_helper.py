@@ -1,3 +1,5 @@
+from pathlib import Path
+import subprocess
 from langchain_core.language_models.chat_models import (
     BaseChatModel,
 )
@@ -107,3 +109,15 @@ def langsmith_trace(the_call):
         the_call()
         ic(tracer.get_run_url())
     wait_for_all_tracers()
+
+
+def to_gist(path: Path):
+    gist = subprocess.run(
+        ["gh", "gist", "create", path.name],
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    ic(gist)
+    ic(gist.stdout.strip())
+    subprocess.run(["open", gist.stdout.strip()])

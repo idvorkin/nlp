@@ -146,11 +146,13 @@ async def a_think(gist: bool, path: str):
             f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
         )
         println(analysis)
+
+    output_path = Path("~/tmp/think.md").expanduser()  # get smarter about naming these.
+    output_path.write_text(PRINT_BUFFER)
+    ic(output_path.name)
     if gist:
         # create temp file and write print buffer to it
-        output = Path("~/tmp/think.md")  # get smarter about naming these.
-        output.write_text(PRINT_BUFFER)
-        langchain_helper.to_gist(output)
+        langchain_helper.to_gist(output_path)
     else:
         print(PRINT_BUFFER)
 
