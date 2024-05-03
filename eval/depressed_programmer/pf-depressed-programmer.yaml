@@ -1,0 +1,36 @@
+# This configuration compares LLM output of 2 prompts x 2 GPT models across 3 test cases.
+# Learn more: https://promptfoo.dev/docs/configuration/guide
+description: 'My first eval'
+
+prompts:
+  - "Write 3 jokes about {{topic}}, and explain why they are funny"
+
+providers:
+  - openai:gpt-4
+  - anthropic:messages:claude-3-opus-20240229
+  - google:gemini-pro
+  - id: openai:chat:llama3-70b-8192
+    config:
+      apiBaseUrl: https://api.groq.com/openai/v1
+      apiKeyEnvar: GROQ_API_KEY
+
+
+
+
+tests:
+
+  - vars:
+      topic: manic depressive programmer
+    assert:
+      # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded
+      - type: llm-rubric
+        value: ensure that the output is funny
+
+  - vars:
+      topic: avocado toast
+    assert:
+      # For more information on assertions, see https://promptfoo.dev/docs/configuration/expected-outputs
+      - type: icontains
+        value: avocado
+      - type: javascript
+        value: 1 / (output.length + 1)  # prefer shorter outputs
