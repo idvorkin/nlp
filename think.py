@@ -131,7 +131,7 @@ async def a_think(gist: bool, path: str):
     ic("starting to think", num_tokens_from_string(user_text))
     if path:
         println(f"*Thinking about {path}*")
-    println("* 🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py).*")
+    println("*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py).*")
 
     def do_llm_think(llm) -> List[[str, BaseChatModel]]:  # type: ignore
         from langchain.schema.output_parser import StrOutputParser
