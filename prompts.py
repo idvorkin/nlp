@@ -42,7 +42,9 @@ def wrap_document(doc):
 def prompt_merge_documents(documents):
     instructions = """
     You are a brilliant AI.
-User will pass multiple markdown documents into a single document. You should
+User will pass multiple markdown documents after the =====  wrapped in <document></document> tags. YOu should merge them into a single document.
+
+You should
 
 1. Read all documents
 2. Identify and compare headings in each document.
@@ -51,8 +53,9 @@ User will pass multiple markdown documents into a single document. You should
 5. Under each merged heading, include the content from the corresponding headings of all documents, separated by a clear delimiter or sub-heading to indicate the source document.
 6. Ensure the final document is well-formatted and only contains the final markdown
 
-Please ensure the script handles different levels of headings appropriately and preserves the integrity of the markdown formatting (e.g., lists, code blocks, links).
+Please ensure you handle different levels of headings appropriately and preserves the integrity of the markdown formatting (e.g., lists, code blocks, links).
 
+====
 
 """
 
