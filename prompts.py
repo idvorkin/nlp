@@ -26,6 +26,14 @@ def promptfoo_markdown_test(context: dict) -> str:
     to_str = "\n----\n".join([m.content for m in prompt])  # type:ignore
     return to_str
 
+    # super annoying, claude can't handle this pattern, must get translsated in LC somewhere.
+    # PITA< keeping crappy merged format
+    # # cdef to_dict(m):
+    # role = "assistant" if isinstance(m, messages.SystemMessage) else "user"
+    # return {"role":role , "content": m.content}
+
+    # return [to_dict(m) for m in prompt] #type:ignore
+
 
 def wrap_document(doc):
     return f"<DOCUMENT>\n {doc}\n</DOCUMENT>\n"
