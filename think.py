@@ -16,7 +16,7 @@ from rich import print
 from rich.console import Console
 import langchain_helper
 from icecream import ic
-
+from openai_wrapper import num_tokens_from_string
 
 # class GroupOfPoints(BaseModel):
 # GroupDescription: str
@@ -102,6 +102,7 @@ async def a_think(json: bool, fx: bool):
     ]
 
     user_text = "".join(sys.stdin.readlines())
+    ic("starting to think", num_tokens_from_string(user_text))
 
     def do_llm_think(llm) -> List[[str, BaseChatModel]]:  # type: ignore
         from langchain.schema.output_parser import StrOutputParser
@@ -134,6 +135,7 @@ async def a_think(json: bool, fx: bool):
                 f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
             )
             print(analysis)
+    print("*created by [think.py](https://github.com/idvorkin/nlp/blob/main/think.py)*")
 
 
 console = Console()
