@@ -22,13 +22,16 @@ def get_model_name(model: BaseChatModel):
 
 
 def get_model(
-    openai: bool = False, google: bool = False, claude: bool = False
+    openai: bool = False,
+    google: bool = False,
+    claude: bool = False,
+    llama: bool = False,
 ) -> BaseChatModel:
     """
     See changes in diff
     """
     # if more then one is true, exit and fail
-    count_true = sum([openai, google, claude])
+    count_true = sum([openai, google, claude, llama])
     if count_true > 1:
         print("Only one model can be selected")
         exit(1)
@@ -44,6 +47,10 @@ def get_model(
         from langchain_anthropic import ChatAnthropic
 
         model = ChatAnthropic(model_name="claude-3-opus-20240229")
+    elif llama:
+        from langchain_groq import ChatGroq
+
+        model = ChatGroq(model_name="llama3-70b-8192")
     else:
         from langchain_openai.chat_models import ChatOpenAI
 

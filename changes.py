@@ -128,8 +128,11 @@ def changes(
     openai: bool = False,
     google: bool = False,
     claude: bool = True,
+    llama: bool = False,
 ):
-    llm = langchain_helper.get_model(openai=openai, google=google, claude=claude)
+    llm = langchain_helper.get_model(
+        openai=openai, google=google, claude=claude, llama=llama
+    )
     achanges_params = llm, before, after, gist
     if not trace:
         asyncio.run(achanges(*achanges_params))

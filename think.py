@@ -124,7 +124,8 @@ async def a_think(gist: bool, path: str):
     llms = [
         langchain_helper.get_model(openai=True),
         langchain_helper.get_model(claude=True),
-        langchain_helper.get_model(google=True),
+        # langchain_helper.get_model(google=True),
+        langchain_helper.get_model(llama=True),
     ]
 
     user_text = get_text(path)
