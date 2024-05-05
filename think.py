@@ -34,57 +34,60 @@ import html2text
 # RelatedTopics: List[GroupOfPoints]
 
 
-def prompt_think_about_document(document):
-    instructions = """
+class AnalysisQuestions:
+    @staticmethod
+    def default():
+        return [
+            "Summary",
+            "Implications and Impact",
+            "Critical Assumptions and Risks",
+            "Reflection Questions",
+            "Contextual Background",
+            "Related Topics",
+        ]
+
+    @staticmethod
+    def core_problem():
+        return [
+            "What's the real problem you are trying to solve?",
+            "What's your hypothesis? Why?",
+            "What are your core assumptions? Why?",
+            "What evidence do you have?",
+            "What are your core options?",
+            "What alternatives exist?",
+        ]
+
+
+def prompt_think_about_document(document, categories):
+    description_of_point_form = """
+### Group:
+ - Point 1
+ - Point 2
+ - ...
+### Group:
+ - Point 1
+ - Point 2
+ - ...
+   - ...
+    """
+
+    # have first 2 include the summary
+    example = ""
+    for i, category in enumerate(categories):
+        example += f"## {category}\n\n"
+        if i < 2:
+            example += description_of_point_form
+        else:  # just one group
+            example += "\n [as above] \n"
+
+    instructions = f"""
 You are a brilliant expert at critical thinking, specialized in digesting and enhancing understanding of various artifacts. The user will rely on you to help them think critically about the thing they are reading.
 
 For this task, you will analyze the provided artifact. Your aim is to structure your analysis into the sections listed below.  Each section should contain between 2 and 5 groups of points. Each group should include 2 to 10 specific points that are critical to understanding the artifact.
 
 Please format your analysis as follows (do not use the word group, but use the actual group or topic), use markdown:
 
-## Summary
-
-### Group:
- - Point 1
- - Point 2
- - ...
-### Group:
- - Point 1
- - Point 2
- - ...
-   - ...
-
-## Implications and Impact
-
-### Group:
- - Point 1
- - Point 2
- - ...
-### Group:
- - Point 1
- - Point 2
- - ...
-   - ...
-
-
-## Critical Assumptions and Risks
-
-[as above]
-
-## Reflection Questions
-
-
-[as above]
-
-## Contextual Background
-
-[as above]
-
-## Related Topics
-
-[as above]
-
-Ensure that you consider the type of artifact you are analyzing. For instance, if the artifact is a conversation, include points and questions that cover different perspectives and aspects discussed during the conversation.
+{example}
 
 Ensure that you consider the type of artifact you are analyzing. For instance, if the artifact is a conversation, include points and questions that cover different perspectives and aspects discussed during the conversation.
 
@@ -120,7 +123,7 @@ def println(s):
     PRINT_BUFFER += s + "\n"
 
 
-async def a_think(gist: bool, path: str):
+async def a_think(gist: bool, path: str, core_problems: bool):
     llms = [
         langchain_helper.get_model(openai=True),
         langchain_helper.get_model(claude=True),
@@ -130,20 +133,33 @@ async def a_think(gist: bool, path: str):
     user_text = get_text(path)
     tokens = num_tokens_from_string(user_text)
 
+    categories = AnalysisQuestions.default()
+    category_desc = "default questions"
+    if core_problems:
+        categories = AnalysisQuestions.core_problem()
+        category_desc = "core problems"
+
     if tokens < 8000:
         # only add Llama if the text is small
         llms += [langchain_helper.get_model(llama=True)]
 
+    # todo add link to categories being used.
     ic("starting to think", tokens)
     if path:
         println(f"*Thinking about {path}*")
-    println("*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py).*")
+    println(
+        f"*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - using {category_desc}*"
+    )
 
     def do_llm_think(llm) -> List[[str, BaseChatModel]]:  # type: ignore
         from langchain.schema.output_parser import StrOutputParser
 
         # return prompt_think_about_document(user_text) | llm.with_structured_output( AnalyzeArtifact)
-        return prompt_think_about_document(user_text) | llm | StrOutputParser()
+        return (
+            prompt_think_about_document(user_text, categories=categories)
+            | llm
+            | StrOutputParser()
+        )
 
     analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
 
@@ -171,10 +187,11 @@ app = typer.Typer()
 def think(
     trace: bool = False,
     gist: bool = False,
+    core_problems: bool = False,  # Use core problems answers
     path: str = typer.Argument(None),
 ):
     langchain_helper.langsmith_trace_if_requested(
-        trace, lambda: asyncio.run(a_think(gist, path))
+        trace, lambda: asyncio.run(a_think(gist, path, core_problems=core_problems))
     )
 
 
