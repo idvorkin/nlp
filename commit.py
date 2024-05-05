@@ -53,6 +53,7 @@ async def a_build_commit():
     llms = [
         langchain_helper.get_model(openai=True),
         langchain_helper.get_model(claude=True),
+        langchain_helper.get_model(llama=True),
         langchain_helper.get_model(
             google=False
         ),  # Not sure why this is borked. Figure it out later
