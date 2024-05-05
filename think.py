@@ -125,11 +125,16 @@ async def a_think(gist: bool, path: str):
         langchain_helper.get_model(openai=True),
         langchain_helper.get_model(claude=True),
         # langchain_helper.get_model(google=True),
-        langchain_helper.get_model(llama=True),
     ]
 
     user_text = get_text(path)
-    ic("starting to think", num_tokens_from_string(user_text))
+    tokens = num_tokens_from_string(user_text)
+
+    if tokens < 8000:
+        # only add Llama if the text is small
+        llms += [langchain_helper.get_model(llama=True)]
+
+    ic("starting to think", tokens)
     if path:
         println(f"*Thinking about {path}*")
     println("*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py).*")
