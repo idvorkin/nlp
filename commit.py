@@ -14,6 +14,7 @@ from loguru import logger
 from rich import print
 from rich.console import Console
 import langchain_helper
+from openai_wrapper import num_tokens_from_string
 
 
 def prompt_summarize_diff(diff_output):
@@ -53,13 +54,12 @@ async def a_build_commit():
     llms = [
         langchain_helper.get_model(openai=True),
         langchain_helper.get_model(claude=True),
-        langchain_helper.get_model(llama=True),
-        langchain_helper.get_model(
-            google=False
-        ),  # Not sure why this is borked. Figure it out later
     ]
 
     user_text = "".join(sys.stdin.readlines())
+    tokens = num_tokens_from_string(user_text)
+    if tokens < 8000:
+        llms += [langchain_helper.get_model(llama=True)]
 
     def describe_diff(llm: BaseChatModel):
         return prompt_summarize_diff(user_text) | llm
