@@ -20,18 +20,73 @@ import langchain_helper
 from icecream import ic
 from openai_wrapper import num_tokens_from_string
 import html2text
-
-# class GroupOfPoints(BaseModel):
-# GroupDescription: str
-# Points: List[str]
+from pydantic import BaseModel
 
 
-# class AnalyzeArtifact(BaseModel):
-# """Each section contains a list of group of points, there should always be 2 or more elements in each list"""
+class GroupOfPoints(BaseModel):
+    Description: str
+    Points: List[str]
 
-# Summary: List[GroupOfPoints]
-# QuestionsToReflectOn: List[GroupOfPoints]
-# RelatedTopics: List[GroupOfPoints]
+
+class Section(BaseModel):
+    Title: str
+    Topics: List[GroupOfPoints]
+
+
+class ArtifactReport(BaseModel):
+    Sections: List[Section]
+
+
+def markdown_to_analyze_artifact(markdown: str) -> ArtifactReport:
+    sections = []
+    current_section: Section = None  # type: ignore
+    current_topic: GroupOfPoints = None  # type: ignore
+
+    for line in markdown.splitlines():
+        line = line.strip()
+        if line.startswith("## "):  # This is a section
+            if current_section:
+                sections.append(current_section)
+            current_section = Section(Title=line[3:].strip(), Topics=[])
+        elif line.startswith("### "):  # This is a topic
+            if current_topic:
+                current_section.Topics.append(current_topic)
+            current_topic = GroupOfPoints(Description=line[4:].strip(), Points=[])
+        elif line.startswith("* ") or line.startswith("- "):  # This is a point
+            if current_topic is not None:
+                current_topic.Points.append(line[2:].strip())
+
+    # Add the last topic and section
+    if current_topic:
+        current_section.Topics.append(current_topic)
+    if current_section:
+        sections.append(current_section)
+
+    return ArtifactReport(Sections=sections)
+
+
+def merge_analyze_artifacts(reports: List[ArtifactReport]) -> ArtifactReport:
+    all_sections = [section for report in reports for section in report.Sections]
+    unique_section_titles = list(set([section.Title for section in all_sections]))
+
+    merged_report = ArtifactReport(Sections=[])
+
+    for section_title in unique_section_titles:
+        # get the topics for that section across all artifacts
+        sections = [
+            section
+            for report in reports
+            for section in report.Sections
+            if section.Title == section_title
+        ]
+        ic(section_title, sections)
+        # flatten the topics
+        topics = [topic for section in sections for topic in section.Topics]
+        ic(topics)
+
+        merged_report.Sections.append(Section(Title=section_title, Topics=topics))
+
+    return merged_report
 
 
 class AnalysisQuestions:
@@ -115,14 +170,6 @@ def get_text(path):
     return str(sys.stdin.readlines())
 
 
-PRINT_BUFFER = ""
-
-
-def println(s):
-    global PRINT_BUFFER
-    PRINT_BUFFER += s + "\n"
-
-
 async def a_think(gist: bool, path: str, core_problems: bool):
     llms = [
         langchain_helper.get_model(openai=True),
@@ -133,23 +180,25 @@ async def a_think(gist: bool, path: str, core_problems: bool):
     user_text = get_text(path)
     tokens = num_tokens_from_string(user_text)
 
+    if tokens < 8000:
+        # only add Llama if the text is small
+        llms += [langchain_helper.get_model(llama=True)]
+        llms += [langchain_helper.get_model(llama=True)]
+
     categories = AnalysisQuestions.default()
     category_desc = "default questions"
     if core_problems:
         categories = AnalysisQuestions.core_problem()
         category_desc = "core problems"
 
-    if tokens < 8000:
-        # only add Llama if the text is small
-        llms += [langchain_helper.get_model(llama=True)]
-
     # todo add link to categories being used.
+
+    thinking_about = f"*Thinking about {path}*" if path else ""
     ic("starting to think", tokens)
-    if path:
-        println(f"*Thinking about {path}*")
-    println(
-        f"*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - using {category_desc}*"
-    )
+    header = f"""
+*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - using {category_desc}*
+{thinking_about}
+    """
 
     def do_llm_think(llm) -> List[[str, BaseChatModel]]:  # type: ignore
         from langchain.schema.output_parser import StrOutputParser
@@ -163,20 +212,37 @@ async def a_think(gist: bool, path: str, core_problems: bool):
 
     analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
 
+    body = ""
     for analysis, llm, duration in analyzed_artifacts:
-        println(
-            f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
-        )
-        println(analysis)
+        body += f"""
+<details>
+<summary>
 
+# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --
+
+</summary>
+
+{analysis}
+
+</details>
+"""
+    # parsed = [markdown_to_analyze_artifact(analysis) for analysis, _, _ in analyzed_artifacts]
+    # merged = merge_analyze_artifacts(parsed)
+    # # overwrite the body text with the parsed version
+    # body += f"""
+    # --Merged--
+    # {merged.model_dump_json(indent=2)}
+    # """
+
+    output_text = header + "\n" + body
     output_path = Path("~/tmp/think.md").expanduser()  # get smarter about naming these.
-    output_path.write_text(PRINT_BUFFER)
-    ic(output_path.name)
+    output_path.write_text(output_text)
+    ic(output_path)
     if gist:
         # create temp file and write print buffer to it
         langchain_helper.to_gist(output_path)
     else:
-        print(PRINT_BUFFER)
+        print(output_text)
 
 
 console = Console()
