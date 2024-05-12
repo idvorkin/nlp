@@ -11,7 +11,7 @@ app = typer.Typer()
 
 @app.command()
 def dump_cloud(path: str = "", top: int = 40):
-    wc = WordCloud()
+    wc = WordCloud(min_word_length=3)
     raw_words = langchain_helper.get_text_from_path_or_stdin(path)
     # create dict of word frequencies
     words = wc.process_text(raw_words)
@@ -20,7 +20,7 @@ def dump_cloud(path: str = "", top: int = 40):
     # sort by frequency
     word_freqs.sort(key=lambda x: x[1], reverse=True)
     word_freqs = word_freqs[:top]
-    ic(word_freqs)
+    # ic(word_freqs)
 
     # normalize the frequencies
     sum_freqs = sum([freq for word, freq in word_freqs])
