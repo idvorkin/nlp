@@ -21,6 +21,41 @@ def get_model_name(model: BaseChatModel):
         return str(model)
 
 
+def get_models(
+    openai: bool = False,
+    google: bool = False,
+    claude: bool = False,
+    llama: bool = False,
+) -> List[BaseChatModel]:
+    ret = []
+
+    if google:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        model = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest")
+        ret.append(model)
+
+    if claude:
+        from langchain_anthropic import ChatAnthropic
+
+        model = ChatAnthropic(model_name="claude-3-opus-20240229")
+        ret.append(model)
+
+    if llama:
+        from langchain_groq import ChatGroq
+
+        model = ChatGroq(model_name="llama3-70b-8192")
+        ret.append(model)
+
+    if openai:
+        from langchain_openai.chat_models import ChatOpenAI
+
+        model = ChatOpenAI(model=openai_wrapper.gpt4.name)
+        ret.append(model)
+
+    return ret
+
+
 def get_model(
     openai: bool = False,
     google: bool = False,
