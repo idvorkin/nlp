@@ -153,11 +153,7 @@ Ensure that you consider the type of artifact you are analyzing. For instance, i
 
 
 async def a_think(gist: bool, path: str, core_problems: bool):
-    llms = [
-        langchain_helper.get_model(openai=True),
-        langchain_helper.get_model(claude=True),
-        # langchain_helper.get_model(google=True),
-    ]
+    llms = langchain_helper.get_models(openai=True, claude=True)
 
     user_text = langchain_helper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)
