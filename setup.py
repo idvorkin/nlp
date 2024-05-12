@@ -17,6 +17,7 @@ setup(
         "play_langchain",
         "changes",
         "fix",
+        "illustrate",
         "think",
     ],
     install_requires=[],
@@ -35,5 +36,6 @@ setup(
             commit=commit:app
             changes=changes:app
             fix=fix:app
+            illustrate=illustrate:app
         """,
 )
