@@ -51,14 +51,15 @@ Descriptive message
 
 
 async def a_build_commit():
-    llms = [
-        langchain_helper.get_model(openai=True),
-        langchain_helper.get_model(claude=True),
-    ]
+    llms = langchain_helper.get_models(openai=True, claude=True)
 
     user_text = "".join(sys.stdin.readlines())
     tokens = num_tokens_from_string(user_text)
+
     if tokens < 8000:
+        llms += [langchain_helper.get_model(llama=True)]
+
+    if tokens < 4000:
         llms += [langchain_helper.get_model(llama=True)]
 
     def describe_diff(llm: BaseChatModel):
