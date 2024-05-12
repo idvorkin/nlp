@@ -128,3 +128,22 @@ def to_gist(path: Path):
     ic(gist)
     ic(gist.stdout.strip())
     subprocess.run(["open", gist.stdout.strip()])
+
+
+def get_text_from_path_or_stdin(path):
+    import sys
+    import requests
+    import html2text
+
+    if not path:  # read from stdin
+        return "".join(sys.stdin.readlines())
+    # check if path is URL
+    if path.startswith("http"):
+        request = requests.get(path)
+        out = html2text.html2text(request.text)
+        return out
+    if path:
+        # try to open the file, using pathlib
+        return Path(path).read_text()
+    # read stdin
+    return str(sys.stdin.readlines())

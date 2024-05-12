@@ -2,13 +2,11 @@
 
 
 from pathlib import Path
-import sys
 import asyncio
 from typing import List
 
 from langchain_core import messages
 from langchain_core.language_models import BaseChatModel
-import requests
 
 import typer
 from langchain.prompts import ChatPromptTemplate
@@ -19,7 +17,6 @@ from rich.console import Console
 import langchain_helper
 from icecream import ic
 from openai_wrapper import num_tokens_from_string
-import html2text
 from pydantic import BaseModel
 
 
@@ -155,21 +152,6 @@ Ensure that you consider the type of artifact you are analyzing. For instance, i
     )
 
 
-def get_text(path):
-    if not path:  # read from stdin
-        return "".join(sys.stdin.readlines())
-    # check if path is URL
-    if path.startswith("http"):
-        request = requests.get(path)
-        out = html2text.html2text(request.text)
-        return out
-    if path:
-        # try to open the file, using pathlib
-        return Path(path).read_text()
-    # read stdin
-    return str(sys.stdin.readlines())
-
-
 async def a_think(gist: bool, path: str, core_problems: bool):
     llms = [
         langchain_helper.get_model(openai=True),
@@ -177,12 +159,15 @@ async def a_think(gist: bool, path: str, core_problems: bool):
         # langchain_helper.get_model(google=True),
     ]
 
-    user_text = get_text(path)
+    user_text = langchain_helper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)
 
     if tokens < 8000:
         # only add Llama if the text is small
         llms += [langchain_helper.get_model(llama=True)]
+
+    if tokens < 4000:
+        # Add it twice if it fits
         llms += [langchain_helper.get_model(llama=True)]
 
     categories = AnalysisQuestions.default()
