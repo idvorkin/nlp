@@ -53,13 +53,12 @@ def get_model_type(u4: bool) -> CompletionModel:
         return gpt35
 
 
-text_model_gpt_4 = "gpt-4-0125-preview"
+text_model_gpt_4 = "gpt-4o-2024-05-13"
 gpt_4_tokens = 100000
 gpt_4_input_tokens = 100 * 1000
 gpt_4_output_tokens = 100 * 1000
 text_model_gpt35 = "gpt-3.5-turbo-1106"
 gpt_3_5_tokens = 16000
-code_model_best = "code-davinci-003"
 
 
 def model_to_max_tokens(model):
