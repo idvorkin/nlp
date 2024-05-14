@@ -751,7 +751,7 @@ def fix(
     debug: bool = typer.Option(1),
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
-    u4: bool = typer.Option(False),
+    u4: bool = typer.Option(True),
 ):
     process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
