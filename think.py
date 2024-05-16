@@ -112,11 +112,11 @@ class AnalysisQuestions:
 
 def prompt_think_about_document(document, categories):
     description_of_point_form = """
-### Group:
+### Title for Group:
  - Point 1
  - Point 2
  - ...
-### Group:
+### Title for Group:
  - Point 1
  - Point 2
  - ...
@@ -137,7 +137,7 @@ You are a brilliant expert at critical thinking, specialized in digesting and en
 
 For this task, you will analyze the provided artifact. Your aim is to structure your analysis into the sections listed below.  Each section should contain between 2 and 5 groups of points. Each group should include 2 to 10 specific points that are critical to understanding the artifact.
 
-Please format your analysis as follows (do not use the word group, but use the actual group or topic), use markdown:
+Please format your analysis as follows (**do not** title the groups as group, but use the name of the group), use markdown:
 
 {example}
 
@@ -153,7 +153,8 @@ Ensure that you consider the type of artifact you are analyzing. For instance, i
 
 
 async def a_think(gist: bool, path: str, core_problems: bool):
-    llms = langchain_helper.get_models(openai=True, claude=True)
+    # claude is now too slow to use compared to gpto
+    llms = langchain_helper.get_models(openai=True, claude=False)
 
     user_text = langchain_helper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)
