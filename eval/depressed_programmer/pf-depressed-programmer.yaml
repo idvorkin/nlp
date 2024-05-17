@@ -3,7 +3,7 @@
 description: 'My first eval'
 
 prompts:
-  - "Write 3 jokes about {{topic}}, and explain why they are funny"
+  - "Write 3 jokes about {{topic}}, and explain why they are funny. Start with the list of jokes - **then** list the explanations after"
 
 providers:
   - openai:gpt-4
@@ -22,6 +22,13 @@ tests:
 
   - vars:
       topic: manic depressive programmer
+    assert:
+      # Foue: ensure that the output is funny
+      - type: select-best
+        value: ensure that the output is funny
+
+  - vars:
+      topic: kettle bell weekend warrier and Pavel TaTasoine fan
     assert:
       # For more information on model-graded evals, see https://promptfoo.dev/docs/configuration/expected-outputs/model-graded
       - type: llm-rubric
