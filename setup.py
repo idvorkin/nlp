@@ -16,6 +16,7 @@ setup(
         "commit",
         "play_langchain",
         "changes",
+        "changes2",
         "fix",
         "illustrate",
         "think",
@@ -35,6 +36,7 @@ setup(
             pbf=pbf:app
             commit=commit:app
             changes=changes:app
+            changes2=changes2:app
             fix=fix:app
             illustrate=illustrate:app
         """,

@@ -109,6 +109,16 @@ class AnalysisQuestions:
             "What alternatives exist?",
         ]
 
+    @staticmethod
+    def writer():
+        return [
+            "Who are possible audiences of this, and what will they find most important?"
+            "What are 5 other topics we could develop?"
+            "What would make this better?"
+            "What are novel points and why?"
+            "What could make this funnier?"
+        ]
+
 
 def prompt_think_about_document(document, categories):
     description_of_point_form = """
@@ -152,7 +162,7 @@ Ensure that you consider the type of artifact you are analyzing. For instance, i
     )
 
 
-async def a_think(gist: bool, path: str, core_problems: bool):
+async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
     # claude is now too slow to use compared to gpto
     llms = langchain_helper.get_models(openai=True, claude=False)
 
@@ -172,6 +182,8 @@ async def a_think(gist: bool, path: str, core_problems: bool):
     if core_problems:
         categories = AnalysisQuestions.core_problem()
         category_desc = "core problems"
+    if writer:
+        categories = AnalysisQuestions.writer()
 
     # todo add link to categories being used.
 
@@ -236,10 +248,14 @@ def think(
     trace: bool = False,
     gist: bool = False,
     core_problems: bool = False,  # Use core problems answers
+    writer: bool = False,  # Use core problems answers
     path: str = typer.Argument(None),
 ):
     langchain_helper.langsmith_trace_if_requested(
-        trace, lambda: asyncio.run(a_think(gist, path, core_problems=core_problems))
+        trace,
+        lambda: asyncio.run(
+            a_think(gist=gist, writer=writer, path=path, core_problems=core_problems)
+        ),
     )
 
 
