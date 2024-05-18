@@ -234,31 +234,48 @@ Really minor changes should **not be listed**. Minor changes include.
 
 # Function to create the prompt
 def prompt_summarize_diff(file, diff_content, repo_path, end_rev):
-    instructions = f""" You are an expert programmer, who frequenty reviews code changes
+    instructions = f""" You are an expert programmer, who is charged with explaining code changes concisely.
 
-    Summarize the changes for: {file}, permalink:{repo_path}/blob/{end_rev}/{file}
+You are  summarizing the passed in changes for: {file}, permalink:{repo_path}/blob/{end_rev}/{file}
 
-## Instructions
+<instructions>
 
-Have the first line be #### Filename on a single line
-Have second line be file link, lines_added, lines_removed, ~lines change (but exclude changes in comments) on a single line
+* Have the first line be #### Filename on a single line
+* Have second line be file link, lines_added, lines_removed, ~lines change (but exclude changes in comments) on a single line
+* Have third line be a TL;DR of the changes
+* If a new file is added, The TL;DR should describe the reason for the file
 * When listing  changes,
     * Include the reason for the change if you can figure it out
     * Put them in the order of importance
     * Use unnumbered lists as the user will want to reorder them
-* If you see any of the following, skip them, or at most list them last as a single line
+* Do not include minor changes such as in the report
     * Changes to formatting/whitespace
     * Changes to imports
     * Changes to comments
-* If it's a new file, try to guess the purpose of the file
-* Don't be tenative in your language
+* Be assertive in your language
+* Start with why. For example
+    * Instead of: Removed the requests and html2text imports and the associated get_text function, consolidating text retrieval logic into langchain_helper.get_text_from_path_or_stdin. This simplifies the code and removes the dependency on external libraries.
+    *  Use: Remove dependancy on external libraries by consolidating retrieval logic into  langchain_helper.get_text_from_path_or_stdin
 
+    * Instead of: Changed the prompt formatting instructions to clarify that groups should be titled with their actual names instead of the word "group". This enhances clarity for the user.
+    * Use: Enhance clarity by using actual group names instead of the word "group" in the prompt formatting instructions.
+</instructions>
+
+<example>
 E.g. for the file _d/foo.md, with 5 lines added, 3 lines removed, and 34 lines changed (excluding changes to comments)
 
 #### _d/foo.md
 
-* [_d/foo.md](https://github.com/idvorkin/idvorkin.github.io/blob/3e8ee0cf75f9455c4f5da38d6bf36b221daca8cc/foo.md): +5, -3, ~34
-* xyz changed from a to b
+[_d/foo.md](https://github.com/idvorkin/idvorkin.github.io/blob/3e8ee0cf75f9455c4f5da38d6bf36b221daca8cc/foo.md): +5, -3, ~34
+
+TLDR: blah blah blah
+
+* Reason for change, chanage
+    * Sub details of change
+</example>
+
+
+
 """
     return ChatPromptTemplate.from_messages(
         [
