@@ -125,9 +125,9 @@ def changes(
     after="7 days ago",
     trace: bool = False,
     gist: bool = False,
-    openai: bool = False,
+    openai: bool = True,
     google: bool = False,
-    claude: bool = True,
+    claude: bool = False,
     llama: bool = False,
 ):
     llm = langchain_helper.get_model(
@@ -234,7 +234,7 @@ Really minor changes should **not be listed**. Minor changes include.
 
 # Function to create the prompt
 def prompt_summarize_diff(file, diff_content, repo_path, end_rev):
-    instructions = f""" You are an expert programmer.
+    instructions = f""" You are an expert programmer, who frequenty reviews code changes
 
     Summarize the changes for: {file}, permalink:{repo_path}/blob/{end_rev}/{file}
 
