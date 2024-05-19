@@ -164,7 +164,7 @@ Ensure that you consider the type of artifact you are analyzing. For instance, i
 
 async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
     # claude is now too slow to use compared to gpto
-    llms = langchain_helper.get_models(openai=True, claude=False)
+    llms = langchain_helper.get_models(openai=True, claude=True)
 
     user_text = langchain_helper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)
