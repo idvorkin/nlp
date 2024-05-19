@@ -319,6 +319,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
 ### Sources
 
 * source file link  - Your reasoning on why it's  relevant (% relevance,  e.g. 20%)
+* [Igor's Eulogy - Importance of smiling](/eulogy#smiling) - Igor's eulogy talks about how he always smiled (90%)
     """
     )
 
