@@ -11,13 +11,12 @@ from rich import print
 from typing import List, Optional
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma.vectorstores import Chroma
 import langchain_helper
 from langchain import (
     text_splitter,
 )  # import CharacterTextSplitter, RecursiveCharacterTextSplitter, Markdown
 from typing_extensions import Annotated
-from openai_wrapper import choose_model
 from fastapi import FastAPI
 from openai_wrapper import setup_gpt, num_tokens_from_string
 from langchain.prompts.chat import (
@@ -48,6 +47,7 @@ class DebugInfo(BaseModel):
     documents: List[Document] = []
     question: str = ""
     count_tokens: int = 0
+    model: str = ""
 
 
 g_debug_info = DebugInfo()
@@ -190,10 +190,9 @@ def build():
     deduped_chunks = dedup_chunks(chunks)
     ic(len(chunks), len(deduped_chunks))
 
-    search_index = Chroma.from_documents(
-        deduped_chunks, embeddings, persist_directory=chroma_db_dir
-    )
-    search_index.persist()
+    # Build the index and persist it
+    # Weird, used to have a .save, now covered by persistant_directory
+    Chroma.from_documents(deduped_chunks, embeddings, persist_directory=chroma_db_dir)
 
 
 @app.command()
@@ -284,22 +283,18 @@ def ask(
         str, typer.Argument()
     ] = "What are the roles from Igor's Eulogy, answer in bullet form",
     facts: Annotated[int, typer.Option()] = 5,
-    u4: bool = typer.Option(True),
     debug: bool = typer.Option(True),
 ):
-    response = iask(question, facts, u4, debug)
+    response = iask(question, facts, debug)
     print(response)
 
 
 async def iask(
     question: str,
     facts: int,
-    u4: bool = True,
     debug: bool = True,
 ):
-    model, _ = choose_model(u4)
     if debug:
-        ic(model)
         ic(facts)
     # load chroma from DB
 
@@ -327,7 +322,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     """
     )
 
-    llm = langchain_helper.get_model(claude=True)
+    llm = langchain_helper.get_model(openai=True)
 
     # We can improve our relevance by getting the md_simple_chunks, but that loses context
     # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
@@ -393,6 +388,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     g_debug_info.documents = facts_to_inject
     g_debug_info.count_tokens = num_tokens_from_string(context)
     g_debug_info.question = question
+    g_debug_info.model = langchain_helper.get_model_name(llm)
 
     response = chain.ainvoke({"question": question, "context": context})
 
@@ -446,7 +442,7 @@ async def help(ctx):
 async def ask_discord_command(ctx, question: str):
     await ctx.defer()
     progress_bar_task = await draw_progress_bar(ctx, f"User asked: {question}")
-    response = await iask(question, facts=10, u4=True, debug=False)
+    response = await iask(question, facts=10, debug=False)
     progress_bar_task.cancel()
     ic(response)
     await send(ctx, response)
@@ -520,9 +516,16 @@ Igor will enjoy this because ..
 async def debug(ctx):
     await ctx.defer()
     process = discord_helper.get_debug_process_info()
-    await send(ctx, process)
-    await send(ctx, f"Tokens: {g_debug_info.count_tokens}")
-    await send(ctx, "Last documents:")
+    await send(
+        ctx,
+        f"""
+Tokens: {g_debug_info.count_tokens}
+Model: {g_debug_info.model}
+Proess:
+{process}
+Last documents:
+               """,
+    )
     for doc in g_debug_info.documents:
         await send(
             ctx,
