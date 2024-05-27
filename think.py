@@ -117,6 +117,7 @@ class AnalysisQuestions:
             "What would make this better?"
             "What are novel points and why?"
             "What could make this funnier?"
+            "What are 5 alternative (include witty, funny, catchy) titles?"
         ]
 
 
@@ -184,6 +185,7 @@ async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
         category_desc = "core problems"
     if writer:
         categories = AnalysisQuestions.writer()
+        category_desc = "writer questions"
 
     # todo add link to categories being used.
 
