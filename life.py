@@ -532,7 +532,7 @@ You task it to write a report based on the journal entry that is going to be pas
     do_invoke = asyncio.create_task(corourtine)
 
     if launch_fx:
-        for _ in track(range(120), description="2 minutes"):
+        for _ in track(range(30), description="30 seconds"):
             if do_invoke.done():
                 break
             await asyncio.sleep(1)  # Simulate work being done
