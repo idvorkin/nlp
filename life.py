@@ -14,14 +14,12 @@ from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Annotated, Dict, List
 
-import pydantic
-from langchain_core.pydantic_v1 import BaseModel, validator
+from langchain_core.pydantic_v1 import BaseModel, validator, ValidationError
 
 # from pydantic import BaseModel, field_validator
 import typer
 from icecream import ic
 from langchain.docstore.document import Document
-from langchain_openai.chat_models import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
 from langchain.prompts.chat import (
     ChatPromptTemplate,
@@ -37,7 +35,8 @@ from langchain_community.vectorstores import Chroma
 
 
 import igor_journal
-from openai_wrapper import num_tokens_from_string, setup_gpt, get_model, setup_secret
+from openai_wrapper import num_tokens_from_string, setup_gpt, setup_secret
+import langchain_helper
 from pathlib import Path
 
 setup_secret()
@@ -125,10 +124,8 @@ E.g.
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
-    model_name = get_model(u4=True)
-    model = ChatOpenAI(model=model_name)
-
-    ic(model_name)
+    model = langchain_helper.get_model(openai=True)
+    ic(model)
     ic(num_tokens_from_string(user_text))
 
     start = time.time()
@@ -179,10 +176,10 @@ IF possible, categories should match the following
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
-    model_name = get_model(u4=True)
-    model = ChatOpenAI(model=model_name)
+    model = langchain_helper.get_model(openai=True)
+    ic(model)
+    ic(num_tokens_from_string(user_text))
 
-    ic(model_name)
     chain = prompt | model | StrOutputParser()
     response = chain.invoke({})
     if markdown:
@@ -304,14 +301,13 @@ def openai_func(cls):
 
 @app.command()
 def journal_report(
-    u4: Annotated[bool, typer.Option()] = True,
     journal_for: str = typer.Argument(
         datetime.now().date(), help="Pass a date or int for days ago"
     ),
     launch_fx: Annotated[bool, typer.Option()] = True,
     days: int = 1,
 ):
-    asyncio.run(async_journal_report(u4, journal_for, launch_fx, days))
+    asyncio.run(async_journal_report(journal_for, launch_fx, days))
 
 
 def spark_df(df):
@@ -332,7 +328,6 @@ def spark_df(df):
 
 @app.command()
 def stats(
-    u4: Annotated[bool, typer.Option()] = True,
     days: int = 7,
     journal_for: str = typer.Argument(
         datetime.now().date(), help="Pass a date or int for days ago"
@@ -352,10 +347,8 @@ def stats(
 
 
 @app.command()
-def journal_for_year(
-    u4: Annotated[bool, typer.Option()] = False,
-):
-    asyncio.run(async_journal_for_year(u4=u4))
+def journal_for_year():
+    asyncio.run(async_journal_for_year())
 
 
 @app.command()
@@ -443,9 +436,10 @@ def get_reports():
             json_report = json.loads(text_report)
             if "CategorySummaries" not in json_report:
                 json_report["CategorySummaries"] = []
-            report = GetPychiatristReport.model_validate(json_report)
+            # report = GetPychiatristReport.model_validate(json_report)
+            report = GetPychiatristReport.parse_obj(json_report)
             reports += [report]
-        except pydantic.ValidationError as ve:
+        except ValidationError as ve:
             ic(f"Validation Error {path_report}")
             for e in ve.errors():
                 error = e["type"], e["loc"]
@@ -453,6 +447,7 @@ def get_reports():
                 # ic(error)
         except Exception as e:
             ic("Exception", path_report, e)
+
     ic(validation_errors)
     ic(len(path_reports), len(reports))
     return reports
@@ -473,23 +468,25 @@ def journal_report_path(date: str, model: str):
     )
 
 
-async def async_journal_for_year(u4):
+async def async_journal_for_year():
     for entry_date in igor_journal.all_entries():
         ic(entry_date)
-        model_name = get_model(u4=True)
+        model = langchain_helper.get_model(openai=True)
 
-        journal_path = journal_report_path(date=entry_date, model=model_name)
+        journal_path = journal_report_path(
+            date=entry_date, model=langchain_helper.get_model_name(model)
+        )
         if os.path.exists(journal_path):
             ic("Exists", journal_path)
             continue
         try:
-            await async_journal_report(u4=u4, journal_for=entry_date, launch_fx=False)
+            await async_journal_report(journal_for=entry_date, launch_fx=False, days=1)
         except Exception as e:
             # swallow exeception and keep going
             ic(entry_date, e)
 
 
-async def async_journal_report(u4, journal_for, launch_fx, days):
+async def async_journal_report(journal_for, launch_fx, days):
     # Get my closest journal for the day:
     completed_process = subprocess.run(
         f"python3 ~/gits/nlp/igor_journal.py body {journal_for} --close --days={days}",
@@ -523,8 +520,8 @@ You task it to write a report based on the journal entry that is going to be pas
         ],
     )
 
-    model_name = get_model(u4=True)
-    model = ChatOpenAI(model=model_name)
+    model = langchain_helper.get_model(openai=True)
+    model_name = langchain_helper.get_model_name(model)
     ic(model_name)
     chain = prompt | model.with_structured_output(GetPychiatristReport)
 
