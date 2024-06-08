@@ -17,7 +17,7 @@ import langchain_helper
 
 def prompt_illustrate(content):
     instructions = """
-Help me create an image to represent this blog post, by making some prompts for GPT. They should be fun whimsical and if they feature someone that person is a 3d render of a cartoon racoon in the pixar style, the raccon can be in his mid 30s and wear glasses
+Help me create an image to represent this blog post, by making some prompts for GPT. They should be fun whimsical and if they feature peope but as 3d render of a cartoon racoon in the pixar style, the main raccon should be in his late 30s wearing very colorful glasses, and whimsical. End the prompt asking to render each photo, not just  the first one
 """
     return ChatPromptTemplate.from_messages(
         [
