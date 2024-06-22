@@ -38,7 +38,7 @@ def get_models(
     if claude:
         from langchain_anthropic import ChatAnthropic
 
-        model = ChatAnthropic(model_name="claude-3-opus-20240229")
+        model = ChatAnthropic(model_name="claude-3-5-sonnet-20240620")
         ret.append(model)
 
     if llama:
