@@ -99,7 +99,7 @@ def group2(
     process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
 
-    valence = "negative"
+    valence = "positive"
     system_prompt = f"""
 
 You are given a csv of waht makes a person {valence} every day. Please give a monthly summary of what makes the person {valence}, with relative weigths of what makes them {valence}.
@@ -125,7 +125,7 @@ E.g.
         ],
     )
     model = langchain_helper.get_model(openai=True)
-    ic(model)
+    ic(langchain_helper.get_model_name(model))
     ic(num_tokens_from_string(user_text))
 
     start = time.time()
@@ -142,9 +142,68 @@ E.g.
 
 
 @app.command()
+def summary_days(
+    ctx: typer.Context,
+    markdown: Annotated[bool, typer.Option()] = True,
+):
+    process_shared_app_options(ctx)
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+
+    system_prompt = f"""You read journal entries and help summarize the entries into point form based on categories.  Output the category headers as markdown, and list the line items as list eelemnts below. Eg.
+
+# Grouping A
+* line 1
+* line 2
+
+If there are changes you recommend, include them: E.g.
+
+* STOP:  Doing handstands they hurt your shoulders
+* START: Do card tricks
+
+IF possible, categories should match the following
+
+- [Dealer of smiles and wonder](#dealer-of-smiles-and-wonder)
+- [Mostly car free spirit](#mostly-car-free-spirit)
+- [Disciple of the 7 habits of highly effective people](#disciple-of-the-7-habits-of-highly-effective-people)
+- [Fit fellow](#fit-fellow)
+- [Emotionally healthy human](#emotionally-healthy-human)
+- [Husband to Tori - his life long partner](#husband-to-tori---his-life-long-partner)
+- [Technologist](#technologist)
+- [Professional](#professional)
+- [Family man](#family-man)
+- [Father to Amelia - an incredible girl](#father-to-amelia---an-incredible-girl)
+- [Father to Zach - a wonderful boy](#father-to-zach---a-wonderful-boy)
+
+<patient_facts>
+{patient_facts()}
+</patient_facts>
+
+     """
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            SystemMessagePromptTemplate.from_template(system_prompt),
+            HumanMessagePromptTemplate.from_template(user_text),
+        ],
+    )
+    model = langchain_helper.get_model(openai=True)
+    ic(langchain_helper.get_model_name(model))
+    ic(num_tokens_from_string(user_text))
+
+    chain = prompt | model | StrOutputParser()
+    response = chain.invoke({})
+    if markdown:
+        console = Console()
+        md = Markdown(response)
+        console.print(md)
+    else:
+        print(response)
+
+
+@app.command()
 def group(
     ctx: typer.Context,
     markdown: Annotated[bool, typer.Option()] = True,
+    claude: Annotated[bool, typer.Option()] = True,
 ):
     process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
@@ -176,8 +235,13 @@ IF possible, categories should match the following
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
-    model = langchain_helper.get_model(openai=True)
-    ic(model)
+
+    model = (
+        langchain_helper.get_model(claude=True)
+        if claude
+        else langchain_helper.get_model(openai=True)
+    )
+    ic(langchain_helper.get_model_name(model))
     ic(num_tokens_from_string(user_text))
 
     chain = prompt | model | StrOutputParser()
@@ -204,6 +268,7 @@ def patient_facts():
 * 750words is journalling
 * I work as an engineering manager (EM) in a tech company
 * A refresher is a synonym for going to the gym
+* PSC =>  Performance Summary Cycle (Writing performance reviews)
 """
 
 
