@@ -248,7 +248,7 @@ app = typer.Typer()
 @app.command()
 def think(
     trace: bool = False,
-    gist: bool = False,
+    gist: bool = True,
     core_problems: bool = False,  # Use core problems answers
     writer: bool = False,  # Use core problems answers
     path: str = typer.Argument(None),
