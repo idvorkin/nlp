@@ -38,6 +38,7 @@ setup(
             changes=changes:app
             changes2=changes2:app
             fix=fix:app
+            fabric=fabric:app
             illustrate=illustrate:app
         """,
 )
