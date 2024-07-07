@@ -65,10 +65,10 @@ async def a_fabric(
         # Add it twice if it fits
         llms += [langchain_helper.get_model(llama=True)]
 
-    thinking_about = f"Thinking about {path}*" if path else ""
-    ic("starting to think", tokens)
+    thinking_about = f"*Thinking about {path}.*" if path else ""
+    ic("thinking", command, tokens)
     header = f"""
-*🧠 via [fabric.py](https://github.com/idvorkin/nlp/blob/main/fabric.py) - using {command}*
+*🧠 via [fabric.py](https://github.com/idvorkin/nlp/blob/main/fabric.py) - using [{command}](https://github.com/danielmiessler/fabric/blob/main/patterns/{command}/system.md).*
 {thinking_about}
     """
 
@@ -113,7 +113,7 @@ async def a_fabric(
 
 @app.command()
 def fabric(
-    command: str = "none",
+    command: str = typer.Argument("none"),
     trace: bool = False,
     gist: bool = True,
     path: str = typer.Argument(None),
