@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "idvorkin_nlp"
+version = "0.1.0"
+dependencies = [
+    "icecream",
+    "rich",
+    "pydantic",
+    "loguru",
+    "langchain",
+    "langchain-chroma",
+    "langchain-openai",
+    "langchain-google-genai",
+    "langchain_anthropic",
+    "backoff",
+    "httpx",
+    "typing-extensions",
+    "openai",
+    "pudb",
+    "py-cord",
+    # jupyter-ai hasn't been much fun :(
+    # "jupyter-ai",
+    "langchainhub",
+    "typer",
+    "tiktoken",
+    "ruff",
+    "asyncer",
+    "fastapi",
+    "chromadb",
+]
+
+[tool.setuptools]
+py-modules = ["gpt3", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think"]
+
+[project.scripts]
+gpt = "gpt3:app"
+think = "think:app"
+gpt3 = "gpt3:app"
+ij = "igor_journal:app"
+dg = "dump_grateful:app"
+improv = "improv:app"
+plc = "play_langchain:app"
+life = "life:app"
+tts = "tts:app"
+pbf = "pbf:app"
+commit = "commit:app"
+changes = "changes:app"
+changes2 = "changes2:app"
+fix = "fix:app"
+fabric = "fabric:app"
+illustrate = "illustrate:app"
+
