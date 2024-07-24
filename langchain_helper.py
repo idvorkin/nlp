@@ -30,28 +30,16 @@ def get_models(
     ret = []
 
     if google:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        model = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest")
-        ret.append(model)
+        ret.append(get_model(google=True))
 
     if claude:
-        from langchain_anthropic import ChatAnthropic
-
-        model = ChatAnthropic(model_name="claude-3-5-sonnet-20240620")
-        ret.append(model)
+        ret.append(get_model(claude=True))
 
     if llama:
-        from langchain_groq import ChatGroq
-
-        model = ChatGroq(model_name="llama-3.1-70b-versatile")
-        ret.append(model)
+        ret.append(get_model(llama=True))
 
     if openai:
-        from langchain_openai.chat_models import ChatOpenAI
-
-        model = ChatOpenAI(model=openai_wrapper.gpt4.name)
-        ret.append(model)
+        ret.append(get_model(openai=True))
 
     return ret
 
@@ -85,7 +73,7 @@ def get_model(
     elif llama:
         from langchain_groq import ChatGroq
 
-        model = ChatGroq(model_name="llama3-70b-8192")
+        model = ChatGroq(model_name="llama-3.1-70b-versatile")
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
