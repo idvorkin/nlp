@@ -80,7 +80,21 @@ def summarize():
     model = langchain_helper.get_model(openai=True)
     chain = prompt_maker_template | model
     result = chain.invoke({"ARTICLE": user_text})
-    print(result.content)
+    ic(result)
+
+
+@app.command()
+def search(query):
+    from langchain_community.chat_models import ChatPerplexity
+
+    # user_text = "".join(sys.stdin.readlines())
+    chat = ChatPerplexity(model="llama-3-sonar-small-32k-online")
+    prompt = ChatPromptTemplate.from_messages(
+        [("system", "You provide searches"), ("human", query)]
+    )
+    chain = prompt | chat
+    response = chain.invoke({"input": query})
+    print(response.content)
 
 
 @app.command()
