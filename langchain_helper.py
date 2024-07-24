@@ -44,7 +44,7 @@ def get_models(
     if llama:
         from langchain_groq import ChatGroq
 
-        model = ChatGroq(model_name="llama3-70b-8192")
+        model = ChatGroq(model_name="llama-3.1-70b-versatile")
         ret.append(model)
 
     if openai:
