@@ -37,7 +37,7 @@ app = typer.Typer()
 
 
 @app.command()
-def m2df():
+def export_txt():
     df = im2df()
     # pickle the dataframe
     ic("++ pickle df")
@@ -173,9 +173,9 @@ def create_fine_tune(df):
     # I think model is getting confused as too much knowledge about us, and what's been happenign has evolved.
     # So probably need some RAG to help with this.
     # df = df[df.date.dt.year > 2020]
-    df = df[(df.date.dt.year == 2023)]
-    df = df[(df.date.dt.month < 10)]
-    days_to_group = 7
+    df = df[(df.date.dt.year > 2021)]
+    # df = df[(df.date.dt.month < 10)]
+    days_to_group = 25
     run_name = f"ammon_2023_2024_{days_to_group}d"
 
     df["group"] = 1e3 * df.date.dt.year + np.floor(
@@ -183,6 +183,8 @@ def create_fine_tune(df):
     )
     # invert is_from_me if you want to train for Igor.
     # df.is_from_me = ~df.is_from_me
+
+    MAX_TOKENS_IN_TRAINING_LINE = 57_000  # currently limited, but will update
 
     traindata_set = []
     ic(len(df.group.unique()))
@@ -197,7 +199,7 @@ def create_fine_tune(df):
         # count tokens
         if (
             tokens := openai_wrapper.num_tokens_from_string(json.dumps(train_data))
-        ) > 15000:
+        ) > MAX_TOKENS_IN_TRAINING_LINE:
             ic(group, tokens)
             continue
 
@@ -268,7 +270,7 @@ def chats_to_df(chats):
 def im2df():
     # date	text	is_from_me	to_phone
     ic("start load")
-    chats = pickle.load(open("raw_messages.pickle", "rb"))
+    chats = pickle.load(open("raw_messages.pickle.gz", "rb"))
     ic(f"done load {len(chats)}")
     return chats_to_df(chats)
 
@@ -509,7 +511,7 @@ def export_chatdb():
     ic("pickling")
     import pickle
 
-    pickle.dump(raw_messages, open("raw_messages.pickle", "wb"))
+    pickle.dump(raw_messages, open("raw_messages.pickle.gz", "wb"))
 
     # Merge consecutive messages from the same sender into a single message
     # merged_messages = merge_chat_runs(raw_messages)
