@@ -185,6 +185,7 @@ def create_fine_tune(df):
     # df.is_from_me = ~df.is_from_me
 
     MAX_TOKENS_IN_TRAINING_LINE = 57_000  # currently limited, but will update
+    MAX_MESSAGES_IN_A_TRAINING_LINE = 2000
 
     traindata_set = []
     ic(len(df.group.unique()))
@@ -200,8 +201,12 @@ def create_fine_tune(df):
         if (
             tokens := openai_wrapper.num_tokens_from_string(json.dumps(train_data))
         ) > MAX_TOKENS_IN_TRAINING_LINE:
-            ic(group, tokens)
+            ic("too many tokens", group, tokens)
             continue
+
+        if (cmessages := len(train_data)) > MAX_MESSAGES_IN_A_TRAINING_LINE:
+            ic("too many messages clipping", group, cmessages)
+            train_data = train_data[:MAX_MESSAGES_IN_A_TRAINING_LINE]
 
         # remove trailing user messages
         while train_data and train_data[-1]["role"] == "user":
@@ -212,9 +217,11 @@ def create_fine_tune(df):
     ratio = 20
     training = [t for i, t in enumerate(traindata_set) if i % ratio != 0]
     validation = [t for i, t in enumerate(traindata_set) if i % ratio == 0]
+
     write_messages_samples_to_jsonl(training, ft_path / f"train.{run_name}.jsonl")
     write_messages_samples_to_jsonl(validation, ft_path / f"validate.{run_name}.jsonl")
-    ic(run_name)
+
+    ic("output name", run_name)
 
     ic(len(training))
     ic(openai_wrapper.num_tokens_from_string(json.dumps(training)))
