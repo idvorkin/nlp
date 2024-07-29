@@ -14,7 +14,7 @@ import openai_wrapper
 import pandas as pd
 import typer
 from icecream import ic
-from langchain.chat_loaders.imessage import IMessageChatLoader
+from langchain_community.chat_loaders.imessage import IMessageChatLoader
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import SystemMessage
@@ -174,9 +174,9 @@ def create_fine_tune(df):
     # So probably need some RAG to help with this.
     # df = df[df.date.dt.year > 2020]
     df = df[(df.date.dt.year == 2023)]
-    df = df[(df.date.dt.month == 10)]
+    df = df[(df.date.dt.month < 10)]
     days_to_group = 7
-    run_name = f"ammon_oct_2023_{days_to_group}d"
+    run_name = f"ammon_2023_2024_{days_to_group}d"
 
     df["group"] = 1e3 * df.date.dt.year + np.floor(
         df.date.dt.day_of_year / days_to_group
@@ -200,6 +200,11 @@ def create_fine_tune(df):
         ) > 15000:
             ic(group, tokens)
             continue
+
+        # remove trailing user messages
+        while train_data and train_data[-1]["role"] == "user":
+            train_data = train_data[:-1]
+
         traindata_set.append(train_data)
 
     ratio = 20
@@ -207,6 +212,7 @@ def create_fine_tune(df):
     validation = [t for i, t in enumerate(traindata_set) if i % ratio == 0]
     write_messages_samples_to_jsonl(training, ft_path / f"train.{run_name}.jsonl")
     write_messages_samples_to_jsonl(validation, ft_path / f"validate.{run_name}.jsonl")
+    ic(run_name)
 
     ic(len(training))
     ic(openai_wrapper.num_tokens_from_string(json.dumps(training)))
@@ -214,9 +220,6 @@ def create_fine_tune(df):
     flagged = 0
     for i, t in enumerate(training):
         output = moderate(json.dumps(t))
-        if i % 10 == 0:
-            ic(t)
-            ic(i, flagged)
         if output.flagged:
             ic(i, output)
             flagged += 1
@@ -498,7 +501,7 @@ def a_i_convo(
 
 
 @app.command()
-def messages():
+def export_chatdb():
     chat_path = os.path.expanduser("~/imessage/chat.db")
     loader = IMessageChatLoader(path=chat_path)
     ic("loading messages")
