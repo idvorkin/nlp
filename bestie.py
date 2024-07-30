@@ -15,6 +15,7 @@ import pandas as pd
 import typer
 from icecream import ic
 from langchain_community.chat_loaders.imessage import IMessageChatLoader
+from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import SystemMessage
@@ -175,8 +176,8 @@ def create_fine_tune(df):
     # df = df[df.date.dt.year > 2020]
     df = df[(df.date.dt.year > 2021)]
     # df = df[(df.date.dt.month < 10)]
-    days_to_group = 25
-    run_name = f"ammon_2023_2024_{days_to_group}d"
+    days_to_group = 7
+    run_name = f"ammon_2021_plus_{days_to_group}d"
 
     df["group"] = 1e3 * df.date.dt.year + np.floor(
         df.date.dt.day_of_year / days_to_group
@@ -289,6 +290,7 @@ models = {
     "i-2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Z3GDyd0",
     "2015+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YgPRpMB",
     "2021+3d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Yz10hf9",
+    "gpt4o": "ft:gpt-4o-mini-2024-07-18:idvorkinteam::9qTfp0Ya",
     "2021+2d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Yys2osB",
 }
 models_list = "\n".join(models.keys())
@@ -298,9 +300,8 @@ models_list = "\n".join(models.keys())
 def goal_helper(
     model_name: Annotated[
         str, typer.Option(help=f"Model any of: {models_list}")
-    ] = "2021+3d",
+    ] = "gpt4o",
 ):
-    from langchain.memory import ChatMessageHistory
 
     system_prompt_base = "You are an imessage best friend converation simulator."
     custom_instructions = """
@@ -428,7 +429,6 @@ def make_bestie_system_prompt():
 
 
 def createBestieMessageHistory():
-    from langchain.memory import ChatMessageHistory
 
     memory = ChatMessageHistory()
     memory.add_message(SystemMessage(content=make_bestie_system_prompt()))
@@ -440,7 +440,7 @@ def createBestieMessageHistory():
 def convo(
     model_name: Annotated[
         str, typer.Option(help=f"Model any of: {models_list}")
-    ] = "2021+3d",
+    ] = "gpt4o"
 ):
     memory = createBestieMessageHistory()
     model = ChatOpenAI(model=models[model_name])
@@ -466,10 +466,9 @@ def a_i_convo(
     start: str = "Just woke up, bored",
     model_name: Annotated[
         str, typer.Option(help=f"Model any of: {models_list}")
-    ] = "2021+3d",
+    ] = "gpt4o",
     rounds: int = 10,
 ):
-    from langchain.memory import ChatMessageHistory
 
     system_prompt_base = "You are an imessage best friend converation simulator."
     custom_instructions = """
