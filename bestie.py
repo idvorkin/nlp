@@ -1,6 +1,5 @@
 #!python3
 
-
 import json
 import os
 import pickle
@@ -73,6 +72,44 @@ def messages_stats():
     print(days.text.describe(percentiles=[0.5, 0.75, 0.95]))
 
 
+def llm_extract_facts(dfChat):
+    text_prompt = """
+Below is a conversation between a real person (user) and the assistant (the bestie).
+
+You will help extract facts and topics of conversation, that will be used to simulate the bestie in the future. Don't bother storing facts that can be looked up in Wikipedia. Split facts and topics of conversation into those about the user and the bestie.
+
+Focus on extracting:
+1. Personal information (e.g., names, relationships, jobs, hobbies)
+2. Ongoing projects or goals
+3. Recent events or experiences
+4. Emotional states or patterns
+5. Shared memories or inside jokes
+6. Preferences and dislikes
+7. Habits or routines
+
+For each fact or topic, specify whether it relates to the user or the bestie.
+
+Conversation:
+    """
+    ic(text_prompt)
+    for m in dfChat.message.tolist():
+        text_prompt += f"\n{m['role']}: {m['content']}"
+
+    text_prompt.replace("{", "(")
+    text_prompt.replace("}", ")")
+
+    tokens = openai_wrapper.num_tokens_from_string(text_prompt)
+    MAX_TOKENS = 100_000
+    if tokens > MAX_TOKENS:
+        ic("too many tokens, clipping", tokens)
+        text_prompt = text_prompt[:MAX_TOKENS]
+
+    messages = [SystemMessage(content=text_prompt)]
+    model = ChatOpenAI(model=openai_wrapper.gpt4.name)
+    result = model.invoke(messages).content
+    return result
+
+
 def llm_summarize_recent_convo(dfChat):
     text_prompt = """
 Below is a conversation between a real person (user) and the assistant (the bestie).  You will create a prompt to feed GPT-4, that will simulate the bestie, ensuring conversations with it sounds similar.
@@ -87,7 +124,7 @@ Conversation:
     ic(text_prompt)
     ic(openai_wrapper.num_tokens_from_string(text_prompt))
 
-    prompt = ChatPromptTemplate.from_template(text_prompt)
+    prompt = ChatPromptTemplate.from_messages([SystemMessage(content=text_prompt)])
     model = ChatOpenAI(model=openai_wrapper.gpt4.name)
     chain = prompt | model
     result = chain.invoke({}).content
@@ -144,6 +181,33 @@ def recent_state():
     # Write to file
     ic(path_latest_state)
     path_latest_state.write_text(summary)
+
+
+@app.command()
+def extract_facts(
+    start_date: Annotated[str, typer.Option(help="Start date in YYYY-MM-DD format")] = (
+        datetime.now() - timedelta(days=30)
+    ).strftime("%Y-%m-%d"),
+):
+    chat_path = os.path.expanduser("~/imessage/chat.db")
+    loader = IMessageChatLoader(path=chat_path)
+    ic("loading messages")
+    raw = loader.load()
+
+    ic(f"Extracting facts from {start_date}")
+
+    df_chats = chats_to_df(raw)
+    df_chats = df_chats[(df_chats.to_phone.str.contains("7091"))]
+    df_chats = df_chats.set_index(df_chats.date)
+    df_chats = df_chats[df_chats.date > start_date]
+
+    facts = llm_extract_facts(df_chats)
+    print(facts)
+
+    # Write to file
+    facts_file = Path.home() / "tmp/extracted_facts.txt"
+    facts_file.write_text(facts)
+    ic(f"Facts written to {facts_file}")
 
 
 def make_message(role, content):
@@ -433,11 +497,13 @@ def createBestieMessageHistory():
 
     return memory
 
+
 @app.command()
 def output_system_prompt():
     """Output the bestie system prompt."""
     system_prompt = make_bestie_system_prompt()
     print(system_prompt)
+
 
 @app.command()
 def convo(
