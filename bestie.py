@@ -433,6 +433,11 @@ def createBestieMessageHistory():
 
     return memory
 
+@app.command()
+def output_system_prompt():
+    """Output the bestie system prompt."""
+    system_prompt = make_bestie_system_prompt()
+    print(system_prompt)
 
 @app.command()
 def convo(
