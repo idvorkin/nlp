@@ -88,6 +88,8 @@ Focus on extracting:
 7. Habits or routines
 
 For each fact or topic, specify whether it relates to the user or the bestie.
+Where possible group the facts into people (include their relationship), or into categories
+When facts change over time note that as well
 
 Conversation:
     """
