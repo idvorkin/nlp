@@ -39,7 +39,7 @@ app = typer.Typer()
 
 @app.command()
 def export_txt():
-    df = im2df()
+    df = get_message_history_df()
     # pickle the dataframe
     ic("++ pickle df")
     df.to_pickle("df_messages.pickle.zip")
@@ -52,7 +52,7 @@ def export_txt():
 
 @app.command()
 def scratch():
-    df = im2df()
+    df = get_message_history_df()
     ammon_from_me = df[(df.to_phone.str.contains("7091")) & (df.is_from_me)]
     ic(ammon_from_me)
 
@@ -65,7 +65,7 @@ def scratch():
 
 @app.command()
 def messages_stats():
-    df = im2df()
+    df = get_message_history_df()
     df = df[(df.to_phone.str.contains("7091")) & (df.date.dt.year == 2023)]
     df["day"] = 1e3 * df.date.dt.year + df.date.dt.day_of_year
     days = df.groupby(df.day).count().sort_values("text", ascending=False)
@@ -146,13 +146,6 @@ def recent_state():
     path_latest_state.write_text(summary)
 
 
-@app.command()
-def finetune(number: str = "7091"):
-    df = im2df()
-    df_convo = df[(df.to_phone.str.contains(number))]
-    create_fine_tune(df_convo)
-
-
 def make_message(role, content):
     return {"role": role, "content": content}
 
@@ -162,28 +155,33 @@ def write_messages_samples_to_jsonl(samples: list, filename: Path) -> None:
     filename.write_text("\n".join(json_string_samples))
 
 
-def create_fine_tune(df):
-    ft_path = Path.home() / "tmp/fine-tune"
+@app.command()
+def finetune(number: str = "7091", igor_assistant: bool = False):
+    df = get_message_history_df()
+    df = df[(df.to_phone.str.contains(number))]
     system_prompt = "You are an imessage best friend converation simulator."
     system_message = make_message("system", system_prompt)
-
-    # messages
-
-    # messages =  [{role:, content}]
 
     # I think model is getting confused as too much knowledge about us, and what's been happenign has evolved.
     # So probably need some RAG to help with this.
     # df = df[df.date.dt.year > 2020]
+
     df = df[(df.date.dt.year > 2021)]
     # df = df[(df.date.dt.month < 10)]
-    days_to_group = 7
-    run_name = f"ammon_2021_plus_{days_to_group}d"
+
+    # messages format =  [{role:, content}]
+    days_to_group = 3  # don't use 7 as that induces some periodicity
 
     df["group"] = 1e3 * df.date.dt.year + np.floor(
         df.date.dt.day_of_year / days_to_group
     )
     # invert is_from_me if you want to train for Igor.
-    # df.is_from_me = ~df.is_from_me
+    if igor_assistant:
+        df.is_from_me = ~df.is_from_me
+
+    convo_between = f"igor_to_{number}" if igor_assistant else f"{number} to igor"
+    run_name = f"{convo_between}_2021_plus_{days_to_group}d"
+    ic(run_name)
 
     MAX_TOKENS_IN_TRAINING_LINE = 57_000  # currently limited, but will update
     MAX_MESSAGES_IN_A_TRAINING_LINE = 2000
@@ -215,10 +213,12 @@ def create_fine_tune(df):
 
         traindata_set.append(train_data)
 
-    ratio = 20
-    training = [t for i, t in enumerate(traindata_set) if i % ratio != 0]
-    validation = [t for i, t in enumerate(traindata_set) if i % ratio == 0]
+    # split into training and validation
+    validation_ratio = 20
+    training = [t for i, t in enumerate(traindata_set) if i % validation_ratio != 0]
+    validation = [t for i, t in enumerate(traindata_set) if i % validation_ratio == 0]
 
+    ft_path = Path.home() / "tmp/fine-tune"
     write_messages_samples_to_jsonl(training, ft_path / f"train.{run_name}.jsonl")
     write_messages_samples_to_jsonl(validation, ft_path / f"validate.{run_name}.jsonl")
 
@@ -275,7 +275,7 @@ def chats_to_df(chats):
     return df
 
 
-def im2df():
+def get_message_history_df():
     # date	text	is_from_me	to_phone
     ic("start load")
     chats = pickle.load(open("raw_messages.pickle.gz", "rb"))
@@ -290,7 +290,7 @@ models = {
     "i-2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Z3GDyd0",
     "2015+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YgPRpMB",
     "2021+3d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Yz10hf9",
-    "gpt4o": "ft:gpt-4o-mini-2024-07-18:idvorkinteam::9qTfp0Ya",
+    "gpt4o": "ft:gpt-4o-mini-2024-07-18:idvorkinteam:2021-plus-7d:9qUwxwkO",
     "2021+2d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Yys2osB",
 }
 models_list = "\n".join(models.keys())
@@ -302,7 +302,6 @@ def goal_helper(
         str, typer.Option(help=f"Model any of: {models_list}")
     ] = "gpt4o",
 ):
-
     system_prompt_base = "You are an imessage best friend converation simulator."
     custom_instructions = """
         * When you answer use atleast 6 words, or ask a question
@@ -429,7 +428,6 @@ def make_bestie_system_prompt():
 
 
 def createBestieMessageHistory():
-
     memory = ChatMessageHistory()
     memory.add_message(SystemMessage(content=make_bestie_system_prompt()))
 
@@ -440,7 +438,7 @@ def createBestieMessageHistory():
 def convo(
     model_name: Annotated[
         str, typer.Option(help=f"Model any of: {models_list}")
-    ] = "gpt4o"
+    ] = "gpt4o",
 ):
     memory = createBestieMessageHistory()
     model = ChatOpenAI(model=models[model_name])
@@ -469,7 +467,6 @@ def a_i_convo(
     ] = "gpt4o",
     rounds: int = 10,
 ):
-
     system_prompt_base = "You are an imessage best friend converation simulator."
     custom_instructions = """
         * When you answer use atleast 6 words, or ask a question
