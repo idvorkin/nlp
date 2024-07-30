@@ -73,7 +73,7 @@ def messages_stats():
 
 
 def llm_extract_facts(dfChat):
-    text_prompt = """
+    system_prompt = """
 Below is a conversation between a real person (user) and the assistant (the bestie).
 
 You will help extract facts and topics of conversation, that will be used to simulate the bestie in the future. Don't bother storing facts that can be looked up in Wikipedia. Split facts and topics of conversation into those about the user and the bestie.
@@ -89,16 +89,15 @@ Focus on extracting:
 
 For each fact or topic, specify whether it relates to the user or the bestie.
 Where possible group the facts into people (include their relationship), or into categories
+Keep mentioned people in a seperate section with information about them:
+    name, relationship to bestie or user , and all facts about them
 When facts change over time note that as well
 
 Conversation:
     """
-    ic(text_prompt)
-    for m in dfChat.message.tolist():
-        text_prompt += f"\n{m['role']}: {m['content']}"
 
-    text_prompt.replace("{", "(")
-    text_prompt.replace("}", ")")
+    conversation = df_messages_to_text_prompt(dfChat)
+    text_prompt = system_prompt + "\n" + conversation
 
     tokens = openai_wrapper.num_tokens_from_string(text_prompt)
     MAX_TOKENS = 100_000
@@ -112,16 +111,45 @@ Conversation:
     return result
 
 
+def df_messages_to_text_prompt(df):
+    # df has fields date, role, message
+    # Merge consecutive messages from the same role (user or assistant)
+    # text prompt is of format:
+    # user: message
+    # assistant: message
+
+    text_prompt = ""
+    previous_role = None
+    current_message = ""
+
+    for _, row in enumerate(df.message.to_list()):
+        content = row["content"].replace("{", "(").replace("}", ")")
+        if row["role"] == previous_role:
+            current_message += ". " + content
+        else:
+            if previous_role:
+                text_prompt += f"{previous_role}: {current_message}\n"
+            current_message = content
+            previous_role = row["role"]
+
+    # Add the last message
+    if previous_role:
+        text_prompt += f"{previous_role}: {current_message}\n"
+
+    return text_prompt
+
+
 def llm_summarize_recent_convo(dfChat):
-    text_prompt = """
+    system_prompt = """
 Below is a conversation between a real person (user) and the assistant (the bestie).  You will create a prompt to feed GPT-4, that will simulate the bestie, ensuring conversations with it sounds similar.
 
 The prompt will use the content of the conversation so it can be used as part of a prompt for the bestie (assistant). Include what the assistant and user are trying to accomplish, current state, and concrete topics to discuss. Use about 100 lines
 
 Conversation:
     """
-    for m in dfChat.message.tolist():
-        text_prompt += f"\n{m['role']}: {m['content']}"
+
+    conversation = df_messages_to_text_prompt(dfChat)
+    text_prompt = system_prompt + "\n" + conversation
 
     ic(text_prompt)
     ic(openai_wrapper.num_tokens_from_string(text_prompt))
@@ -353,7 +381,7 @@ models = {
     "r+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Z4f8RhL",
     "2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YkPgWs2",
     "2023+7d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8apOoG0u",
-    "i-2021+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Z3GDyd0",
+    "igor": "ft:gpt-4o-mini-2024-07-18:idvorkinteam:i-to-a-3d-gt-2021:9qiMMqOz",
     "2015+1d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8YgPRpMB",
     "2021+3d": "ft:gpt-3.5-turbo-1106:idvorkinteam::8Yz10hf9",
     "gpt4o": "ft:gpt-4o-mini-2024-07-18:idvorkinteam:2021-plus-7d:9qUwxwkO",
@@ -554,7 +582,7 @@ def a_i_convo(
     igor_memory = ChatMessageHistory()
     igor_memory.add_message(SystemMessage(content=system_prompt))
     igor_memory.add_ai_message(start)
-    igor_model = ChatOpenAI(model=models["i-2021+1d"])
+    igor_model = ChatOpenAI(model=models["igor"])
 
     ic(model_name)
     ic(custom_instructions)

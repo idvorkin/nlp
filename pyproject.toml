@@ -12,7 +12,9 @@ dependencies = [
     "loguru",
     "langchain",
     "langchain-chroma",
+    "langchain_community",
     "langchain-openai",
+    "pandas",
     "langchain-google-genai",
     "langchain_anthropic",
     "backoff",
@@ -33,7 +35,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["gpt3", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think"]
+py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think"]
 
 [project.scripts]
 gpt = "gpt3:app"
@@ -45,6 +47,7 @@ improv = "improv:app"
 plc = "play_langchain:app"
 life = "life:app"
 tts = "tts:app"
+bestie = "bestie:app"
 pbf = "pbf:app"
 commit = "commit:app"
 changes = "changes:app"
