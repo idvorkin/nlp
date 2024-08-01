@@ -57,6 +57,18 @@ def is_skip_file(file):
         ic(f"File {file} does not exist or has been deleted.")
         return True
 
+    if file.startswith("assets/js/idv-blog-module"):
+        ic("Skip generated module file")
+        return True
+
+    if file.endswith(".js.map"):
+        ic("Skip mapping files")
+        return True
+
+    if file.endswith("map"):
+        ic("ipynb not supported yet")
+        return True
+
     if file.endswith("ipynb"):
         ic("ipynb not supported yet")
         return True
