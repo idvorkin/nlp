@@ -14,6 +14,7 @@ dependencies = [
     "langchain-chroma",
     "langchain_community",
     "langchain-openai",
+    "langchain-groq",
     "pandas",
     "langchain-google-genai",
     "langchain_anthropic",

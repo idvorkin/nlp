@@ -133,7 +133,7 @@ def changes(
     after="7 days ago",
     trace: bool = False,
     gist: bool = True,
-    openai: bool = True,
+    openai: bool = False,
     google: bool = False,
     claude: bool = False,
     llama: bool = False,
@@ -214,13 +214,39 @@ def prompt_summarize_diff_summaries(diff_summary):
     instructions = """
 <instructions>
 
+
 Please summarize the passed in report file (the actual report will be appended after this output). The summary should include:
+
+<file_link_instructions_and_example>
+
+When making file links, keep the _'s, here are valid examples:C
+
+- [.gitignore](#gitignore)
+- [_d/ai-journal.md](#_dai-journalmd)
+- [_d/mood.md](#_dmoodmd)
+- [_d/time-off-2024-08.md](#_dtime-off-2024-08md)
+- [_d/time_off.md](#_dtime_offmd)
+- [_includes/scripts.html](#_includesscriptshtml)
+- [_posts/2017-04-12-happy.md](#_posts2017-04-12-happymd)
+- [_td/slow_zsh.md](#_tdslow_zshmd)
+- [graph.html](#graphhtml)
+- [justfile](#justfile)
+- [package.json](#packagejson)
+</file_link_instructions_and_example>
+
+<understanding_passed_in_report>
+* Contains the changed diffs
+* A line like: graph.html: +4, -1, ~3, tells you the changes in the file. This means 4 lines added, 1 removed, and 3 changed. It gives a tip on how big the changes are.
+
+</understanding_passed_in_report>
+
 
 <summary_instructions>
 A summary of the higher level changes/intent of changes across all the files (e.g. implemented features).
+    * Markdown files except readmes (especially in _d, _posts, _td) should come before any code changes in the summary
     * It should be divided by logical changes, not physical files.
     * Changes refererring to files should have clickable link to the lower section.
-    * It should be ordered by importanc
+    * It should be ordered by importance
 </summary_instructions>
 
 <summary_example>
@@ -231,7 +257,8 @@ A summary of the higher level changes/intent of changes across all the files (e.
 </summary_example>
 
 <table_of_content_instructions>
-A table of changes with clickable links to each section. [
+A table of changes with clickable links to each section.
+Order files by magnitude/importance of change, use same rules as with summary
 </table_of_content_instructions>
 
 <table_of_content_example>

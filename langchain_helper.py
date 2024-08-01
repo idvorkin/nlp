@@ -58,7 +58,7 @@ def get_model(
     if count_true > 1:
         print("Only one model can be selected")
         exit(1)
-    if count_true == 1:
+    if count_true == 0:
         # default to openai
         openai = True
 
