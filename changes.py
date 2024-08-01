@@ -132,7 +132,7 @@ def changes(
     before=tomorrow(),
     after="7 days ago",
     trace: bool = False,
-    gist: bool = False,
+    gist: bool = True,
     openai: bool = True,
     google: bool = False,
     claude: bool = False,
@@ -210,27 +210,44 @@ async def get_changed_files(first_commit, last_commit):
 # Function to create the prompt
 
 
-def prompt_report_from_diff_summary(diff_summary):
-    instructions = """You are given a diff summary including what files changed, you will re-write it to be in the order of maximum importance
+def prompt_summarize_diff_summaries(diff_summary):
+    instructions = """
+<instructions>
 
-## Instructions
+Please summarize the passed in report file (the actual report will be appended after this output). The summary should include:
 
-Begin by creating a a clickable markdown table of contents for all files. As an example
+<summary_instructions>
+A summary of the higher level changes/intent of changes across all the files (e.g. implemented features).
+    * It should be divided by logical changes, not physical files.
+    * Changes refererring to files should have clickable link to the lower section.
+    * It should be ordered by importanc
+</summary_instructions>
 
-- [The first file](#the-first-file)
-- [The second file](#the-second-file)
+<summary_example>
+### Summary
 
-After the table of contents
+* Line 1 - ([file](#link-to-file-in-the-below-report), [file](#link-to-file-in-the-below-report))
+* Line 2
+</summary_example>
 
-* Maintain the input file format, but just change the order of files and the lines within files.
-* The second line with 3 numbers indicates the diff addition, removal and file changes.
-* Ensure all files listed in the input diff summary are still listed
+<table_of_content_instructions>
+A table of changes with clickable links to each section. [
+</table_of_content_instructions>
 
-Really minor changes should **not be listed**. Minor changes include.
-* Changes to imports
-* Exclude changes to spelling, grammar or punctuation in the summary
-* Changes to wording, for example, exclude Changed "inprogress" to "in progress"
+<table_of_content_example>
+### Table of Changes (LLM)
 
+* [file](#link-to-file-in-the-below-report)
+    * Most important change #1
+    * Most important change #2
+    * Most important change #3 (if major)
+    * Most important change #4 (if major)
+</table_of_content_example>
+
+
+1. Remember don't include the report below, it will be added afterwards
+
+</instructions>
 """
     return ChatPromptTemplate.from_messages(
         [
@@ -351,7 +368,6 @@ async def achanges(llm: BaseChatModel, before, after, gist):
     # print(diff_report)
 
     ## Pre-ranked output
-    output = ""
     github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
     output = f"""
 ### Changes to {github_repo_diff_link} From [{after}] To [{before}]
@@ -359,10 +375,13 @@ async def achanges(llm: BaseChatModel, before, after, gist):
 * Duration: {int((datetime.now() - start).total_seconds())} seconds
 * Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S") }
 ___
+### Table of Contents (code)
 {create_markdown_table_of_contents(changed_files)}
 ___
+{(prompt_summarize_diff_summaries(unranked_diff_report) | llm).invoke({}).content}
+___
 {unranked_diff_report}
-    """
+"""
     print(output)
 
     output_file_path = Path(f"summary_{repo_name.split('/')[-1]}.md")
