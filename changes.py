@@ -65,10 +65,6 @@ def is_skip_file(file):
         ic("Skip mapping files")
         return True
 
-    if file.endswith("map"):
-        ic("ipynb not supported yet")
-        return True
-
     if file.endswith("ipynb"):
         ic("ipynb not supported yet")
         return True
@@ -316,13 +312,10 @@ async def achanges(llm: BaseChatModel, before, after, gist):
 
     first, last = await first_last_commit(before, after)
     changed_files = await get_changed_files(first, last)
+    changed_files = [file for file in changed_files if not is_skip_file(file)]
 
     file_diffs = await asyncio.gather(
-        *[
-            get_file_diff(file, first, last)
-            for file in changed_files
-            if not is_skip_file(file)
-        ]
+        *[get_file_diff(file, first, last) for file in changed_files]
     )
     # add some rate limiting
     max_parallel = asyncio.Semaphore(100)
