@@ -10,7 +10,6 @@ import typer
 from langchain.prompts import ChatPromptTemplate
 
 from loguru import logger
-from rich import print
 from rich.console import Console
 import langchain_helper
 from icecream import ic
@@ -44,18 +43,29 @@ Do nt change wrapping
 @app.command()
 def fix(
     trace: bool = False,
+    openai: bool = False,
+    google: bool = False,
+    claude: bool = False,
+    llama: bool = False,
 ):
     langchain_helper.langsmith_trace_if_requested(
         trace, lambda: asyncio.run(inner_fix())
     )
 
 
-async def inner_fix():
+async def inner_fix(
+    openai: bool = False,
+    google: bool = False,
+    claude: bool = False,
+    llama: bool = False,
+):
     from datetime import datetime
 
     start = datetime.now()
     # Use a mid speed model
-    llm = langchain_helper.get_model(claude=True)
+    llm = langchain_helper.get_model(
+        openai=openai, google=google, claude=claude, llama=llama
+    )
     ic(langchain_helper.get_model_name(llm))
 
     user_text = "".join(sys.stdin.readlines())
