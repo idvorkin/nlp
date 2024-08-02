@@ -25,6 +25,8 @@ from rich.console import Console
 from typing import Annotated
 from pydantic import BaseModel
 import requests
+from langchain_core.tools import tool
+
 
 openai_wrapper.setup_secret()
 
@@ -536,6 +538,28 @@ def output_system_prompt():
     print(system_prompt)
 
 
+storage = []
+
+
+@tool
+def storage_append(s):
+    """Extend storage with:"""
+    storage.append(f"{datetime.now()}: {s}")
+
+
+@tool
+def storage_read():
+    """read everything that is stored"""
+    return "\n".join(storage)
+
+
+@tool
+def search(search):
+    """Search the web"""
+    # return "\n".join(storage)
+    return
+
+
 @app.command()
 def tony():
     """Talk to Toni"""
@@ -545,7 +569,10 @@ def tony():
     tony_response = requests.post(url, json=payload).json()
     model_name = tony_response["assistant"]["model"]["model"]
     ic(model_name)
-    model = init_chat_model(model_name)
+    model = init_chat_model(model_name).bind_tools(
+        [storage_append, storage_read, search]
+    )
+
     memory = ChatMessageHistory()
 
     # TODO build a program to parse this out
@@ -563,6 +590,8 @@ def tony():
         prompt = ChatPromptTemplate.from_messages(memory.messages)
         chain = prompt | model
         result = chain.invoke({})
+        if hasattr(result, "tool_calls"):
+            ic(result.tool_calls)
         ai_output = str(result.content)
         memory.add_ai_message(ai_output)
         print(f"[yellow]Tony:{ai_output}")
