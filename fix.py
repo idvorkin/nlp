@@ -13,6 +13,7 @@ from loguru import logger
 from rich.console import Console
 import langchain_helper
 from icecream import ic
+import openai_wrapper
 
 console = Console()
 app = typer.Typer()
@@ -49,7 +50,10 @@ def fix(
     llama: bool = False,
 ):
     langchain_helper.langsmith_trace_if_requested(
-        trace, lambda: asyncio.run(inner_fix())
+        trace,
+        lambda: asyncio.run(
+            inner_fix(openai=openai, google=google, claude=claude, llama=llama)
+        ),
     )
 
 
@@ -73,6 +77,7 @@ async def inner_fix(
     elapsed_seconds = (datetime.now() - start).total_seconds()
     ic(int(elapsed_seconds))
     ic(len(user_text), len(fixed.content))
+    ic(openai_wrapper.num_tokens_from_string(user_text))
     print("--erase me--")
 
     print(fixed.content)
