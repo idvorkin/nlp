@@ -13,6 +13,7 @@ import openai_wrapper
 import pandas as pd
 import typer
 from icecream import ic
+from langchain.chat_models import init_chat_model
 from langchain_community.chat_loaders.imessage import IMessageChatLoader
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_openai.chat_models import ChatOpenAI
@@ -533,6 +534,38 @@ def output_system_prompt():
     """Output the bestie system prompt."""
     system_prompt = make_bestie_system_prompt()
     print(system_prompt)
+
+
+@app.command()
+def tony():
+    """Talk to Toni"""
+
+    url = "https://idvorkin--modal-tony-server-assistant.modal.run"
+    payload = {"ignored": "ignored"}
+    tony_response = requests.post(url, json=payload).json()
+    model_name = tony_response["assistant"]["model"]["model"]
+    ic(model_name)
+    model = init_chat_model(model_name)
+    memory = ChatMessageHistory()
+
+    # TODO build a program to parse this out
+    system_message_content = tony_response["assistant"]["model"]["messages"][0][
+        "content"
+    ]
+    memory.add_message(SystemMessage(content=system_message_content))
+
+    while True:
+        user_input = input("Igor:")
+        if user_input == "debug":
+            ic(model_name)
+            # ic(custom_instructions)
+        memory.add_user_message(message=user_input)
+        prompt = ChatPromptTemplate.from_messages(memory.messages)
+        chain = prompt | model
+        result = chain.invoke({})
+        ai_output = str(result.content)
+        memory.add_ai_message(ai_output)
+        print(f"[yellow]Tony:{ai_output}")
 
 
 @app.command()
