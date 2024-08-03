@@ -10,7 +10,7 @@ dependencies = [
     "rich",
     "pydantic",
     "loguru",
-    "langchain",
+    "langchain-core",
     "langchain-chroma",
     "langchain_community",
     "langchain-openai",

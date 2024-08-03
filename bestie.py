@@ -13,12 +13,11 @@ import openai_wrapper
 import pandas as pd
 import typer
 from icecream import ic
-from langchain.chat_models import init_chat_model
 from langchain_community.chat_loaders.imessage import IMessageChatLoader
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
-from langchain.schema import SystemMessage
+from langchain_core.messages import SystemMessage, AIMessage, ToolMessage
 from loguru import logger
 from rich import print
 from rich.console import Console
@@ -554,24 +553,34 @@ def storage_read():
 
 
 @tool
-def search(search):
+def search(question):
     """Search the web"""
-    # return "\n".join(storage)
-    return
+    url = "https://idvorkin--modal-tony-server-search.modal.run"
+    payload = {"question": question}
+    response = requests.post(url, json=payload).json()
+    return str(response)
 
 
 @app.command()
 def tony():
     """Talk to Toni"""
 
-    url = "https://idvorkin--modal-tony-server-assistant.modal.run"
-    payload = {"ignored": "ignored"}
-    tony_response = requests.post(url, json=payload).json()
-    model_name = tony_response["assistant"]["model"]["model"]
-    ic(model_name)
-    model = init_chat_model(model_name).bind_tools(
+    # from langchain.chat_models import init_chat_model
+    # model = init_chat_model(model_name).
+    ic("++init model")
+    model = ChatOpenAI(model="gpt-4o").bind_tools(
         [storage_append, storage_read, search]
     )
+    ic("--init model")
+
+    ic("++assistant.api")
+    payload = {"ignored": "ignored"}
+    url_tony = "https://idvorkin--modal-tony-server-assistant.modal.run"
+    ic(url_tony)
+    tony_response = requests.post(url_tony, json=payload).json()
+    model_name = tony_response["assistant"]["model"]["model"]
+    ic(model_name)
+    ic("--assistant.api")
 
     memory = ChatMessageHistory()
 
@@ -589,12 +598,35 @@ def tony():
         memory.add_user_message(message=user_input)
         prompt = ChatPromptTemplate.from_messages(memory.messages)
         chain = prompt | model
-        result = chain.invoke({})
-        if hasattr(result, "tool_calls"):
-            ic(result.tool_calls)
-        ai_output = str(result.content)
-        memory.add_ai_message(ai_output)
-        print(f"[yellow]Tony:{ai_output}")
+        llm_result: AIMessage = chain.invoke({})  # type: AIMessage
+        memory.add_ai_message(llm_result)
+        if len(llm_result.tool_calls) > 0:
+            assert len(llm_result.tool_calls) == 1
+            tool_call = llm_result.tool_calls[0]
+            ic(tool_call)
+            tool_name = tool_call["name"]
+            if tool_name == "search":
+                search_result = search(tool_call["args"]["question"])
+                ic(search_result)
+                memory.add_message(
+                    ToolMessage(
+                        tool_call_id=tool_call["id"], content=str(search_result)
+                    )
+                )
+            else:
+                ic("unsupported tool", tool_name)
+                memory.add_message(
+                    ToolMessage(
+                        tool_call_id=tool_call["id"],
+                        content="tell user tool call failed",
+                    )
+                )
+
+            # Call LLM again with the tool ouput
+            chain = ChatPromptTemplate.from_messages(memory.messages) | model
+            llm_result = chain.invoke({})  # type: AIMessage
+            memory.add_message(chain.invoke({}))
+        print(f"[yellow]Tony:{llm_result.content}")
 
 
 @app.command()
