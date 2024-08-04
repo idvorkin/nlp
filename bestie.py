@@ -610,6 +610,7 @@ def tony():
 
     # from langchain.chat_models import init_chat_model
     # model = init_chat_model(model_name).
+    ic("v0.01")
     ic("++init model")
     model = ChatOpenAI(model="gpt-4o").bind_tools(
         [journal_append, journal_read, search]
