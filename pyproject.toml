@@ -34,10 +34,11 @@ dependencies = [
     "html2text",
     "fastapi",
     "chromadb",
+    "azure-cosmos"
 ]
 
 [tool.setuptools]
-py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think"]
+py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim"]
 
 [project.scripts]
 gpt = "gpt3:app"
@@ -57,4 +58,5 @@ changes2 = "changes2:app"
 fix = "fix:app"
 fabric = "fabric:app"
 illustrate = "illustrate:app"
+vapi_sim = "vapi_sim:app"
 
