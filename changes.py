@@ -379,35 +379,37 @@ async def achanges(llm: BaseChatModel, before, after, gist):
     ]
 
     results = [result.content for result in await asyncio.gather(*ai_invoke_tasks)]
+    timestamp_summarize_diff_in_parallel = datetime.now()
 
     # I think this can be done by the reorder_diff_summary command
     results.sort(key=lambda x: len(x), reverse=True)
 
-    unranked_diff_report = "\n\n___\n\n".join(results)
+    code_based_diff_report = "\n\n___\n\n".join(results)
 
-    ic(unranked_diff_report)
+    ic(code_based_diff_report)
 
-    # diff_report = (
-    #     (prompt_report_from_diff_summary(unranked_diff_report) | g_model)
-    #     .invoke({})
-    #     .content
-    # )
-    # print(diff_report)
+    summary_all_diffs = (
+        (prompt_summarize_diff_summaries(code_based_diff_report) | llm)
+        .invoke({})
+        .content
+    )
+    timestamp_summarize_all_diffs = datetime.now()
 
     ## Pre-ranked output
     github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
     output = f"""
 ### Changes to {github_repo_diff_link} From [{after}] To [{before}]
 * Model: {langchain_helper.get_model_name(llm)}
-* Duration: {int((datetime.now() - start).total_seconds())} seconds
+* Duration Diffs: {int((timestamp_summarize_diff_in_parallel - start).total_seconds())} seconds
+* Duration Summary: {int((timestamp_summarize_all_diffs - timestamp_summarize_diff_in_parallel).total_seconds())} seconds
 * Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S") }
 ___
 ### Table of Contents (code)
 {create_markdown_table_of_contents(changed_files)}
 ___
-{(prompt_summarize_diff_summaries(unranked_diff_report) | llm).invoke({}).content}
+{summary_all_diffs}
 ___
-{unranked_diff_report}
+{code_based_diff_report}
 """
     print(output)
 
