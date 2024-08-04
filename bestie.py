@@ -29,7 +29,9 @@ from langchain_core.tools import tool
 
 openai_wrapper.setup_secret()
 
-path_latest_state = Path.home() / "tmp/latest_state.txt"
+temp_dir = Path.home() / "tmp"
+temp_dir.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
+path_latest_state = temp_dir / "latest_state.txt"
 
 # set the environment variable from the secrets file
 
@@ -43,12 +45,12 @@ def export_txt():
     df = get_message_history_df()
     # pickle the dataframe
     ic("++ pickle df")
-    df.to_pickle("df_messages.pickle.zip")
+    df.to_pickle(temp_dir / "df_messages.pickle.zip")
     ic("-- pickle df")
     # make compatible with archive
     df.sort_values("date", inplace=True)
     df.date = df.date.dt.strftime("%Y-%m-%d %H:%M:%S")
-    df.to_csv("big_dump.txt", index=False, sep="\t")
+    df.to_csv(temp_dir / "big_dump.txt", index=False, sep="\t")
 
 
 @app.command()
@@ -237,7 +239,7 @@ def extract_facts(
     print(facts)
 
     # Write to file
-    facts_file = Path.home() / "tmp/extracted_facts.txt"
+    facts_file = temp_dir / "extracted_facts.txt"
     facts_file.write_text(facts)
     ic(f"Facts written to {facts_file}")
 
@@ -314,7 +316,8 @@ def finetune(number: str = "7091", igor_assistant: bool = False):
     training = [t for i, t in enumerate(traindata_set) if i % validation_ratio != 0]
     validation = [t for i, t in enumerate(traindata_set) if i % validation_ratio == 0]
 
-    ft_path = Path.home() / "tmp/fine-tune"
+    ft_path = temp_dir / "fine-tune"
+    ft_path.mkdir(exist_ok=True)
     write_messages_samples_to_jsonl(training, ft_path / f"train.{run_name}.jsonl")
     write_messages_samples_to_jsonl(validation, ft_path / f"validate.{run_name}.jsonl")
 
@@ -374,7 +377,7 @@ def chats_to_df(chats):
 def get_message_history_df():
     # date	text	is_from_me	to_phone
     ic("start load")
-    chats = pickle.load(open("raw_messages.pickle.gz", "rb"))
+    chats = pickle.load(open(temp_dir / "raw_messages.pickle.gz", "rb"))
     ic(f"done load {len(chats)}")
     return chats_to_df(chats)
 
@@ -538,7 +541,7 @@ def output_system_prompt():
 
 
 # temporary file with the storage, using Temporary File package
-tonys_journal_path = os.path.expanduser("~/tmp/tony_daily_journal.txt")
+tonys_journal_path = temp_dir / "tony_daily_journal.txt"
 ic(tonys_journal_path)
 
 
@@ -737,7 +740,7 @@ def export_chatdb():
     ic("pickling")
     import pickle
 
-    pickle.dump(raw_messages, open("raw_messages.pickle.gz", "wb"))
+    pickle.dump(raw_messages, open(temp_dir / "raw_messages.pickle.gz", "wb"))
 
     # Merge consecutive messages from the same sender into a single message
     # merged_messages = merge_chat_runs(raw_messages)
