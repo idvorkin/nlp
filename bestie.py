@@ -567,7 +567,9 @@ def search(question):
     """Search the web"""
     url = "https://idvorkin--modal-tony-server-search.modal.run"
     payload = {"question": question}
-    response = requests.post(url, json=payload).json()
+    # add authorization header, e..g.         Authorization:"Bearer $TONY_API_KEY" \
+    headers = {"Authorization": f"Bearer {os.getenv('TONY_API_KEY')}"}
+    response = requests.post(url, json=payload, headers=headers).json()
     return str(response)
 
 
