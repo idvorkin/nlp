@@ -17,14 +17,13 @@ from langchain_community.chat_loaders.imessage import IMessageChatLoader
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
-from langchain_core.messages import SystemMessage, AIMessage, ToolMessage
+from langchain_core.messages import SystemMessage
 from loguru import logger
 from rich import print
 from rich.console import Console
 from typing import Annotated
 from pydantic import BaseModel
 import requests
-from langchain_core.tools import tool
 
 
 openai_wrapper.setup_secret()
@@ -538,129 +537,6 @@ def output_system_prompt():
     """Output the bestie system prompt."""
     system_prompt = make_bestie_system_prompt()
     print(system_prompt)
-
-
-# temporary file with the storage, using Temporary File package
-tonys_journal_path = temp_dir / "tony_daily_journal.txt"
-ic(tonys_journal_path)
-
-
-@tool
-def journal_append(s):
-    """Extend the daily log with the following content"""
-    with open(tonys_journal_path, "a") as file:
-        file.write(f"{datetime.now()}: {s}\n")
-
-
-@tool
-def journal_read(date):
-    """Read everything that is stored"""
-    if not os.path.exists(tonys_journal_path):
-        return ""
-
-    with open(tonys_journal_path, "r") as file:
-        return file.read()
-
-
-@tool
-def search(question):
-    """Search the web"""
-    url = "https://idvorkin--modal-tony-server-search.modal.run"
-    payload = {"question": question}
-    # add authorization header, e..g.         Authorization:"Bearer $TONY_API_KEY" \
-    headers = {"Authorization": f"Bearer {os.getenv('TONY_API_KEY')}"}
-    response = requests.post(url, json=payload, headers=headers).json()
-    return str(response)
-
-
-def process_tool_calls(llm_result):
-    if len(llm_result.tool_calls) == 0:
-        return None
-
-    tool_calls = llm_result.tool_calls
-    if len(tool_calls) > 1:
-        assert len(tool_calls) == 1
-        ic(tool_calls)
-
-    tool_call = llm_result.tool_calls[0]
-    ic(tool_call)
-    tool_name = tool_call["name"]
-    args = tool_call["args"]
-    if tool_name == "search":
-        search_result = search(args["question"])
-        ic(search_result)
-        return ToolMessage(tool_call_id=tool_call["id"], content=str(search_result))
-
-    if tool_name == "journal_append":
-        journal_append(args["s"])
-        return ToolMessage(tool_call_id=tool_call["id"], content="")
-
-    if tool_name == "journal_read":
-        daily_log_content = journal_read(args["date"])
-        return ToolMessage(tool_call_id=tool_call["id"], content=daily_log_content)
-
-    ic("unsupported tool", tool_name)
-    return ToolMessage(
-        tool_call_id=tool_call["id"],
-        content="tell user tool call failed",
-    )
-
-
-@app.command()
-def tony():
-    """Talk to Toni"""
-
-    # from langchain.chat_models import init_chat_model
-    # model = init_chat_model(model_name).
-    ic("v0.01")
-    ic("++init model")
-    model = ChatOpenAI(model="gpt-4o").bind_tools(
-        [journal_append, journal_read, search]
-    )
-    ic("--init model")
-
-    ic("++assistant.api")
-    payload = {"ignored": "ignored"}
-    url_tony = "https://idvorkin--modal-tony-server-assistant.modal.run"
-    ic(url_tony)
-    tony_response = requests.post(url_tony, json=payload).json()
-    model_name = tony_response["assistant"]["model"]["model"]
-    ic(model_name)
-    ic("--assistant.api")
-
-    memory = ChatMessageHistory()
-
-    # TODO build a program to parse this out
-    system_message_content = tony_response["assistant"]["model"]["messages"][0][
-        "content"
-    ]
-    memory.add_message(SystemMessage(content=system_message_content))
-
-    while True:
-        is_last_message_tool_response = isinstance(memory.messages[-1], ToolMessage)
-
-        if not is_last_message_tool_response:
-            # if there's a tool response, we need to call the model again
-            user_input = input("Igor:")
-            if user_input == "debug":
-                ic(model_name)
-                continue
-            memory.add_user_message(message=user_input)
-            # ic(custom_instructions)
-
-        prompt = ChatPromptTemplate.from_messages(memory.messages)
-        chain = prompt | model
-        llm_result: AIMessage = chain.invoke({})  # type: AIMessage
-        memory.add_ai_message(llm_result)
-        tool_respone = process_tool_calls(llm_result)
-        if tool_respone:
-            memory.add_message(tool_respone)
-            prompt = ChatPromptTemplate.from_messages(memory.messages)
-            chain = prompt | model
-            llm_result: AIMessage = chain.invoke({})  # type: AIMessage
-            memory.add_ai_message(llm_result)
-
-        print(f"[yellow]Tony:{llm_result.content}")
 
 
 @app.command()
