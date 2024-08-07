@@ -4,8 +4,8 @@ import os
 
 import typer
 from icecream import ic
+from langchain_helper import get_model, get_model_name
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_openai.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage, AIMessage, ToolMessage
 from loguru import logger
@@ -88,11 +88,10 @@ def tony():
 
     # from langchain.chat_models import init_chat_model
     # model = init_chat_model(model_name).
-    ic("v0.02")
+    ic("v0.03")
     ic("++init model")
-    model = ChatOpenAI(model="gpt-4o").bind_tools(
-        [journal_append, journal_read, search]
-    )
+    model = get_model(openai=True).bind_tools([journal_append, journal_read, search])
+    ic(get_model_name(model))
     ic("--init model")
 
     ic("++assistant.api")
