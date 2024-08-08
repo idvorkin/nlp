@@ -82,8 +82,16 @@ def process_tool_calls(llm_result):
     )
 
 
+def get_tony_server_url(dev_server: bool) -> str:
+    """Select the appropriate server URL based on the dev_server flag."""
+    if dev_server:
+        return "https://idvorkin--modal-tony-server-assistant-dev.modal.run"
+    else:
+        return "https://idvorkin--modal-tony-server-assistant.modal.run"
+
+
 @app.command()
-def tony():
+def tony(dev_server: bool = False):
     """Talk to Toni"""
 
     # from langchain.chat_models import init_chat_model
@@ -96,17 +104,21 @@ def tony():
 
     ic("++assistant.api")
     payload = {"ignored": "ignored"}
-    url_tony = "https://idvorkin--modal-tony-server-assistant.modal.run"
+    url_tony = get_tony_server_url(dev_server)
     ic(url_tony)
-    tony_response = requests.post(url_tony, json=payload).json()
-    model_name = tony_response["assistant"]["model"]["model"]
-    ic(model_name)
+    tony_response = requests.post(url_tony, json=payload)
+    if tony_response.status_code != 200:
+        ic(tony_response)
+        return
+
+    model_from_assistant = tony_response.json()["assistant"]["model"]["model"]
+    ic(model_from_assistant)
     ic("--assistant.api")
 
     memory = ChatMessageHistory()
 
     # TODO build a program to parse this out
-    system_message_content = tony_response["assistant"]["model"]["messages"][0][
+    system_message_content = tony_response.json()["assistant"]["model"]["messages"][0][
         "content"
     ]
     memory.add_message(SystemMessage(content=system_message_content))
@@ -118,7 +130,7 @@ def tony():
             # if there's a tool response, we need to call the model again
             user_input = input("Igor:")
             if user_input == "debug":
-                ic(model_name)
+                ic(model_from_assistant)
                 continue
             if user_input == "search":
                 ic("hardcode test")
