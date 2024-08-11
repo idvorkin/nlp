@@ -1,7 +1,6 @@
 #!python3
 
 
-
 import typer
 
 from loguru import logger
@@ -12,7 +11,7 @@ import os
 
 GROUNDX_API_KEY = os.getenv("GROUNDX_API_KEY")
 IGOR_BLOG_BUCKET = 8545
-groundx = Groundx( api_key=GROUNDX_API_KEY)
+groundx = Groundx(api_key=GROUNDX_API_KEY)
 
 console = Console()
 app = typer.Typer()
@@ -23,10 +22,8 @@ def app_wrap_loguru():
     app()
 
 
-
 @app.command()
-def ask(question:str):
-
+def ask(question: str):
     result = groundx.search.content(
         id=IGOR_BLOG_BUCKET,
         n=10,
@@ -35,28 +32,22 @@ def ask(question:str):
     llmText = result.body["search"]["text"]
     print(llmText)
 
+
 @app.command()
 def load_blog():
-    import os
-
-
     response = groundx.documents.crawl_website(
-            websites=[
-                {
-                    "bucketId": IGOR_BLOG_BUCKET,
-                    "cap": 500,
+        websites=[
+            {
+                "bucketId": IGOR_BLOG_BUCKET,
+                "cap": 500,
                 "depth": 5,
-                    "searchData": {
-                        "key": "value"
-                        },
-                    # "sourceUrl": "https://idvork.in/all.html"
-                     "sourceUrl": "https://idvork.in/manager-book"
-                    }
-                ]
-            )
+                "searchData": {"key": "value"},
+                # "sourceUrl": "https://idvork.in/all.html"
+                "sourceUrl": "https://idvork.in/manager-book",
+            }
+        ]
+    )
     ic(response)
-
-
 
 
 if __name__ == "__main__":
