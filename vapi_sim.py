@@ -24,21 +24,21 @@ app = typer.Typer()
 @tool
 def journal_append(content):
     """Append content to the journal"""
-    return str(make_vapi_call("journal-append", content=content))
+    return str(call_tony_server_as_vapi("journal-append", content=content))
 
 
 @tool
 def journal_read(date):
     """Read  the journal"""
-    return str(make_vapi_call("journal-read", date=date))
+    return str(call_tony_server_as_vapi("journal-read", date=date))
 
 
 def auth_headers():
     return {"x-vapi-secret": os.getenv("TONY_API_KEY")}
 
 
-def make_vapi_call(api, **kwargs):
-    """Search the web"""
+def call_tony_server_as_vapi(api, **kwargs):
+    """Call the Tony server as it would be called by VAPI"""
     # url = f"https://idvorkin--modal-tony-server-{api}.modal.run"
     url = f"https://idvorkin--modal-tony-server-{api}.modal.run"
     response = requests.post(url, json=kwargs, headers=auth_headers()).json()
@@ -48,7 +48,7 @@ def make_vapi_call(api, **kwargs):
 @tool
 def search(question):
     """Search the web"""
-    return make_vapi_call("search", question=question)
+    return call_tony_server_as_vapi("search", question=question)
 
 
 def process_tool_calls(llm_result):
