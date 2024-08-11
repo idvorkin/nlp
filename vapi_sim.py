@@ -101,7 +101,7 @@ def tony(dev_server: bool = False):
     ic("v0.03")
     ic("++init model")
     model = get_model(openai=True).bind_tools([journal_append, journal_read, search])
-    ic(get_model_name(model))
+    ic(get_model_name(model)) #type: ignore
     ic("--init model")
 
     ic("++assistant.api")
@@ -142,14 +142,14 @@ def tony(dev_server: bool = False):
 
         prompt = ChatPromptTemplate.from_messages(memory.messages)
         chain = prompt | model
-        llm_result: AIMessage = chain.invoke({})  # type: AIMessage
+        llm_result: AIMessage = chain.invoke({})  # type: ignore
         memory.add_ai_message(llm_result)
         tool_respone = process_tool_calls(llm_result)
         if tool_respone:
             memory.add_message(tool_respone)
             prompt = ChatPromptTemplate.from_messages(memory.messages)
             chain = prompt | model
-            llm_result: AIMessage = chain.invoke({})  # type: AIMessage
+            llm_result: AIMessage = chain.invoke({})  # type: ignore
             memory.add_ai_message(llm_result)
 
         print(f"[yellow]Tony:{llm_result.content}")
