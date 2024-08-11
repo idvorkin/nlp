@@ -15,6 +15,8 @@ import requests
 from langchain_core.tools import tool
 
 
+DEFAULT_SEARCH_QUERY = "What's the weather in moscow"
+
 console = Console()
 app = typer.Typer()
 
@@ -134,7 +136,7 @@ def tony(dev_server: bool = False):
                 continue
             if user_input == "search":
                 ic("hardcode test")
-                user_input = "What's  the weather in moscow"
+                user_input = DEFAULT_SEARCH_QUERY
             memory.add_user_message(message=user_input)
             # ic(custom_instructions)
 
