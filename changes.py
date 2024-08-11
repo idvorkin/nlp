@@ -247,6 +247,10 @@ A summary of the higher level changes/intent of changes across all the files (e.
     * It should be divided by logical changes, not physical files.
     * Changes refererring to files should have clickable link to the lower section.
     * It should be ordered by importance
+
+
+When summarizing, if working on a cli tool and it gets new commands. Be sure to include those at the top.
+
 </summary_instructions>
 
 <summary_example>
@@ -351,6 +355,7 @@ def create_markdown_table_of_contents(markdown_headers):
 
 async def achanges(llm: BaseChatModel, before, after, gist):
     # time the task
+    ic("v 0.0.1")
     start = datetime.now()
     repo_url, repo_name = get_repo_path()
 
