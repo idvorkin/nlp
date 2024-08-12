@@ -831,9 +831,26 @@ def json2py(
 ):
     process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
-    system_prompt = """You are an advanced AI coding machine.
+    system_prompt = """You are an expert coder and API reader.
 
-Take the following json blob, and use it to generate pydantic models that can be copied into a python program that will parse the json into the models, nest all the models in a parent class so we only have one parent class called JsonSpec. Don't include the imports, or usage information - just the models.
+Take the following json output, and use it to generate pydantic models that can be copied into a python program that will parse the json into the models.
+
+* Don't include the imports, or usage information - just the models,
+* I want to copy them to the cliopboard then into my program
+* When typing, we're on python 3.12 so when there is alternative spellign to importing typing, do it.
+* Have the parent class be called JsonResponse, and for any classes that it references, make them nested classes (instead of top level)
+* Start by listing all the clases, then define the resposne on the bottom.
+* Set it up so there are no backwards references using strings
+
+class JsonResonse:
+    class Inner1:
+        foo:int
+    class Inner2:
+        foo:int
+    Foo1:Inner1
+    Foo2:Inner2
+
+
 
     """
     gpt_start_with = ""
