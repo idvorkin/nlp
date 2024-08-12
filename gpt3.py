@@ -842,11 +842,15 @@ Take the following json output, and use it to generate pydantic models that can 
 * Start by listing all the clases, then define the resposne on the bottom.
 * Set it up so there are no backwards references using strings
 * Assume I've imported annotations, so I can use forward references for the inner classes.
+* Start with the follwoing comment line -  generated via gpt.py2json (https://tinyurl.com/23dl535z)
 
-class JsonResonse:
-    class Inner1:
+E.g.
+
+# generated via gpt.py2json (https://tinyurl.com/23dl535z)
+class JsonResonse(BaseModel):
+    class Inner1(BaseModel):
         foo:int
-    class Inner2:
+    class Inner2(BaseModel):
         foo:int
     Foo1:JsonResponse.Inner1
     Foo2:JsonResponse.Inner2
