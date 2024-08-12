@@ -836,21 +836,20 @@ def json2py(
 Take the following json output, and use it to generate pydantic models that can be copied into a python program that will parse the json into the models.
 
 * Don't include the imports, or usage information - just the models,
-* I want to copy them to the cliopboard then into my program
+* I want to copy them to the cliopboard then into my program, so do not wrap in markdown, just valid code
 * When typing, we're on python 3.12 so when there is alternative spellign to importing typing, do it.
 * Have the parent class be called JsonResponse, and for any classes that it references, make them nested classes (instead of top level)
 * Start by listing all the clases, then define the resposne on the bottom.
 * Set it up so there are no backwards references using strings
+* Assume I've imported annotations, so I can use forward references for the inner classes.
 
 class JsonResonse:
     class Inner1:
         foo:int
     class Inner2:
         foo:int
-    Foo1:Inner1
-    Foo2:Inner2
-
-
+    Foo1:JsonResponse.Inner1
+    Foo2:JsonResponse.Inner2
 
     """
     gpt_start_with = ""
