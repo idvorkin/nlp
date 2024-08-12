@@ -821,6 +821,28 @@ Inline File:
 
 
 @app.command()
+def json2py(
+    ctx: typer.Context,
+    tokens: int = typer.Option(0),
+    debug: bool = typer.Option(1),
+    responses: int = typer.Option(1),
+    to_fzf: bool = typer.Option(False),
+    u4: bool = typer.Option(True),
+):
+    process_shared_app_options(ctx)
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    system_prompt = """You are an advanced AI coding machine.
+
+Take the following json blob, and use it to generate pydantic models that can be copied into a python program that will parse the json into the models, nest all the models in a parent class so we only have one parent class called JsonSpec. Don't include the imports, or usage information - just the models.
+
+    """
+    gpt_start_with = ""
+    prompt = f"""{user_text}"""
+    prompt_to_gpt = remove_trailing_spaces(prompt)
+    base_query_from_dict(locals())
+
+
+@app.command()
 def transcribe(
     ctx: typer.Context,
     file_path: str,
