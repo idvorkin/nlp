@@ -846,7 +846,7 @@ Take the following json output, and use it to generate pydantic models that can 
 
 E.g.
 
-# generated via gpt.py2json (https://tinyurl.com/23dl535z)
+# generated via [gpt.py2json](https://tinyurl.com/2akgj4vx)
 class JsonResonse(BaseModel):
     class Inner1(BaseModel):
         foo:int
