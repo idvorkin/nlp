@@ -35,7 +35,9 @@ dependencies = [
     "fastapi",
     "chromadb",
     "beautifulsoup4",
-    "azure-cosmos"
+    "azure-cosmos",
+    "torch",
+    "jupyterlab"
 ]
 
 [tool.setuptools]
