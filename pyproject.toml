@@ -37,7 +37,8 @@ dependencies = [
     "beautifulsoup4",
     "azure-cosmos",
     "torch",
-    "jupyterlab"
+    "jupyterlab",
+    "jupyterlab-lsp"
 ]
 
 [tool.setuptools]
