@@ -39,7 +39,8 @@ dependencies = [
     "torch",
     "jupyterlab",
     "jupyterlab-lsp",
-    "jupyter_contrib_nbextensions"
+    "jupyter_contrib_nbextensions",
+    "nbdime"
 ]
 
 [tool.setuptools]
