@@ -38,7 +38,8 @@ dependencies = [
     "azure-cosmos",
     "torch",
     "jupyterlab",
-    "jupyterlab-lsp"
+    "jupyterlab-lsp",
+    "jupyter_contrib_nbextensions"
 ]
 
 [tool.setuptools]
