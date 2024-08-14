@@ -40,7 +40,8 @@ dependencies = [
     "jupyterlab>=4.2",
     "jupyterlab-lsp",
     "jupyter_contrib_nbextensions",
-    "nbdime"
+    "nbdime",
+    "pytest"
 ]
 
 [tool.setuptools]
