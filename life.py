@@ -307,15 +307,15 @@ class CategorySummary(BaseModel):
 
 
 class Recommendation(BaseModel):
+    ReasonIncluded: str
     ThingToDoDifferently: str
     ReframeToTellYourself: str
     PromptToUseDuringReflection: str
-    ReasonIncluded: str
 
 
 class AssessmentWithReason(BaseModel):
-    scale_1_to_10: int  # Todo see if can move scale to type annotation (condint
     reasoning_for_assessment: str
+    scale_1_to_10: int  # Todo see if can move scale to type annotation (condint
 
 
 class Causes(BaseModel):
@@ -335,10 +335,10 @@ class GetPychiatristReport(BaseModel):
     PostiveEmotionCause: List[Causes]
     NegativeEmotionCause: List[Causes]
     Satisfication: AssessmentWithReason
+    CategorySummaries: List[CategorySummary]
     PromptsForCognativeReframes: List[str]
     PeopleInEntry: List[Person]
     Recommendations: List[Recommendation]
-    CategorySummaries: List[CategorySummary]
 
     @validator("Date", pre="True")
     @classmethod
