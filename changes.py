@@ -64,10 +64,6 @@ def is_skip_file(file):
     if file.endswith(".js.map"):
         ic("Skip mapping files")
         return True
-
-    if file.endswith("ipynb"):
-        ic("ipynb not supported yet")
-        return True
     if file.endswith("pdf"):
         ic("ipynb not supported yet")
         return True
@@ -115,12 +111,12 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash) -> Tuple[str,
         stderr=subprocess.PIPE,
     )
     stdout_diff, _ = await diff_process.communicate()
-    
+
     diff_content = stdout_diff.decode()
-    
+
     if len(diff_content) > 30_000:
         return file, f"Diff skipped: size exceeds 30,000 characters (actual size: {len(diff_content)} characters)"
-    
+
     return file, diff_content
 
 
