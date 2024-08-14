@@ -97,6 +97,7 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash) -> Tuple[str,
     """
     Asynchronously get the diff for a file, including the begin and end revision,
     and perform string parsing in Python to avoid using shell-specific commands.
+    Skip diffs larger than 100,000 characters.
     """
     if not Path(file).exists():
         ic(f"File {file} does not exist or has been deleted.")
@@ -114,8 +115,13 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash) -> Tuple[str,
         stderr=subprocess.PIPE,
     )
     stdout_diff, _ = await diff_process.communicate()
-
-    return file, stdout_diff.decode()
+    
+    diff_content = stdout_diff.decode()
+    
+    if len(diff_content) > 30_000:
+        return file, f"Diff skipped: size exceeds 30,000 characters (actual size: {len(diff_content)} characters)"
+    
+    return file, diff_content
 
 
 def tomorrow():
