@@ -64,8 +64,8 @@ def is_skip_file(file):
     if file.endswith(".js.map"):
         ic("Skip mapping files")
         return True
-    if file.endswith("pdf"):
-        ic("ipynb not supported yet")
+    if file.endswith(".ipynb"):
+        ic("Jupyter Notebook files not supported yet")
         return True
     if file == "back-links.json":
         return True
