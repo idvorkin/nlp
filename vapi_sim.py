@@ -55,13 +55,10 @@ def process_tool_calls(llm_result):
     if len(llm_result.tool_calls) == 0:
         return None
 
-    tool_calls = llm_result.tool_calls
-    if len(tool_calls) > 1:
-        assert len(tool_calls) == 1
-        ic(tool_calls)
+    return [process_tool_call(tool_call) for tool_call in llm_result.tool_calls]
 
-    tool_call = llm_result.tool_calls[0]
-    ic(tool_call)
+
+def process_tool_call(tool_call: dict):
     tool_name = tool_call["name"]
     args = tool_call["args"]
     if tool_name == "search":
@@ -101,7 +98,7 @@ def tony(dev_server: bool = False):
     ic("v0.03")
     ic("++init model")
     model = get_model(openai=True).bind_tools([journal_append, journal_read, search])
-    ic(get_model_name(model)) #type: ignore
+    ic(get_model_name(model))  # type: ignore
     ic("--init model")
 
     ic("++assistant.api")
@@ -144,9 +141,8 @@ def tony(dev_server: bool = False):
         chain = prompt | model
         llm_result: AIMessage = chain.invoke({})  # type: ignore
         memory.add_ai_message(llm_result)
-        tool_respone = process_tool_calls(llm_result)
-        if tool_respone:
-            memory.add_message(tool_respone)
+        if tool_responses := process_tool_calls(llm_result):
+            memory.add_messages(tool_responses)
             prompt = ChatPromptTemplate.from_messages(memory.messages)
             chain = prompt | model
             llm_result: AIMessage = chain.invoke({})  # type: ignore
