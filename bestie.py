@@ -36,7 +36,7 @@ path_latest_state = temp_dir / "latest_state.txt"
 
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 @app.command()

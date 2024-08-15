@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import typer
 from loguru import logger
 
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 # Open all md files
 # read till hit line grateful

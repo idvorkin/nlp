@@ -139,7 +139,7 @@ Current Chat History:
     await send(ctx, debug_out)
 
 
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 @app.command()

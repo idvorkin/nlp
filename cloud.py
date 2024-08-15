@@ -6,7 +6,7 @@ from icecream import ic
 from wordcloud import WordCloud
 import langchain_helper
 
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 @app.command()

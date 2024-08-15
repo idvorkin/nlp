@@ -25,7 +25,7 @@ from pathlib import Path
 import langchain_helper
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 class Diff(BaseModel):

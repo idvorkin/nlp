@@ -34,7 +34,7 @@ setup_secret()
 
 console = Console()
 
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 openai_wrapper.setup_secret()
 model = ChatOpenAI(temperature=1.0, model=openai_wrapper.gpt4.name)

@@ -53,7 +53,7 @@ def bold_console(s):
 
 client = setup_gpt()
 gpt_model = setup_gpt()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 # Todo consider converting to a class

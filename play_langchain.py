@@ -16,7 +16,7 @@ from rich import print
 from rich.console import Console
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 def process_shared_app_options(ctx: typer.Context):

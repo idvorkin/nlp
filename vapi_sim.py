@@ -18,7 +18,7 @@ from langchain_core.tools import StructuredTool, tool
 DEFAULT_SEARCH_QUERY = "What's the weather in moscow"
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 @tool

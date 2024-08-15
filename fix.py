@@ -16,7 +16,7 @@ from icecream import ic
 import openai_wrapper
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 @logger.catch()

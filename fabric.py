@@ -29,7 +29,7 @@ def prompt_think_about_document(document, prompt):
 
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 async def a_fabric(

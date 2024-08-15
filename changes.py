@@ -25,7 +25,7 @@ from pathlib import Path
 import langchain_helper
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 class Diff(BaseModel):
@@ -115,7 +115,10 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash) -> Tuple[str,
     diff_content = stdout_diff.decode()
 
     if len(diff_content) > 30_000:
-        return file, f"Diff skipped: size exceeds 30,000 characters (actual size: {len(diff_content)} characters)"
+        return (
+            file,
+            f"Diff skipped: size exceeds 30,000 characters (actual size: {len(diff_content)} characters)",
+        )
 
     return file, diff_content
 

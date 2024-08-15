@@ -75,7 +75,7 @@ async def a_build_commit():
 
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 @logger.catch()

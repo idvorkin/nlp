@@ -63,7 +63,7 @@ is_from_console = False
 
 
 gpt_model = setup_gpt()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 # Todo consider converting to a class

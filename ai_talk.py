@@ -25,7 +25,7 @@ from rich.console import Console
 from typing_extensions import Annotated
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 def model_to_function(cls):

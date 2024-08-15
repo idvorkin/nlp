@@ -35,7 +35,7 @@ def keep_pipe_alive_on_control_c(sig, frame):
 # Load your API key from an environment variable or secret management service
 
 gpt_model = setup_gpt()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 def ask_gpt(

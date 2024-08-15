@@ -238,7 +238,7 @@ async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
 
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 @app.command()

@@ -2,10 +2,8 @@
 
 
 from pathlib import Path
-from typing import List
 
 from langchain_core import messages
-from langchain_core.language_models import BaseChatModel
 
 import typer
 from langchain.prompts import ChatPromptTemplate
@@ -17,7 +15,7 @@ import langchain_helper
 from icecream import ic
 
 
-def prompt_patch_in_document(source_path:Path, base_artifcat, to_merge):
+def prompt_patch_in_document(source_path: Path, base_artifcat, to_merge):
     instructions = f"""
 You are a brilliant writer, and help users merge content into their blog posts. Below is the base document
 
@@ -40,33 +38,32 @@ Be intelligent in the merge, adding the content to the correct locations
     )
 
 
-
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 @app.command()
 def merge(
-    source: Path = typer.Argument(help="Source File"), # Source File
-    merge_path: Path = typer.Argument(None, help="content to merge, path or stdin"), # File to merge
+    source: Path = typer.Argument(help="Source File"),  # Source File
+    merge_path: Path = typer.Argument(
+        None, help="content to merge, path or stdin"
+    ),  # File to merge
 ):
-
     from langchain.schema.output_parser import StrOutputParser
+
     llm = langchain_helper.get_model(openai=True)
     merge_text = langchain_helper.get_text_from_path_or_stdin(merge_path)
     prompt = prompt_patch_in_document(source, Path(source).read_text(), merge_text)
-    patch_chain =  prompt | llm | StrOutputParser()
+    patch_chain = prompt | llm | StrOutputParser()
 
     patch = patch_chain.invoke({})
-    patch_file_path="merge.patch"
+    patch_file_path = "merge.patch"
     Path(patch_file_path).write_text(patch)
     print(patch)
     ic(patch_file_path)
 
     """ Create a diff of merge_path to source"""
     return
-
-
 
 
 @logger.catch()

@@ -14,7 +14,7 @@ IGOR_BLOG_BUCKET = 8545
 groundx = Groundx(api_key=GROUNDX_API_KEY)
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 @logger.catch()

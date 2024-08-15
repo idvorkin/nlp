@@ -16,7 +16,7 @@ import time
 
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 def setup_secret():
@@ -52,7 +52,7 @@ def say(
     voice: Annotated[
         str, typer.Option(help=f"Model any of: {list_of_voices}")
     ] = "igor",
-    fast:bool =True,
+    fast: bool = True,
     copy: bool = False,
     outfile: Optional[Path] = None,
     speak: bool = True,
