@@ -7,12 +7,12 @@ from icecream import ic
 from langchain_helper import get_model, get_model_name
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain.prompts import ChatPromptTemplate
-from langchain_core.messages import SystemMessage, AIMessage, ToolMessage
+from langchain_core.messages import SystemMessage, ToolMessage
 from loguru import logger
 from rich import print
 from rich.console import Console
 import requests
-from langchain_core.tools import tool
+from langchain_core.tools import StructuredTool, tool
 
 
 DEFAULT_SEARCH_QUERY = "What's the weather in moscow"
@@ -24,25 +24,13 @@ app = typer.Typer()
 @tool
 def journal_append(content):
     """Append content to the journal"""
-    return str(call_tony_server_as_vapi("journal-append", content=content))
+    return call_tony_server_as_vapi("journal-append", content=content)
 
 
 @tool
 def journal_read(date):
     """Read  the journal"""
-    return str(call_tony_server_as_vapi("journal-read", date=date))
-
-
-def auth_headers():
-    return {"x-vapi-secret": os.getenv("TONY_API_KEY")}
-
-
-def call_tony_server_as_vapi(api, **kwargs):
-    """Call the Tony server as it would be called by VAPI"""
-    # url = f"https://idvorkin--modal-tony-server-{api}.modal.run"
-    url = f"https://idvorkin--modal-tony-server-{api}.modal.run"
-    response = requests.post(url, json=kwargs, headers=auth_headers()).json()
-    return str(response)
+    return call_tony_server_as_vapi("journal-read", date=date)
 
 
 @tool
@@ -51,34 +39,38 @@ def search(question):
     return call_tony_server_as_vapi("search", question=question)
 
 
-def process_tool_calls(llm_result):
-    if len(llm_result.tool_calls) == 0:
-        return None
+def call_tony_server_as_vapi(api, **kwargs):
+    """Call the Tony server as it would be called by VAPI"""
 
-    return [process_tool_call(tool_call) for tool_call in llm_result.tool_calls]
+    auth_headers = {"x-vapi-secret": os.getenv("TONY_API_KEY")}
+    # url = f"https://idvorkin--modal-tony-server-{api}.modal.run"
+    url = f"https://idvorkin--modal-tony-server-{api}.modal.run"
+    response = requests.post(url, json=kwargs, headers=auth_headers).json()
+    return str(response)
 
 
-def process_tool_call(tool_call: dict):
+def process_tool_calls(llm_result) -> list[ToolMessage]:
+    TONY_TOOLS_STRUCTURED_HACK: list[StructuredTool] = TONY_TOOLS  # type:ignore - TONY_TOOLS are actually StructuredTools once wrapped
+    return [
+        process_tool_call(TONY_TOOLS_STRUCTURED_HACK, tool_call)
+        for tool_call in llm_result.tool_calls
+    ]
+
+
+TONY_TOOLS = [journal_append, journal_read, search]
+
+
+# TODO: Consider transforming this into a nice lookup table
+def process_tool_call(tools: list[StructuredTool], tool_call: dict):
     tool_name = tool_call["name"]
-    args = tool_call["args"]
-    if tool_name == "search":
-        search_result = search(args["question"])
-        ic(search_result)
-        return ToolMessage(tool_call_id=tool_call["id"], content=str(search_result))
+    get_name = lambda t: t.func.__name__ if t.func else "unknown"  # noqa - all functions should be valid
 
-    if tool_name == "journal_append":
-        journal_append(args["content"])
-        return ToolMessage(tool_call_id=tool_call["id"], content="")
-
-    if tool_name == "journal_read":
-        daily_log_content = journal_read(args["date"])
-        return ToolMessage(tool_call_id=tool_call["id"], content=daily_log_content)
-
-    ic("unsupported tool", tool_name)
-    return ToolMessage(
-        tool_call_id=tool_call["id"],
-        content="tell user tool call failed",
-    )
+    # find the function in tony's too list
+    tool = [t.func for t in tools if get_name == tool_name][0]
+    assert tool  # there needs to be a matching tool
+    ic(tool_call["args"])
+    tool_ret = tool(**tool_call["args"])
+    return ToolMessage(tool_call_id=tool_call["id"], content=tool_ret)
 
 
 def get_tony_server_url(dev_server: bool) -> str:
@@ -97,7 +89,7 @@ def tony(dev_server: bool = False):
     # model = init_chat_model(model_name).
     ic("v0.03")
     ic("++init model")
-    model = get_model(openai=True).bind_tools([journal_append, journal_read, search])
+    model = get_model(openai=True).bind_tools(TONY_TOOLS)
     ic(get_model_name(model))  # type: ignore
     ic("--init model")
 
@@ -139,14 +131,15 @@ def tony(dev_server: bool = False):
 
         prompt = ChatPromptTemplate.from_messages(memory.messages)
         chain = prompt | model
-        llm_result: AIMessage = chain.invoke({})  # type: ignore
-        memory.add_ai_message(llm_result)
-        if tool_responses := process_tool_calls(llm_result):
+        llm_result = chain.invoke({})  # type: ignore
+        memory.add_message(llm_result)
+        tool_responses = process_tool_calls(llm_result)
+        if len(tool_responses):
             memory.add_messages(tool_responses)
             prompt = ChatPromptTemplate.from_messages(memory.messages)
             chain = prompt | model
-            llm_result: AIMessage = chain.invoke({})  # type: ignore
-            memory.add_ai_message(llm_result)
+            llm_result = chain.invoke({})  # type: ignore
+            memory.add_message(llm_result)
 
         print(f"[yellow]Tony:{llm_result.content}")
 
