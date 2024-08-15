@@ -41,7 +41,8 @@ dependencies = [
     "jupyterlab-lsp",
     "jupyter_contrib_nbextensions",
     "nbdime",
-    "pytest"
+    "pytest",
+    "matplotlib"
 ]
 
 [tool.setuptools]
