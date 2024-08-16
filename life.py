@@ -553,8 +553,10 @@ async def async_journal_for_year():
 
 async def async_journal_report(journal_for, launch_fx, days):
     # Get my closest journal for the day:
+
+    # ij is the name for Igor Journal
     completed_process = subprocess.run(
-        f"python3 ~/gits/nlp/igor_journal.py body {journal_for} --close --days={days}",
+        f"ij body {journal_for} --close --days={days}",
         shell=True,
         check=True,
         text=True,
