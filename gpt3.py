@@ -743,6 +743,49 @@ A sentence should not be more then 30 words, and a paragraph should not be more 
         base_query_from_dict(locals())
         print("----")
 
+@app.command()
+def captions_fix(
+    ctx: typer.Context,
+    tokens: int = typer.Option(0),
+    debug: bool = typer.Option(1),
+    responses: int = typer.Option(1),
+    to_fzf: bool = typer.Option(False),
+    u4: bool = typer.Option(True),
+):
+    process_shared_app_options(ctx)
+    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+    system_prompt = """
+You are an  AI expert at fixing up captions files.
+
+Given this transcript, suggest where to make chapter summaries for the Youtube description. Only include mm:ss
+
+E.g.
+
+<captions>
+
+00:00 My description here
+00:10 My second description here
+
+</captions>
+
+If there are words you're having trouble with list them out
+
+<trouble_words>
+AED - From context hard to know what this is
+</trouble_words>
+
+Also, what's a good pithy title, give me 5 choices.
+
+<titles>
+1: Title 1
+2: Title 2
+</Titles>
+
+    """
+    gpt_start_with = ""
+    prompt = f"""{user_text}"""
+    prompt_to_gpt = remove_trailing_spaces(prompt)
+    base_query_from_dict(locals())
 
 @app.command()
 def fix(
