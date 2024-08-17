@@ -763,12 +763,14 @@ E.g.
 
 <captions>
 
-00:00 My description here
-00:10 My second description here
+Updated captions file with fixes
 
 </captions>
 
-If there are words you're having trouble with list them out
+<chapters>
+00:00 My description here
+00:10 My second description here
+<chapters>
 
 <trouble_words>
 AED - From context hard to know what this is
