@@ -301,9 +301,13 @@ class CategorySummary(BaseModel):
     @field_validator("TheCategory", mode="before")
     @classmethod
     def parse_category(cls, value):
-        if value in Category.__members__:
-            return Category(value)
-        return Category("unknown")
+        # Check if value is one of the enum's values
+        for member in Category:
+            if member.value == value:
+                return member
+        # If not found, use ic to debug and return Unknown
+        ic(value)
+        return Category.Unknown
 
 
 class Recommendation(BaseModel):
