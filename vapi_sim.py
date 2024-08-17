@@ -66,7 +66,7 @@ def process_tool_call(tools: list[StructuredTool], tool_call: dict):
     get_name = lambda t: t.func.__name__ if t.func else "unknown"  # noqa - all functions should be valid
 
     # find the function in tony's too list
-    tool = [t.func for t in tools if get_name == tool_name][0]
+    tool = [t.func for t in tools if get_name(t) == tool_name][0]
     assert tool  # there needs to be a matching tool
     ic(tool_call["args"])
     tool_ret = tool(**tool_call["args"])
