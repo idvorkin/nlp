@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Annotated, Dict, List
 
-from langchain_core.pydantic_v1 import BaseModel, validator, ValidationError
+from pydantic import BaseModel, field_validator, ValidationError
 
 # from pydantic import BaseModel, field_validator
 import typer
@@ -298,7 +298,7 @@ class CategorySummary(BaseModel):
     TheCategory: Category
     Observations: List[str]
 
-    @validator("TheCategory", pre="True")
+    @field_validator("TheCategory", mode="before")
     @classmethod
     def parse_category(cls, value):
         if value in Category.__members__:
@@ -340,7 +340,7 @@ class GetPychiatristReport(BaseModel):
     PeopleInEntry: List[Person]
     Recommendations: List[Recommendation]
 
-    @validator("Date", pre="True")
+    @field_validator("Date", mode="before")
     @classmethod
     def parse_date(cls, value):
         date_formats = [
@@ -502,7 +502,7 @@ def get_reports():
             if "CategorySummaries" not in json_report:
                 json_report["CategorySummaries"] = []
             # report = GetPychiatristReport.model_validate(json_report)
-            report = GetPychiatristReport.parse_obj(json_report)
+            report = GetPychiatristReport.model_validate(json_report)
             reports += [report]
         except ValidationError as ve:
             ic(f"Validation Error {path_report}")
@@ -604,14 +604,14 @@ You task it to write a report based on the journal entry that is going to be pas
     # should now be done!
     pych_report: GetPychiatristReport = await do_invoke  # noqa
     (Path.home() / "tmp/journal_report/latest.json").write_text(
-        pych_report.json(indent=2)
+        pych_report.model_dump_json(indent=2)
     )
 
     report_date = pych_report.Date.strftime("%Y-%m-%d")
 
     perma_path = journal_report_path(report_date, model=model_name)
-    (Path.home() / perma_path).write_text(pych_report.json(indent=2))
-    print(pych_report.json())
+    (Path.home() / perma_path).write_text(pych_report.model_dump_json(indent=2))
+    print(pych_report.model_dump_json())
     print(perma_path)
 
     total = time.time() - start
