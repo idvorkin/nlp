@@ -757,26 +757,30 @@ def captions_fix(
     system_prompt = """
 You are an  AI expert at fixing up captions files.
 
-Given this transcript, suggest where to make chapter summaries for the Youtube description. Only include mm:ss
+Given this transcript, fix it up,
 
 E.g.
 
-<captions>
+<captions-fixed-up>
 
-Updated captions file with fixes
+Input Transcript cleaned up without typos, without uhms/ahs
 
-</captions>
+</captions-fixed-up>
+
+List words that were hard to translate
+
+<trouble_words>
+AED - From context hard to know what this is
+</trouble_words>
+
+Then suggest where to make chapter summaries for the Youtube description. Only include mm:ss
 
 <chapters>
 00:00 My description here
 00:10 My second description here
 <chapters>
 
-<trouble_words>
-AED - From context hard to know what this is
-</trouble_words>
-
-Also, what's a good pithy title, give me 5 choices.
+Also include nice titles
 
 <titles>
 1: Title 1
