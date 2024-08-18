@@ -23,6 +23,8 @@ from rich import print
 from rich.console import Console
 from pathlib import Path
 import langchain_helper
+from contextlib import contextmanager
+import os
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
@@ -134,6 +136,7 @@ def tomorrow():
 
 @app.command()
 def changes(
+    directory: Path = Path("."),
     before=tomorrow(),
     after="7 days ago",
     trace: bool = False,
@@ -147,19 +150,20 @@ def changes(
         openai=openai, google=google, claude=claude, llama=llama
     )
     achanges_params = llm, before, after, gist
-    if not trace:
-        asyncio.run(achanges(*achanges_params))
-        return
+    with DirectoryContext(directory):
+        if not trace:
+            asyncio.run(achanges(*achanges_params))
+            return
 
-    from langchain_core.tracers.context import tracing_v2_enabled
-    from langchain.callbacks.tracers.langchain import wait_for_all_tracers
+        from langchain_core.tracers.context import tracing_v2_enabled
+        from langchain.callbacks.tracers.langchain import wait_for_all_tracers
 
-    trace_name = openai_wrapper.tracer_project_name()
-    with tracing_v2_enabled(project_name=trace_name) as tracer:
-        ic("Using Langsmith:", trace_name)
-        asyncio.run(achanges(*achanges_params))  # don't forget the second run
-        ic(tracer.get_run_url())
-    wait_for_all_tracers()
+        trace_name = openai_wrapper.tracer_project_name()
+        with tracing_v2_enabled(project_name=trace_name) as tracer:
+            ic("Using Langsmith:", trace_name)
+            asyncio.run(achanges(*achanges_params))  # don't forget the second run
+            ic(tracer.get_run_url())
+        wait_for_all_tracers()
 
 
 async def first_last_commit(before: str, after: str) -> Tuple[str, str]:
@@ -358,9 +362,23 @@ def create_markdown_table_of_contents(markdown_headers):
     )
 
 
+@contextmanager
+def DirectoryContext(directory: Path):
+    original_directory = Path.cwd()
+    try:
+        if directory != ".":
+            directory = Path(directory)
+            if not directory.exists():
+                print(f"Directory {directory} does not exist.")
+                return
+            os.chdir(directory)
+        yield
+    finally:
+        os.chdir(original_directory)
+
+
 async def achanges(llm: BaseChatModel, before, after, gist):
-    # time the task
-    ic("v 0.0.1")
+    ic("v 0.0.2")
     start = datetime.now()
     repo_url, repo_name = get_repo_path()
 
