@@ -5,10 +5,8 @@ import asyncio
 from langchain.schema.output_parser import StrOutputParser
 
 from langchain_core import messages
-
 import typer
 from langchain.prompts import ChatPromptTemplate
-
 from loguru import logger
 from rich import print
 from rich.console import Console
