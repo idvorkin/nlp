@@ -150,6 +150,22 @@ def changes(
         openai=openai, google=google, claude=claude, llama=llama
     )
     achanges_params = llm, before, after, gist
+
+    # check if direcotry is in a git repo, if so go to the root of the repo
+    is_git_repo = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"], capture_output=True
+    ).stdout.strip()
+    if is_git_repo == b"true":
+        ic("Inside a git repo, moving to the root of the repo")
+        subprocess.run(["git", "rev-parse", "--show-toplevel"], check=True)
+        directory = Path(
+            subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True)
+            .stdout.strip()
+            .decode()
+        )
+    else:
+        ic("Not in a git repo, using the current directory")
+
     with DirectoryContext(directory):
         if not trace:
             asyncio.run(achanges(*achanges_params))
