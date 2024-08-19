@@ -21,6 +21,7 @@ dependencies = [
     "backoff",
     "httpx",
     "typing-extensions",
+    "assemblyai",
     "openai",
     "pudb",
     "py-cord",
