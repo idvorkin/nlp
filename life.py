@@ -203,7 +203,9 @@ IF possible, categories should match the following
 def group(
     ctx: typer.Context,
     markdown: Annotated[bool, typer.Option()] = True,
-    claude: Annotated[bool, typer.Option()] = True,
+    claude: Annotated[
+        bool, typer.Option()
+    ] = False,  # use OpenAI sas it has a much larget context window
 ):
     process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
@@ -227,6 +229,10 @@ IF possible, categories should match the following
 - [Family man](#family-man)
 - [Father to Amelia - an incredible girl](#father-to-amelia---an-incredible-girl)
 - [Father to Zach - a wonderful boy](#father-to-zach---a-wonderful-boy)
+
+If there are multiple instances of an item start it wtih with the number of times e.g.
+
+3 x Eating Chips
 
      """
     prompt = ChatPromptTemplate.from_messages(
