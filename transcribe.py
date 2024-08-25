@@ -16,7 +16,9 @@ app = typer.Typer(no_args_is_help=True)
 
 
 @app.command()
-def transcribe(path: Path = typer.Argument(None), diarization=True):
+def transcribe(
+    path: Path = typer.Argument(None), diarization: bool = True, srt: bool = False
+):
     aai.settings.api_key = os.environ.get("ASSEMBLYAI_API_KEY")
 
     default_audio_url = "https://github.com/AssemblyAI-Community/audio-examples/raw/main/20230607_me_canadian_wildfires.mp3"
@@ -30,6 +32,9 @@ def transcribe(path: Path = typer.Argument(None), diarization=True):
 
     for utterance in transcript.utterances:
         print(f"Speaker {utterance.speaker}: {utterance.text}")
+
+    if srt:
+        print(transcript.export_subtitles_srt())
 
 
 @logger.catch()
