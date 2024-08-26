@@ -45,7 +45,7 @@ async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
         async def process_chunk(chunk, index):
             start_chunk_time = time.time()
             ic(openai_wrapper.num_tokens_from_string(chunk))
-            ret = (prompt_fix_categories(chunk) | llm | StrOutputParser()).invoke({})
+            ret = await (prompt_fix_categories(chunk) | llm | StrOutputParser()).ainvoke({})
             results[index] = ret
             end_chunk_time = time.time()
             chunk_processing_time = end_chunk_time - start_chunk_time
