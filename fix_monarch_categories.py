@@ -29,7 +29,7 @@ The output should be a copy of the input, replacing unknown with the category na
     )
 
 
-async def a_fix(path: str):
+async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
     from langchain_openai.chat_models import ChatOpenAI
 
     # llm = ChatOpenAI(model="gpt-4o-mini")
@@ -38,7 +38,7 @@ async def a_fix(path: str):
     # llm = langchain_helper.get_model(openai=True)
     with open(path, "r") as file:
         lines = file.readlines()
-        total_chunks = (len(lines) + 9) // 10  # Calculate total chunks
+        total_chunks = (len(lines) + lines_per_chunk - 1) // lines_per_chunk  # Calculate total chunks
         start_time = time.time()
         async def process_chunk(chunk, index):
             ic(openai_wrapper.num_tokens_from_string(chunk))
@@ -47,9 +47,9 @@ async def a_fix(path: str):
 
         tasks = []
         for i in range(total_chunks):
-            chunk = "".join(lines[i * 10 : (i + 1) * 10])
+            chunk = "".join(lines[i * lines_per_chunk : (i + 1) * lines_per_chunk])
             tasks.append(process_chunk(chunk, i))
-            if len(tasks) == 10 or i == total_chunks - 1:
+            if len(tasks) == chunk_size or i == total_chunks - 1:
                 elapsed_time = time.time() - start_time
                 average_time_per_chunk = elapsed_time / (i + 1)
                 estimated_remaining_time = average_time_per_chunk * (total_chunks - (i + 1))
@@ -68,9 +68,10 @@ app = typer.Typer(no_args_is_help=True)
 def fix(
     trace: bool = False,
     path: str = typer.Argument(None),
-):
+    chunk_size: int = typer.Option(10, help="Number of chunks to process concurrently"),
+    lines_per_chunk: int = typer.Option(10, help="Number of lines per chunk"),
     langchain_helper.langsmith_trace_if_requested(
-        trace, lambda: asyncio.run(a_fix(path))
+        trace, lambda: asyncio.run(a_fix(path, chunk_size, lines_per_chunk))
     )
 
 
