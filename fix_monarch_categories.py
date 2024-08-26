@@ -40,18 +40,25 @@ async def a_fix(path: str):
         lines = file.readlines()
         total_chunks = (len(lines) + 9) // 10  # Calculate total chunks
         start_time = time.time()
-        for i in range(total_chunks):
-            chunk = "".join(lines[i * 10 : (i + 1) * 10])
-            elapsed_time = time.time() - start_time
-            average_time_per_chunk = elapsed_time / (i + 1)
-            estimated_remaining_time = average_time_per_chunk * (total_chunks - (i + 1))
-            estimated_remaining_time_minutes = estimated_remaining_time / 60
-            ic(
-                f"Processing chunk {i+1}/{total_chunks}, estimated remaining time: {estimated_remaining_time_minutes:.2f} minutes"
-            )
+        async def process_chunk(chunk, index):
             ic(openai_wrapper.num_tokens_from_string(chunk))
             ret = (prompt_fix_categories(chunk) | llm | StrOutputParser()).invoke({})
-            print(ret)
+            print(f"Chunk {index + 1} result: {ret}")
+
+        tasks = []
+        for i in range(total_chunks):
+            chunk = "".join(lines[i * 10 : (i + 1) * 10])
+            tasks.append(process_chunk(chunk, i))
+            if len(tasks) == 10 or i == total_chunks - 1:
+                elapsed_time = time.time() - start_time
+                average_time_per_chunk = elapsed_time / (i + 1)
+                estimated_remaining_time = average_time_per_chunk * (total_chunks - (i + 1))
+                estimated_remaining_time_minutes = estimated_remaining_time / 60
+                ic(
+                    f"Processing chunks {i-8}-{i+1}/{total_chunks}, estimated remaining time: {estimated_remaining_time_minutes:.2f} minutes"
+                )
+                await asyncio.gather(*tasks)
+                tasks = []
 
 
 app = typer.Typer(no_args_is_help=True)
