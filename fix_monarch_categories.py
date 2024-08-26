@@ -60,8 +60,9 @@ async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
                 average_time_per_chunk = elapsed_time / (i + 1)
                 estimated_remaining_time = average_time_per_chunk * (total_chunks - (i + 1))
                 estimated_remaining_time_minutes = estimated_remaining_time / 60
+                start_chunk = max(0, i - chunk_size + 1)
                 ic(
-                    f"Processing chunks {i-8}-{i+1}/{total_chunks}, estimated remaining time: {estimated_remaining_time_minutes:.2f} minutes"
+                    f"Processing chunks {start_chunk}-{i+1}/{total_chunks}, estimated remaining time: {estimated_remaining_time_minutes:.2f} minutes"
                 )
                 await asyncio.gather(*tasks)
                 tasks = [] 
