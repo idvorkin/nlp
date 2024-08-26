@@ -33,7 +33,7 @@ async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
     from langchain_openai.chat_models import ChatOpenAI
 
     # llm = ChatOpenAI(model="gpt-4o-mini")
-    llm = ChatOpenAI(model="gpt-4o")
+    llm = ChatOpenAI(model="gpt-4o-mini")
     ic(llm)
     # llm = langchain_helper.get_model(openai=True)
     with open(path, "r") as file:
@@ -68,8 +68,8 @@ app = typer.Typer(no_args_is_help=True)
 def fix(
     trace: bool = False,
     path: str = typer.Argument(None),
-    chunk_size: int = typer.Option(10, help="Number of chunks to process concurrently"),
-    lines_per_chunk: int = typer.Option(10, help="Number of lines per chunk"),
+    chunk_size: int = typer.Option(20, help="Number of chunks to process concurrently"),
+    lines_per_chunk: int = typer.Option(20, help="Number of lines per chunk"),
 ):
     langchain_helper.langsmith_trace_if_requested(
         trace, lambda: asyncio.run(a_fix(path, chunk_size, lines_per_chunk))
