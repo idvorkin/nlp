@@ -23,9 +23,13 @@ Please help me fix the categories in the monarch CSV input. Change any 'unknown'
 
 async def a_fix(path: str):
     llm = langchain_helper.get_model(claude=True)
-    user_text = langchain_helper.get_text_from_path_or_stdin(path)
-    ret = (prompt_fix_categories(user_text) | llm | StrOutputParser()).invoke({})
-    print(ret)
+    with open(path, 'r') as file:
+        while True:
+            lines = ''.join([file.readline() for _ in range(1000)])
+            if not lines:
+                break
+            ret = (prompt_fix_categories(lines) | llm | StrOutputParser()).invoke({})
+            print(ret)
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
