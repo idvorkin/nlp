@@ -1,6 +1,7 @@
 #!python3
 
 import asyncio
+import time
 import typer
 from loguru import logger
 from langchain.prompts import ChatPromptTemplate
@@ -34,9 +35,15 @@ async def a_fix(path: str):
     with open(path, 'r') as file:
         lines = file.readlines()
         total_chunks = (len(lines) + 9) // 10  # Calculate total chunks
+        start_time = time.time()
         for i in range(total_chunks):
+            chunk_start_time = time.time()
             chunk = ''.join(lines[i*10:(i+1)*10])
-            ic(f"Processing chunk {i+1}/{total_chunks}")
+            elapsed_time = time.time() - start_time
+            average_time_per_chunk = elapsed_time / (i + 1)
+            estimated_remaining_time = average_time_per_chunk * (total_chunks - (i + 1))
+            estimated_remaining_time_minutes = estimated_remaining_time / 60
+            ic(f"Processing chunk {i+1}/{total_chunks}, estimated remaining time: {estimated_remaining_time_minutes:.2f} minutes")
             ic(openai_wrapper.num_tokens_from_string(chunk))
             ret = (prompt_fix_categories(chunk) | llm | StrOutputParser()).invoke({})
             print(ret)
