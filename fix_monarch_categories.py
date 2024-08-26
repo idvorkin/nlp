@@ -70,6 +70,7 @@ def fix(
     path: str = typer.Argument(None),
     chunk_size: int = typer.Option(10, help="Number of chunks to process concurrently"),
     lines_per_chunk: int = typer.Option(10, help="Number of lines per chunk"),
+):
     langchain_helper.langsmith_trace_if_requested(
         trace, lambda: asyncio.run(a_fix(path, chunk_size, lines_per_chunk))
     )
