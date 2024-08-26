@@ -26,7 +26,7 @@ Help me create an image to represent this blog post, by making some prompts for 
 
 
 async def a_draw(path: str):
-    llm = langchain_helper.get_model(claude=True)
+    llm = langchain_helper.get_model(openai=True)
     user_text = langchain_helper.get_text_from_path_or_stdin(path)
     ret = (prompt_illustrate(user_text) | llm | StrOutputParser()).invoke({})
     print(ret)
