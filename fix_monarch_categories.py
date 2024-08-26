@@ -40,10 +40,12 @@ async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
         lines = file.readlines()
         total_chunks = (len(lines) + lines_per_chunk - 1) // lines_per_chunk  # Calculate total chunks
         start_time = time.time()
+        results = [None] * total_chunks
+
         async def process_chunk(chunk, index):
             ic(openai_wrapper.num_tokens_from_string(chunk))
             ret = (prompt_fix_categories(chunk) | llm | StrOutputParser()).invoke({})
-            print(f"Chunk {index + 1} result: {ret}")
+            results[index] = ret
 
         tasks = []
         for i in range(total_chunks):
@@ -58,7 +60,10 @@ async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
                     f"Processing chunks {i-8}-{i+1}/{total_chunks}, estimated remaining time: {estimated_remaining_time_minutes:.2f} minutes"
                 )
                 await asyncio.gather(*tasks)
-                tasks = []
+                tasks = [] 
+
+        for i, result in enumerate(results):
+            print(f"Chunk {i + 1} result: {result}")
 
 
 app = typer.Typer(no_args_is_help=True)
