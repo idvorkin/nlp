@@ -10,6 +10,8 @@ import typer
 from icecream import ic
 import langchain_helper
 from langchain.prompts import ChatPromptTemplate
+from langchain_community.llms import Replicate
+
 
 from loguru import logger
 from rich import print
@@ -81,6 +83,28 @@ def summarize():
     chain = prompt_maker_template | model
     result = chain.invoke({"ARTICLE": user_text})
     ic(result)
+
+
+@app.command()
+def replicate():
+    template = ChatPromptTemplate.from_template(
+        "Generate a list of exactly 3 joke about software engineers"
+    )
+    ic()
+    import time
+
+    start_time = time.time()
+    model = Replicate(
+        # model="meta/meta-llama-3-8b-instruct",
+        model="meta/meta-llama-3.1-405b-instruct",
+        model_kwargs={"temperature": 0.75, "max_length": 500, "top_p": 1},
+    )
+    chain = template | model
+    result = chain.invoke({})
+    end_time = time.time()
+    execution_time = end_time - start_time
+    ic(result)
+    ic(f"Model execution time: {execution_time:.2f} seconds")
 
 
 @app.command()
