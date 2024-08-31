@@ -18,6 +18,7 @@ dependencies = [
     "pandas",
     "langchain-google-genai",
     "langchain_anthropic",
+    "replicate",
     "backoff",
     "httpx",
     "typing-extensions",
