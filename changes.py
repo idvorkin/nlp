@@ -19,7 +19,7 @@ from langchain_core.language_models.chat_models import (
 
 from loguru import logger
 from pydantic import BaseModel
-from rich import print
+from rich import print as rich_print
 from rich.console import Console
 from pathlib import Path
 import langchain_helper
@@ -98,17 +98,30 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash) -> Tuple[str,
         ic(f"File {file} does not exist or has been deleted.")
         return file, ""
 
-    # Now retrieve the diff using the first and last commit hashes
-    diff_process = await asyncio.create_subprocess_exec(
-        "git",
-        "diff",
-        first_commit_hash,
-        last_commit_hash,
-        "--",
-        file,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    # Use nbdiff for Jupyter notebooks to ignore outputs
+    if file.endswith(".ipynb"):
+        diff_process = await asyncio.create_subprocess_exec(
+            "nbdiff",
+            "--ignore-outputs",
+            first_commit_hash,
+            last_commit_hash,
+            "--",
+            file,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    else:
+        diff_process = await asyncio.create_subprocess_exec(
+            "git",
+            "diff",
+            first_commit_hash,
+            last_commit_hash,
+            "--",
+            file,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
     stdout_diff, _ = await diff_process.communicate()
 
     diff_content = stdout_diff.decode()
@@ -452,7 +465,7 @@ ___
 ___
 {code_based_diff_report}
 """
-    print(output)
+    rich_print(output)
 
     output_file_path = Path(f"summary_{repo_name.split('/')[-1]}.md")
     with output_file_path.open("w", encoding="utf-8"):
