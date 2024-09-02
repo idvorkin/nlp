@@ -39,11 +39,6 @@ dependencies = [
     "beautifulsoup4",
     "azure-cosmos",
     "torch",
-    "jupyterlab>=4.2",
-    "jupyterlab-lsp",
-    "jupyter_contrib_nbextensions",
-    "nbdime",
-    "pytest",
     "matplotlib"
 ]
 
@@ -74,3 +69,12 @@ vapi_sim = "vapi_sim:app"
 # ...
 venvPath = "."
 venv = ".venv"
+
+[tool.uv]
+dev-dependencies = [
+    "jupyterlab>=4.2",
+    "jupyterlab-lsp",
+    "jupyter_contrib_nbextensions",
+    "nbdime",
+    "pytest",
+]
