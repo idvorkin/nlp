@@ -5,8 +5,8 @@ import typer
 from icecream import ic
 from loguru import logger
 from rich.console import Console
-from elevenlabs import generate, play, set_api_key
-import json
+from elevenlabs.client import ElevenLabs
+from elevenlabs import play, save
 import sys
 from pathlib import Path
 from typing import Annotated, Optional
@@ -17,20 +17,6 @@ import time
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
-
-
-def setup_secret():
-    PASSWORD = "replaced_from_secret_box"
-    secret_file = Path.home() / "gits/igor2/secretBox.json"
-
-    SECRETS = json.loads(secret_file.read_text())
-    PASSWORD = SECRETS["elevenlabs_api_key"]
-
-    return PASSWORD
-
-
-api_key = setup_secret()
-set_api_key(api_key)
 
 
 @app.command()
@@ -48,7 +34,6 @@ list_of_voices = ",".join(voices.keys())
 
 @app.command()
 def say(
-    multilingual: bool = True,
     voice: Annotated[
         str, typer.Option(help=f"Model any of: {list_of_voices}")
     ] = "igor",
@@ -63,11 +48,14 @@ def say(
     model = "eleven_turbo_v2" if fast else "eleven_multilingual_v2"
     voice = voices[voice]
     ic(voice, model)
-    audio = generate(
+    client = ElevenLabs()
+
+    audio = client.generate(
         text=to_speak,
         voice=voice,
         model=model,
     )
+    ic(audio)
 
     print(f"Took {round(time.time() -start,3)} seconds")
     if outfile is not None:
@@ -79,7 +67,7 @@ def say(
         # make the dir if it doesn't exist
         temp_path.parent.mkdir(parents=True, exist_ok=True)
         print(temp_path)
-        temp_path.write_bytes(audio)
+        save(audio, temp_path)
 
     if speak:
         play(audio)
