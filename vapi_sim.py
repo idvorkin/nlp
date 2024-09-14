@@ -34,6 +34,12 @@ def journal_read(date):
 
 
 @tool
+def library_arrivals():
+    """When the bus gets to the library, which is the bus stop for garfield, when user asks when is the next bus to garfield"""
+    return call_tony_server_as_vapi("library-arrivals")
+
+
+@tool
 def search(question):
     """Search the web"""
     return call_tony_server_as_vapi("search", question=question)
@@ -57,7 +63,7 @@ def process_tool_calls(llm_result) -> list[ToolMessage]:
     ]
 
 
-TONY_TOOLS = [journal_append, journal_read, search]
+TONY_TOOLS = [journal_append, journal_read, search, library_arrivals]
 
 
 # TODO: Consider transforming this into a nice lookup table
