@@ -177,6 +177,34 @@ def ask_gpt_n(
     return response_contents
 
 
+def get_ell_model(
+    openai: bool = False,
+    google: bool = False,
+    claude: bool = False,
+    llama: bool = False,
+) -> str:
+    """
+    See changes in diff
+    """
+    # if more then one is true, exit and fail
+    count_true = sum([openai, google, claude, llama])
+    if count_true > 1:
+        print("Only one model can be selected")
+        exit(1)
+    if count_true == 0:
+        # default to openai
+        openai = True
+
+    if google:
+        raise NotImplementedError("google")
+    elif claude:
+        return "claude-3-5-sonnet-20240620"
+    elif llama:
+        raise NotImplementedError("llama")
+    else:
+        return gpt4.name
+
+
 def openai_func(cls):
     return {
         "type": "function",

@@ -1,33 +1,31 @@
 #!python3
+# pylint: disable=missing-function-docstring
 
 
 import asyncio
+import os
 import subprocess
-
-from langchain_core import messages
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Tuple
 
 import openai_wrapper
 import pudb
 import typer
 from icecream import ic
-from langchain.prompts import ChatPromptTemplate
-from datetime import datetime, timedelta
-from langchain_core.language_models.chat_models import (
-    BaseChatModel,
-)
-
+import ell
 from loguru import logger
 from pydantic import BaseModel
 from rich import print as rich_print
 from rich.console import Console
-from pathlib import Path
-import langchain_helper
-from contextlib import contextmanager
-import os
+from functools import partial
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
+
+ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
+ell.init(store=ELL_LOGDIR, autocommit=True)
 
 
 class Diff(BaseModel):
@@ -149,14 +147,13 @@ def changes(
     directory: Path = Path("."),
     before=tomorrow(),
     after="7 days ago",
-    trace: bool = False,
     gist: bool = True,
     openai: bool = False,
     google: bool = False,
     claude: bool = False,
     llama: bool = False,
 ):
-    llm = langchain_helper.get_model(
+    llm = openai_wrapper.get_ell_model(
         openai=openai, google=google, claude=claude, llama=llama
     )
     achanges_params = llm, before, after, gist
@@ -177,19 +174,7 @@ def changes(
         ic("Not in a git repo, using the current directory")
 
     with DirectoryContext(directory):
-        if not trace:
-            asyncio.run(achanges(*achanges_params))
-            return
-
-        from langchain_core.tracers.context import tracing_v2_enabled
-        from langchain.callbacks.tracers.langchain import wait_for_all_tracers
-
-        trace_name = openai_wrapper.tracer_project_name()
-        with tracing_v2_enabled(project_name=trace_name) as tracer:
-            ic("Using Langsmith:", trace_name)
-            asyncio.run(achanges(*achanges_params))  # don't forget the second run
-            ic(tracer.get_run_url())
-        wait_for_all_tracers()
+        asyncio.run(achanges(*achanges_params))
 
 
 async def first_last_commit(before: str, after: str) -> Tuple[str, str]:
@@ -242,9 +227,7 @@ async def get_changed_files(first_commit, last_commit):
     return changed_files
 
 
-# Function to create the prompt
-
-
+@ell.simple(model="gpt-4o")
 def prompt_summarize_diff_summaries(diff_summary):
     instructions = """
 <instructions>
@@ -315,15 +298,14 @@ Order files by magnitude/importance of change, use same rules as with summary
 
 </instructions>
 """
-    return ChatPromptTemplate.from_messages(
-        [
-            messages.SystemMessage(content=instructions),
-            messages.HumanMessage(content=diff_summary),
-        ]
-    )
+    return [
+        ell.system(instructions),
+        ell.user(diff_summary),
+    ]
 
 
 # Function to create the prompt
+@ell.simple(model="gpt-4o")
 def prompt_summarize_diff(file, diff_content, repo_path, end_rev):
     instructions = f""" You are an expert programmer, who is charged with explaining code changes concisely.
 
@@ -368,12 +350,10 @@ TLDR: blah blah blah
 
 
 """
-    return ChatPromptTemplate.from_messages(
-        [
-            messages.SystemMessage(content=instructions),
-            messages.HumanMessage(content=diff_content),
-        ]
-    )
+    return [
+        ell.system(instructions),
+        ell.user(diff_content),
+    ]
 
 
 def create_markdown_table_of_contents(markdown_headers):
@@ -403,7 +383,7 @@ def DirectoryContext(directory: Path):
         os.chdir(original_directory)
 
 
-async def achanges(llm: BaseChatModel, before, after, gist):
+async def achanges(llm: str, before, after, gist):
     ic("v 0.0.2")
     start = datetime.now()
     repo_url, repo_name = get_repo_path()
@@ -421,18 +401,19 @@ async def achanges(llm: BaseChatModel, before, after, gist):
     async def concurrent_llm_call(file, diff_content):
         async with max_parallel:
             ic(f"running on {file}")
-            return await (
-                prompt_summarize_diff(
-                    file, diff_content, repo_path=repo_url, end_rev=last
-                )
-                | llm
-            ).ainvoke({})
+            return await asyncio.to_thread(
+                partial(prompt_summarize_diff, lm_params=dict(model=llm)),
+                file,
+                diff_content,
+                repo_path=repo_url,
+                end_rev=last,
+            )
 
     ai_invoke_tasks = [
         concurrent_llm_call(file, diff_content) for file, diff_content in file_diffs
     ]
 
-    results = [result.content for result in await asyncio.gather(*ai_invoke_tasks)]
+    results = [str(result) for result in await asyncio.gather(*ai_invoke_tasks)]
     timestamp_summarize_diff_in_parallel = datetime.now()
 
     # I think this can be done by the reorder_diff_summary command
@@ -442,10 +423,8 @@ async def achanges(llm: BaseChatModel, before, after, gist):
 
     ic(code_based_diff_report)
 
-    summary_all_diffs = (
-        (prompt_summarize_diff_summaries(code_based_diff_report) | llm)
-        .invoke({})
-        .content
+    summary_all_diffs = prompt_summarize_diff_summaries(
+        code_based_diff_report, lm_params=dict(model=llm)
     )
     timestamp_summarize_all_diffs = datetime.now()
 
@@ -453,7 +432,7 @@ async def achanges(llm: BaseChatModel, before, after, gist):
     github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
     output = f"""
 ### Changes to {github_repo_diff_link} From [{after}] To [{before}]
-* Model: {langchain_helper.get_model_name(llm)}
+* Model: {llm}
 * Duration Diffs: {int((timestamp_summarize_diff_in_parallel - start).total_seconds())} seconds
 * Duration Summary: {int((timestamp_summarize_all_diffs - timestamp_summarize_diff_in_parallel).total_seconds())} seconds
 * Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S") }
@@ -472,6 +451,8 @@ ___
         output_file_path.write_text(output)
 
     if gist:
+        import langchain_helper
+
         langchain_helper.to_gist(output_file_path)
 
 
