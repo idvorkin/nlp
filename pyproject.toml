@@ -7,7 +7,7 @@ name = "idvorkin_nlp"
 version = "0.1.0"
 dependencies = [
     "icecream",
-    "ell-ai",
+    # "ell-ai", #groan This need numpy > 2, which no one supports yet. BLEH, manual hacks time
     "rich",
     "pydantic",
     "loguru",
@@ -45,11 +45,13 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim"]
+py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges"]
 
 [project.scripts]
 gpt = "gpt3:app"
 think = "think:app"
+pell = "pell:app"
+pchanges = "pchanges:app"
 gpt3 = "gpt3:app"
 ij = "igor_journal:app"
 dg = "dump_grateful:app"
