@@ -14,6 +14,7 @@ from typing import Optional
 from loguru import logger
 from rich.console import Console
 from icecream import ic
+import math
 
 # import openai_wrapper
 from pathlib import Path
@@ -24,6 +25,57 @@ app = typer.Typer(no_args_is_help=True)
 
 ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
 ell.init(store=ELL_LOGDIR, autocommit=True)
+
+
+def count_image_tokens(image: Image.Image):
+    """
+    Count the tokens for processing an image with GPT-4o.
+
+    Args:
+    image (Image.Image): The input image.
+
+    Returns:
+    int: The total number of tokens required to process the image.
+    """
+    # Resize image if necessary to fit within 2048x2048
+    max_size = 2048
+    width, height = image.size
+    if width > max_size or height > max_size:
+        aspect_ratio = width / height
+        if width > height:
+            new_width = max_size
+            new_height = int(new_width / aspect_ratio)
+        else:
+            new_height = max_size
+            new_width = int(new_height * aspect_ratio)
+        image = image.resize((new_width, new_height), Image.LANCZOS)
+        width, height = new_width, new_height
+
+    # Calculate the number of 512x512 tiles
+    num_tiles = math.ceil(width / 512) * math.ceil(height / 512)
+
+    # Calculate total tokens
+    base_tokens = 85
+    tokens_per_tile = 170
+    total_tokens = base_tokens + (tokens_per_tile * num_tiles)
+
+    return total_tokens
+
+
+def cost_for_image(image: Image.Image):
+    """
+    Cost for processing an image with GPT-4o.
+
+    Args:
+    image (Image.Image): The input image.
+
+    Returns:
+    float: The cost in cents.
+    """
+    total_tokens = count_image_tokens(image)
+    cost_per_million_tokens = 250
+    cost = (total_tokens / 1_000_000) * cost_per_million_tokens
+    return cost
 
 
 def get_image_from_clipboard() -> Image.Image | None:
@@ -59,6 +111,7 @@ def clipboard_to_image(max_width=2000, quality=85):
     compressed_size_mb = len(compressed_image.tobytes()) / 1024 / 1024
     ic(len(compressed_image.tobytes()) / 1024 / 1024)
     ic(original_size_mb - compressed_size_mb)
+    ic(cost_for_image(image))
 
     return compressed_image
 
