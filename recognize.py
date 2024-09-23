@@ -48,7 +48,7 @@ def count_image_tokens(image: Image.Image):
         else:
             new_height = max_size
             new_width = int(new_height * aspect_ratio)
-        image = image.resize((new_width, new_height), Image.LANCZOS)
+        image = image.resize((new_width, new_height), Image.LANCZOS)  # type: ignore
         width, height = new_width, new_height
 
     # Calculate the number of 512x512 tiles
@@ -126,8 +126,17 @@ class ImageRecognitionResult(BaseModel):
     Result of image recognition.
     """
 
-    image_type: str = Field(description="Type of image: 'handwriting' or 'screenshot'")
+    chain_of_thought: str = Field(
+        description="Chain of thought reasoning for the image recognition"
+    )
+    image_type: str = Field(
+        description="Type of image: 'handwriting' ,  'screenshot', 'window_screenshot=window_title'"
+    )
     content: str = Field(description="Recognized text or description of the image")
+    conversation_summary: Optional[str] = Field(
+        default=None,
+        description="Summary of the conversation in the image, if applicable",
+    )
     conversation_transcript: Optional[str] = Field(
         default=None,
         description="Transcription of any conversation in the image, if applicable",
@@ -152,6 +161,7 @@ def pretty_print(result: ImageRecognitionResult):
     """Print as nice markdown"""
     print(f"## Image Type: {result.image_type}")
     print(f"## Content:\n{result.content}")
+    print(f"## Conversation Summary:\n{result.conversation_summary}")
     if result.conversation_transcript:
         print(f"\n## Conversation Transcript:\n{result.conversation_transcript}")
 
