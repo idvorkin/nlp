@@ -6,6 +6,7 @@ from PIL import Image
 import typer
 import ell
 import AppKit
+import os
 
 
 from loguru import logger
@@ -15,6 +16,9 @@ from icecream import ic
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
+
+ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
+ell.init(store=ELL_LOGDIR, autocommit=True)
 
 
 def get_image_from_clipboard() -> Image.Image | None:
@@ -33,6 +37,7 @@ def clipboard_to_image(max_width=2000, quality=85):
     ic(len(image.tobytes()) / 1024 / 1024)
 
     # Resize the image, into the same same aspect ratio
+    original_size_mb = len(image.tobytes()) / 1024 / 1024
     width, height = image.size
     aspect_ratio = width / height
     new_width = min(max_width, width)
@@ -46,11 +51,9 @@ def clipboard_to_image(max_width=2000, quality=85):
         output.seek(0)
         compressed_image = Image.open(output)
 
+    compressed_size_mb = len(compressed_image.tobytes()) / 1024 / 1024
     ic(len(compressed_image.tobytes()) / 1024 / 1024)
-    saved_from_compression_mb = (
-        (len(image.tobytes()) - len(compressed_image.tobytes())) / 1024 / 1024
-    )
-    ic(saved_from_compression_mb)
+    ic(original_size_mb - compressed_size_mb)
 
     return compressed_image
 
@@ -60,13 +63,14 @@ def app_wrap_loguru():
     app()
 
 
-@ell.simple(model="gpt-4o")
+@ell.simple(model="gpt-4o-2024-08-06")
 def prompt_recognize(image: Image.Image):
     """
     You are passed in an image that I created myself so there are no copyright issues.
     Depend on the image, you need to do different things:
     If it's hand-writing, return the handwriting, correcting spelling and grammar.
     If it's a screenshot, return a description of the screenshot, including contained text
+    If there is text in a conversation in the screenshot, end with a transcription of it
     Ignore any people in the image
     Do not hallucinate
     """
