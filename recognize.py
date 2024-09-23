@@ -48,8 +48,7 @@ def count_image_tokens(image: Image.Image):
         else:
             new_height = max_size
             new_width = int(new_height * aspect_ratio)
-        image = image.resize((new_width, new_height), Image.LANCZOS)  # type: ignore
-        width, height = new_width, new_height
+            width, height = new_width, new_height
 
     # Calculate the number of 512x512 tiles
     num_tiles = math.ceil(width / 512) * math.ceil(height / 512)
@@ -62,7 +61,7 @@ def count_image_tokens(image: Image.Image):
     return total_tokens
 
 
-def cost_for_image(image: Image.Image):
+def pennies_for_image(image: Image.Image):
     """
     Cost for processing an image with GPT-4o.
 
@@ -111,7 +110,7 @@ def clipboard_to_image(max_width=2000, quality=85):
     compressed_size_mb = len(compressed_image.tobytes()) / 1024 / 1024
     ic(len(compressed_image.tobytes()) / 1024 / 1024)
     ic(original_size_mb - compressed_size_mb)
-    ic(cost_for_image(image))
+    ic(pennies_for_image(image))
 
     return compressed_image
 
