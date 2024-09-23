@@ -41,11 +41,12 @@ dependencies = [
     "beautifulsoup4",
     "azure-cosmos",
     "torch",
-    "matplotlib"
+    "matplotlib",
+    "numpy"
 ]
 
 [tool.setuptools]
-py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges"]
+py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize"]
 
 [project.scripts]
 gpt = "gpt3:app"
@@ -68,6 +69,7 @@ fix = "fix:app"
 fabric = "fabric:app"
 illustrate = "illustrate:app"
 vapi_sim = "vapi_sim:app"
+recognize = "recognize:app"
 
 [tool.pyright]
 # ...
