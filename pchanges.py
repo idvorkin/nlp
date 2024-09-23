@@ -402,7 +402,7 @@ async def achanges(llm: str, before, after, gist):
         async with max_parallel:
             ic(f"running on {file}")
             return await asyncio.to_thread(
-                partial(prompt_summarize_diff, lm_params=dict(model=llm)),
+                partial(prompt_summarize_diff, api_params=dict(model=llm)),
                 file,
                 diff_content,
                 repo_path=repo_url,
@@ -424,7 +424,7 @@ async def achanges(llm: str, before, after, gist):
     ic(code_based_diff_report)
 
     summary_all_diffs = prompt_summarize_diff_summaries(
-        code_based_diff_report, lm_params=dict(model=llm)
+        code_based_diff_report, api_params=dict(model=llm)
     )
     timestamp_summarize_all_diffs = datetime.now()
 
