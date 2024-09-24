@@ -2,9 +2,7 @@ import json
 import os
 import time
 
-import tiktoken
 from icecream import ic
-from openai import OpenAI
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 from pathlib import Path
@@ -21,6 +19,8 @@ def setup_secret():
 
 
 def setup_gpt():
+    from openai import OpenAI
+
     setup_secret()
     return OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
@@ -110,6 +110,8 @@ def remaining_response_tokens(model, system_prompt, user_prompt):
 
 def num_tokens_from_string(string: str, encoding_name: str = "cl100k_base") -> int:
     """Returns the number of tokens in a text string."""
+    import tiktoken
+
     encoding = tiktoken.get_encoding(encoding_name)
     num_tokens = len(encoding.encode(string))
     num_tokens = num_tokens + 1  # for newline

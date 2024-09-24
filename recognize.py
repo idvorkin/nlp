@@ -15,6 +15,7 @@ from loguru import logger
 from rich.console import Console
 from icecream import ic
 import math
+import openai_wrapper
 
 # import openai_wrapper
 from pathlib import Path
@@ -142,7 +143,9 @@ class ImageRecognitionResult(BaseModel):
     )
 
 
-@ell.complex(model="gpt-4o-2024-08-06", response_format=ImageRecognitionResult)  # type: ignore
+@ell.complex(
+    model=openai_wrapper.get_ell_model(gpt=True), response_format=ImageRecognitionResult
+)  # type: ignore
 def prompt_recognize(image: Image.Image):
     system = """
     You are passed in an image that I created myself so there are no copyright issues.
