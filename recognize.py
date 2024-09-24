@@ -144,7 +144,8 @@ class ImageRecognitionResult(BaseModel):
 
 
 @ell.complex(
-    model=openai_wrapper.get_ell_model(gpt=True), response_format=ImageRecognitionResult
+    model=openai_wrapper.get_ell_model(openai=True),
+    response_format=ImageRecognitionResult,
 )  # type: ignore
 def prompt_recognize(image: Image.Image):
     system = """
