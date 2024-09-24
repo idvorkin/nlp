@@ -227,7 +227,7 @@ async def get_changed_files(first_commit, last_commit):
     return changed_files
 
 
-@ell.simple(model="gpt-4o")
+@ell.simple(model=openai_wrapper.get_ell_model(claude=True))
 def prompt_summarize_diff_summaries(diff_summary):
     instructions = """
 <instructions>
@@ -305,7 +305,7 @@ Order files by magnitude/importance of change, use same rules as with summary
 
 
 # Function to create the prompt
-@ell.simple(model="gpt-4o")
+@ell.simple(model=openai_wrapper.get_ell_model(openai=True))
 def prompt_summarize_diff(file, diff_content, repo_path, end_rev):
     instructions = f""" You are an expert programmer, who is charged with explaining code changes concisely.
 
@@ -424,7 +424,8 @@ async def achanges(llm: str, before, after, gist):
     ic(code_based_diff_report)
 
     summary_all_diffs = prompt_summarize_diff_summaries(
-        code_based_diff_report, api_params=dict(model=llm)
+        code_based_diff_report,
+        api_params=dict(max_tokens=8_000),  # anthropic needs max tokens ??
     )
     timestamp_summarize_all_diffs = datetime.now()
 

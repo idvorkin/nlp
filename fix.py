@@ -24,7 +24,7 @@ def app_wrap_loguru():
     app()
 
 
-@ell.simple(model="gpt-4o")
+@ell.simple(model=openai_wrapper.gpt4.name)
 def prompt_fix(user_text: str):
     """You are an advanced AI with superior spelling correction abilities.
     Your task is to correct any spelling errors you encounter in the text provided below.
