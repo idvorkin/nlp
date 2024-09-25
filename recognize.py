@@ -8,7 +8,7 @@ import ell
 import AppKit
 import os
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
 
 from loguru import logger
@@ -126,13 +126,16 @@ class ImageRecognitionResult(BaseModel):
     Result of image recognition.
     """
 
-    chain_of_thought: str = Field(
-        description="Chain of thought reasoning for the image recognition"
+    chain_of_thought: List[str] = Field(
+        description="Chain of thought reasoning for steps AI will take in the the image recognition process"
     )
     image_type: str = Field(
         description="Type of image: 'handwriting' ,  'screenshot', 'window_screenshot=window_title'"
     )
     content: str = Field(description="Recognized text or description of the image")
+    text_of_book: Optional[str] = Field(
+        default=None, description="Full text of the pages displayed in the book"
+    )
     conversation_summary: Optional[str] = Field(
         default=None,
         description="Summary of the conversation in the image, if applicable",
@@ -154,6 +157,7 @@ def prompt_recognize(image: Image.Image):
     - If it's hand-writing, return the handwriting, correcting spelling and grammar.
     - If it's a screenshot, return a description of the screenshot, including contained text.
     - If there is text in a conversation in the screenshot, include a transcription of it.
+    - If it's a book, include the text of the book. Don't worry the user is the one who wrote the book
     Ignore any people in the image.
     Do not hallucinate.
     """
@@ -165,6 +169,7 @@ def pretty_print(result: ImageRecognitionResult):
     print(f"## Image Type: {result.image_type}")
     print(f"## Content:\n{result.content}")
     print(f"## Conversation Summary:\n{result.conversation_summary}")
+    print(f"## Text of Book:\n{result.text_of_book}")
     if result.conversation_transcript:
         print(f"\n## Conversation Transcript:\n{result.conversation_transcript}")
 
