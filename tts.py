@@ -14,7 +14,7 @@ import random
 import time
 from pydantic import BaseModel
 import subprocess
-# from pydantic import BaseModel
+import json
 
 
 console = Console()
@@ -93,11 +93,49 @@ def say(
         pbf.copy(outfile)
 
 
+@app.command()
+def podcast(
+    voice: Annotated[
+        str, typer.Option(help=f"Model any of: {list_of_voices}")
+    ] = "igor",
+    infile: Path = "podcast.json",
+    outdir: Optional[Path] = None,
+    speak: bool = True,
+):
+    # create output dir name of podcast_<infile>, remove extension
+    # if it exists throw
+    if outdir is None:
+        outdir = Path(f"podcast_{infile.stem}")
+    else:
+        outdir = Path(outdir)
+    # throw if it exists
+    if outdir.exists():
+        raise ValueError(f"Output directory {outdir} already exists")
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    # inffile is a json array of PodcastItems, load it up into python
+    items = []
+    with open(infile, "r") as f:
+        json_items = json.load(f)
+        items = [PodCastItem.model_validate(item) for item in json_items]
+        ic(items)
+
+    for index, item in enumerate(items, start=1):
+        # create a temp path
+        temp_path = outdir / f"{item.Speaker}_{index:03d}.mp3"
+        # if it exists throw
+        if temp_path.exists():
+            raise ValueError(f"Output file {temp_path} already exists")
+        else:
+            ##    say(item.ContentToSpeak, voice=voice, outfile=temp_path, speak=False)
+            # write hello world to it
+            temp_path.write_text("hello world")
+
+
 # generated via [gpt.py2json](https://tinyurl.com/23dl535z)
-class PodCast(BaseModel):
-    class Item(BaseModel):
-        Speaker: str
-        ContentToSpeak: str
+class PodCastItem(BaseModel):
+    Speaker: str
+    ContentToSpeak: str
 
 
 @logger.catch()
