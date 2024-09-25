@@ -6,12 +6,14 @@ from icecream import ic
 from loguru import logger
 from rich.console import Console
 from elevenlabs.client import ElevenLabs
-from elevenlabs import play, save
+from elevenlabs import save, VoiceSettings
 import sys
 from pathlib import Path
 from typing import Annotated, Optional
 import random
 import time
+from pydantic import BaseModel
+import subprocess
 # from pydantic import BaseModel
 
 
@@ -26,10 +28,17 @@ def scratch():
 
 voices = {
     "fin": "fin",
-    "igor": "i55Y1MKKlAAPtIu2H5su",
+    "igor": "Nvd5I2HGnOWHNU0ijNEy",
     "ammon": "AwdhqucUs1YyNaWbqQ57",
 }
 list_of_voices = ",".join(voices.keys())
+
+
+@app.command()
+def get_voices():
+    client = ElevenLabs()
+    voices = client.voices.get_all()
+    ic(voices.voices)
 
 
 @app.command()
@@ -49,11 +58,15 @@ def say(
     voice = voices[voice]
     ic(voice, model)
     client = ElevenLabs()
+    voice_settings = VoiceSettings(
+        stability=0.4, similarity_boost=0.6, style=0.36, use_speaker_boost=True
+    )
 
     audio = client.generate(
         text=to_speak,
         voice=voice,
         model=model,
+        voice_settings=voice_settings,
     )
     ic(audio)
 
@@ -68,13 +81,23 @@ def say(
         temp_path.parent.mkdir(parents=True, exist_ok=True)
         print(temp_path)
         save(audio, temp_path)
+        outfile = temp_path
 
     if speak:
-        play(audio)
+        ic(speak)
+        # play via afplay
+        subprocess.run(["afplay", outfile])
     if copy:
         import pbf
 
-        pbf.copy(temp_path)
+        pbf.copy(outfile)
+
+
+# generated via [gpt.py2json](https://tinyurl.com/23dl535z)
+class PodCast(BaseModel):
+    class Item(BaseModel):
+        Speaker: str
+        ContentToSpeak: str
 
 
 @logger.catch()
