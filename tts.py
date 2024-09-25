@@ -1,21 +1,21 @@
 #!python3
 
 
+import json
+import random
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Annotated, Iterator, Optional
+
 import typer
+from elevenlabs import VoiceSettings
+from elevenlabs.client import ElevenLabs
 from icecream import ic
 from loguru import logger
-from rich.console import Console
-from elevenlabs.client import ElevenLabs
-from elevenlabs import save, VoiceSettings
-import sys
-from pathlib import Path
-from typing import Annotated, Optional
-import random
-import time
 from pydantic import BaseModel
-import subprocess
-import json
-
+from rich.console import Console
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
@@ -41,6 +41,24 @@ def get_voices():
     ic(voices.voices)
 
 
+def generate_audio(
+    text: str,
+    voice: str,
+    voice_settings: VoiceSettings = VoiceSettings(
+        stability=0.4, similarity_boost=0.6, style=0.36, use_speaker_boost=True
+    ),
+    model: str = "eleven_turbo_v2",
+) -> Iterator[bytes]:
+    client = ElevenLabs()
+    voice = voices[voice]
+    return client.generate(
+        text=text,
+        voice=voice,
+        model=model,
+        voice_settings=voice_settings,
+    )
+
+
 @app.command()
 def say(
     voice: Annotated[
@@ -51,11 +69,12 @@ def say(
     outfile: Optional[Path] = None,
     speak: bool = True,
 ):
+    # look up voice in voices
+    voice = voices[voice]
     # record how long it takes
     start = time.time()
     to_speak = "\n".join(sys.stdin.readlines())
     model = "eleven_turbo_v2" if fast else "eleven_multilingual_v2"
-    voice = voices[voice]
     ic(voice, model)
     client = ElevenLabs()
     voice_settings = VoiceSettings(
@@ -68,21 +87,17 @@ def say(
         model=model,
         voice_settings=voice_settings,
     )
-    ic(audio)
+    # unwrapp the iterator
+    audio = b"".join(audio)
 
     print(f"Took {round(time.time() -start,3)} seconds")
-    if outfile is not None:
-        # write to it
-        outfile.write_bytes(audio)
-        print(outfile)
-    else:
+    if outfile is None:
         temp_path = Path.home() / "tmp/tts" / f"{random.random()}.mp3"
-        # make the dir if it doesn't exist
         temp_path.parent.mkdir(parents=True, exist_ok=True)
-        print(temp_path)
-        save(audio, temp_path)
         outfile = temp_path
 
+    outfile.write_bytes(audio)
+    print(outfile)
     if speak:
         ic(speak)
         # play via afplay
@@ -98,7 +113,7 @@ def podcast(
     voice: Annotated[
         str, typer.Option(help=f"Model any of: {list_of_voices}")
     ] = "igor",
-    infile: Path = "podcast.json",
+    infile: Path = Path("podcast.json"),
     outdir: Optional[Path] = None,
     speak: bool = True,
 ):
