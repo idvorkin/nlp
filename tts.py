@@ -16,6 +16,9 @@ from icecream import ic
 from loguru import logger
 from pydantic import BaseModel
 from rich.console import Console
+from pydub import AudioSegment
+import os
+import re
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
@@ -30,15 +33,17 @@ voices = {
     "fin": "fin",
     "igor": "Nvd5I2HGnOWHNU0ijNEy",
     "ammon": "AwdhqucUs1YyNaWbqQ57",
+    "rachel": "VrNQNREmlwaHD01224L3",
 }
 list_of_voices = ",".join(voices.keys())
 
 
 @app.command()
-def get_voices():
+def list_voices():
     client = ElevenLabs()
     voices = client.voices.get_all()
-    ic(voices.voices)
+    for voice in voices:
+        ic(voice)
 
 
 def generate_audio(
@@ -125,7 +130,8 @@ def podcast(
         outdir = Path(outdir)
     # throw if it exists
     if outdir.exists():
-        raise ValueError(f"Output directory {outdir} already exists")
+        pass
+        # raise ValueError(f"Output directory {outdir} already exists")
     outdir.mkdir(parents=True, exist_ok=True)
 
     # inffile is a json array of PodcastItems, load it up into python
@@ -138,13 +144,54 @@ def podcast(
     for index, item in enumerate(items, start=1):
         # create a temp path
         temp_path = outdir / f"{item.Speaker}_{index:03d}.mp3"
+        ic(temp_path)
         # if it exists throw
         if temp_path.exists():
-            raise ValueError(f"Output file {temp_path} already exists")
+            ic(f"Output file {temp_path} already exists - skipping")
+            continue
         else:
-            ##    say(item.ContentToSpeak, voice=voice, outfile=temp_path, speak=False)
-            # write hello world to it
-            temp_path.write_text("hello world")
+            # write out the audio to the file
+            voice_label = ""
+            if item.Speaker == "Host":
+                voice_label = "igor"
+            elif item.Speaker == "Guest":
+                voice_label = "rachel"
+            else:
+                raise ValueError(f"Unknown speaker {item.Speaker}")
+
+            audio = generate_audio(item.ContentToSpeak, voice_label)
+            with open(temp_path, "wb") as f:
+                audio = b"".join(audio)
+                f.write(audio)
+
+
+@app.command()
+def merge_audio(directory: Path):
+    # Specify the directory where your audio files are located
+
+    # Function to extract the numeric part from the filename for sorting
+    def extract_number(file_name):
+        return int(re.search(r"\d+", file_name).group())
+
+    # Get all the files in the directory that match the pattern
+    files = [f for f in os.listdir(directory) if f.endswith(".mp3")]
+
+    # Sort files by the numeric part extracted from the filenames
+    files.sort(key=extract_number)
+
+    # Initialize an empty AudioSegment object
+    combined = AudioSegment.empty()
+
+    # Loop through the files and merge them
+    for file in files:
+        audio = AudioSegment.from_mp3(os.path.join(directory, file))
+        combined += audio
+
+    # Export the merged audio file
+    output_path = os.path.join(directory, "merged_audio.mp3")
+    combined.export(output_path, format="mp3")
+
+    print(f"Merged audio saved to {output_path}")
 
 
 # generated via [gpt.py2json](https://tinyurl.com/23dl535z)

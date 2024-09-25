@@ -42,6 +42,7 @@ dependencies = [
     "azure-cosmos",
     "torch",
     "matplotlib",
+    "pydub",
     "numpy"
 ]
 
