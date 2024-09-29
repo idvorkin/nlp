@@ -40,7 +40,7 @@ dependencies = [
     "chromadb",
     "beautifulsoup4",
     "azure-cosmos",
-    "torch",
+    "torch; sys_platform == 'darwin'", # Can't afford to install it on my cloud VM's too massive
     "matplotlib",
     "pydub",
     "numpy"
