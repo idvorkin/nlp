@@ -18,7 +18,7 @@ from rich import print
 
 
 console = Console()
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 
 def df_to_table(
