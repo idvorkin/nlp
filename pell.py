@@ -8,9 +8,12 @@ from rich.console import Console
 from loguru import logger
 import ell
 import os
+import openai
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
+openai_client = openai.Client()
+
 
 # Define ELL_LOGDIR as a constant
 ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
@@ -25,7 +28,11 @@ def list_models():
     # console.print(ell.models.groq.
 
 
-@ell.simple(model="gpt-4o-mini")
+# A fine tune I created
+igor_model = "ft:gpt-4o-mini-2024-07-18:idvorkinteam:i-to-a-3d-gt-2021:9qiMMqOz"
+
+
+@ell.simple(model=igor_model, client=openai_client)
 def hello(world: str):
     """You are a unhelpful assistant, make your answers spicy"""  # System prompt
     name = world.capitalize()
@@ -42,7 +49,7 @@ def hello_groq(world: str):
 
 @app.command()
 def scratch():
-    response = hello_groq("Igor", api_params=dict(n=1))
+    response = hello("Igor")
     ic(response)
 
 
