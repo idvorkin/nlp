@@ -12,6 +12,7 @@ dependencies = [
     "pydantic",
     "loguru",
     "langchain-core",
+    "sparklines",
     "langchain-chroma",
     "langchain_community",
     "langchain-openai",

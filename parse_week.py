@@ -132,6 +132,8 @@ valid_week_glob = "*202*md"
 def df_for_weeks():
     weeks = [Week.from_file(open(f)).to_dict() for f in glob.glob(valid_week_glob)]
     df = pd.DataFrame(weeks)
+    # Filter out lines where all columns but date are 0 or none
+
     df.date = pd.to_datetime(df.date)
     return df
 
