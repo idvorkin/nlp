@@ -120,7 +120,7 @@ def tony(dev_server: bool = False):
         messages.append(ell.user(user_input))
         # ic(custom_instructions)
 
-        tony_response: Message | list[Message] = prompt_to_llm(messages)  # type: ignore
+        tony_response = prompt_to_llm(messages)  # type: ignore
         if tony_response.tool_calls:
             messages.append(tony_response)
             next_message = tony_response.call_tools_and_collect_as_message()
