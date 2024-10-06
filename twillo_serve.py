@@ -24,6 +24,8 @@ SYSTEM_MESSAGE = (
     "anything the user is interested in and is prepared to offer them facts. "
     "You have a penchant for dad jokes, owl jokes, and rickrolling – subtly. "
     "Always stay positive, but work in a joke when appropriate."
+    "Don't wait for the user to speak.  Start the conversation by saying Hello Igor"
+    "Be a good conversationalist and let the user speak after talking"
 )
 VOICE = "alloy"
 LOG_EVENT_TYPES = [
@@ -60,10 +62,10 @@ async def handle_incoming_call(request: Request):
 
 
 @app.websocket("/media-stream")
-async def handle_media_stream(websocket: WebSocket):
+async def handle_media_stream(twilio_ws: WebSocket):
     """Handle WebSocket connections between Twilio and OpenAI."""
     print("Client connected")
-    await websocket.accept()
+    await twilio_ws.accept()
 
     async with websockets.connect(
         "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01",
@@ -79,7 +81,7 @@ async def handle_media_stream(websocket: WebSocket):
             """Receive audio data from Twilio and send it to the OpenAI Realtime API."""
             nonlocal stream_sid
             try:
-                async for message in websocket.iter_text():
+                async for message in twilio_ws.iter_text():
                     data = json.loads(message)
                     if data["event"] == "media" and openai_ws.open:
                         audio_append = {
@@ -118,7 +120,7 @@ async def handle_media_stream(websocket: WebSocket):
                                 "streamSid": stream_sid,
                                 "media": {"payload": audio_payload},
                             }
-                            await websocket.send_json(audio_delta)
+                            await twilio_ws.send_json(audio_delta)
                         except Exception as e:
                             print(f"Error processing audio data: {e}")
             except Exception as e:
