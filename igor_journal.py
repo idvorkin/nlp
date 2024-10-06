@@ -482,7 +482,7 @@ def body(
         if not entry.is_valid():
             continue
         if multi_day:
-            console.print(f"[blue] ### Journal For {entry.date}")
+            console.print(f"[blue] # Journal For {entry.date}")
         for line in entry.body():
             print(line)
         if full:
