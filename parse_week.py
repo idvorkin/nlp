@@ -135,12 +135,23 @@ def df_for_weeks():
     df = pd.DataFrame(weeks)
     ic(df.columns)
     cols_not_date = [c for c in df.columns if c != "date"]
-    # Filter out lines where all columns but date are 0 or none
+    # Dump dates that where all columns but date are 0 or none, print them
+    trouble_rows = df[
+        (df[cols_not_date] == 0).all(axis=1) | (df[cols_not_date].isna().all(axis=1))
+    ]
+    trouble_rows["date"] = pd.to_datetime(trouble_rows["date"])
+    # filter out any dates earlier then 2022
+    trouble_rows = trouble_rows[trouble_rows["date"].dt.year > 2022]
+    if not trouble_rows.empty:
+        ic(trouble_rows["date"])
+
+    # Filter out lines where all columns but date are 0 or none, print them
+
     df = df[
         (df[cols_not_date] != 0).any(axis=1) & (df[cols_not_date].notna().any(axis=1))
     ]
 
-    df.date = pd.to_datetime(df.date)
+    df["date"] = pd.to_datetime(df["date"])
     return df
 
 
