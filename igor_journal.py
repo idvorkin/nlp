@@ -482,12 +482,12 @@ def body(
         if not entry.is_valid():
             continue
         if multi_day:
-            console.print(f"[blue] # Journal For {entry.date}")
+            console.print(f"[blue]# Journal For {entry.date}")
         for line in entry.body():
             print(line)
         if full:
             if "Day awesome if:" in entry.sections_with_list:
-                console.print("\n[green] ### Yesterday was Awesome:[/green]")
+                console.print("\n[green]### Yesterday was Awesome:[/green]")
                 for item in entry.sections_with_list["Yesterday was awesome because:"]:
                     console.print(f"- {item}")
             if "Grateful for:" in entry.sections_with_list:
