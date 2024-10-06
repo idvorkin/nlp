@@ -398,6 +398,12 @@ def todo(
         ),
     ] = False,
 ):
+    """
+    Display the todo list for a specific journal entry.
+
+    If no date is provided, it uses today's date. You can specify a date or the number of days ago.
+    Use the --close option to find the nearest valid entry if the specified date doesn't exist.
+    """
     date_journal_for = cli_date_to_entry_date(journal_for, close)
     entry = JournalEntry(date_journal_for)
 
@@ -451,6 +457,16 @@ def body(
     full: Annotated[bool, typer.Option(help="Show full entry")] = False,
     days: int = 1,
 ):
+    """
+    Display the body of a journal entry or multiple entries.
+
+    You can specify a date, number of days ago, or use today's date by default.
+    Options:
+    --close: Find the nearest valid entry if the specified date doesn't exist.
+    --date-header: Always show the date header.
+    --full: Display the full entry including additional sections.
+    --days: Number of consecutive days to display (default is 1).
+    """
     date_journal_for = cli_date_to_entry_date(journal_for, close)
     entry = JournalEntry(date_journal_for)
 
@@ -513,12 +529,22 @@ def entries(
         datetime.now(), help="Pass a date or int for days ago"
     ),
 ):
+    """
+    List all journal entries for a specific month.
+
+    Provide a date to see entries for that month. If no date is given, it uses the current month.
+    """
     for e in entries_for_month(for_month):
         print(e)
 
 
 @app.command()
 def s50_export():
+    """
+    Export data in the 750 Words format.
+
+    This command is currently a placeholder and needs to be implemented.
+    """
     # test_journal_entry = JournalEntry(date(2012, 4, 8))
     print("hi")
 
@@ -533,12 +559,22 @@ def all_entries() -> Iterable[date]:
 
 @app.command()
 def all():
+    """
+    List all journal entries across all available dates.
+
+    This command displays a chronological list of all journal entry dates.
+    """
     for x in all_entries():
         print(x)
 
 
 @app.command()
 def bodies(days: int = 7):
+    """
+    Display the bodies of multiple journal entries.
+
+    By default, it shows the last 7 days of entries. You can specify a different number of days.
+    """
     for x in all_entries():
         print(JournalEntry(x).body())
     # print (len(list(all_entries())))
@@ -546,6 +582,11 @@ def bodies(days: int = 7):
 
 @app.command()
 def sanity():
+    """
+    Perform a sanity check on the journal data.
+
+    This command loads a sample corpus and tests loading entries from different archive types.
+    """
     # Load simple corpus for my journal
     corpus = LoadCorpus(datetime.now().date() - timedelta(days=180))  # NOQA  - see if it loads
     print(
@@ -563,6 +604,12 @@ def sanity():
 
 @app.command()
 def files_with_word(word):
+    """
+    Search for files containing a specific word.
+
+    This command searches through all journal files and lists those containing the specified word,
+    along with the count of occurrences.
+    """
     # I need to put this in a DB so it's fast.
     directory = Path.home() / "gits/igor2/750words_new_archive"
     if not os.path.isdir(directory):
@@ -591,6 +638,11 @@ def files_with_word(word):
 
 @app.command()
 def build_embed():
+    """
+    Build embeddings for the journal entries.
+
+    This is a placeholder for future implementation using langchain and RAG.
+    """
     pass
 
     # Todo rebuild this using langchain and RAG
