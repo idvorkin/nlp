@@ -9,9 +9,12 @@ from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import HTMLResponse
 from fastapi.websockets import WebSocketDisconnect
 from twilio.twiml.voice_response import VoiceResponse, Connect
-from dotenv import load_dotenv
+from modal import App, Image
+import modal
 
-load_dotenv()
+
+modal_app = App("twillio-serve-voice")
+modal_app.image = Image.debian_slim().pip_install("fastapi", "websockets", "twilio")
 
 # Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # requires OpenAI Realtime API Access
@@ -40,8 +43,8 @@ if not OPENAI_API_KEY:
     raise ValueError("Missing the OpenAI API key. Please set it in the .env file.")
 
 
-@app.get("/", response_class=HTMLResponse)
-async def index_page():
+@app.get("/")
+def index_page():
     return {"message": "Twilio Media Stream Server is running!"}
 
 
@@ -49,12 +52,6 @@ async def index_page():
 async def handle_incoming_call(request: Request):
     """Handle incoming call and return TwiML response to connect to Media Stream."""
     response = VoiceResponse()
-    # <Say> punctuation to improve text-to-speech flow
-    response.say(
-        "Please wait while we connect your call to the A. I. voice assistant, powered by Twilio and the Open-A.I. Realtime API"
-    )
-    response.pause(length=1)
-    response.say("O.K. you can start talking!")
     host = request.url.hostname
     connect = Connect()
     connect.stream(url=f"wss://{host}/media-stream")
@@ -148,7 +145,15 @@ async def send_session_update(openai_ws):
     await openai_ws.send(json.dumps(session_update))
 
 
-if __name__ == "__main__":
-    import uvicorn
+@app.websocket("/ws")
+async def websocket_handler(websocket: WebSocket) -> None:
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+        await websocket.send_text(f"Message text was: {data}")
 
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+
+@modal_app.function(secrets=[modal.Secret.from_name("TWILLIO_TONY_OPENAI")])
+@modal.asgi_app()
+def endpoint():
+    return app
