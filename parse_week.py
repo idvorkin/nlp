@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from rich.console import Console
 from rich.table import Table
 from rich import print
+from icecream import ic
 
 
 console = Console()
@@ -132,7 +133,12 @@ valid_week_glob = "*202*md"
 def df_for_weeks():
     weeks = [Week.from_file(open(f)).to_dict() for f in glob.glob(valid_week_glob)]
     df = pd.DataFrame(weeks)
+    ic(df.columns)
+    cols_not_date = [c for c in df.columns if c != "date"]
     # Filter out lines where all columns but date are 0 or none
+    df = df[
+        (df[cols_not_date] != 0).any(axis=1) & (df[cols_not_date].notna().any(axis=1))
+    ]
 
     df.date = pd.to_datetime(df.date)
     return df
