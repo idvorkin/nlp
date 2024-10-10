@@ -453,6 +453,7 @@ ___
 
     if gist:
         import langchain_helper
+        import openai_wrapper
 
         langchain_helper.to_gist(output_file_path)
 
