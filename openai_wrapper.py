@@ -221,22 +221,18 @@ def tool_choice(fn):
 
 def get_text_from_path_or_stdin(path):
     import sys
-    import requests
-    import html2text
+    from pathlib import Path
 
     if not path:  # read from stdin
         return "".join(sys.stdin.readlines())
-    # check if path is URL
     if path.startswith("http"):
+        import requests
+        import html2text
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
         }
-
         request = requests.get(path, headers=headers)
-        out = html2text.html2text(request.text)
-        return out
+        return html2text.html2text(request.text)
     if path:
-        # try to open the file, using pathlib
         return Path(path).read_text()
-    # read stdin
     return str(sys.stdin.readlines())

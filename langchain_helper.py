@@ -9,7 +9,6 @@ from types import FrameType
 from typing import Callable, List, TypeVar
 from datetime import datetime, timedelta
 import asyncio
-from openai_wrapper import get_text_from_path_or_stdin
 
 
 def get_model_name(model: BaseChatModel):
