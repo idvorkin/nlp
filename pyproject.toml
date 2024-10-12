@@ -53,7 +53,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week"]
+py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "flux"]
 
 [project.scripts]
 gpt = "gpt3:app"
