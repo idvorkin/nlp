@@ -1,6 +1,5 @@
 #!python3
 
-import sys
 import typer
 from loguru import logger
 from rich import print
@@ -26,19 +25,11 @@ def prompt_illustrate(content: str):
     return content  # This will be the user prompt
 
 
-def get_text_from_path_or_stdin(path: str) -> str:
-    if path:
-        with open(path, "r") as file:
-            return file.read()
-    else:
-        return "".join(sys.stdin.readlines())
-
-
 @app.command()
 def draw(
     path: str = typer.Argument(None),
 ):
-    user_text = get_text_from_path_or_stdin(path)
+    user_text = openai_wrapper.get_text_from_path_or_stdin(path)
     ret = prompt_illustrate(user_text)
     print(ret)
 
