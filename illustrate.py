@@ -25,6 +25,10 @@ def prompt_illustrate(content: str):
     return content  # This will be the user prompt
 
 
+# https://docs.ell.so/core_concepts/multimodality.html
+# Dalle-3 isn't implemented yet :(
+
+
 @app.command()
 def draw(
     path: str = typer.Argument(None),
