@@ -51,6 +51,12 @@ def show(img):
 
 @app.command()
 def gen_flux(prompt: str):
+    """
+    Generate an image using the Flux model based on the given prompt.
+
+    Args:
+        prompt (str): The text prompt to generate the image from.
+    """
     ic(prompt)
     augmented_prompt = prompt_illustrate(prompt)
     ic(augmented_prompt)
@@ -73,6 +79,12 @@ def gen_flux(prompt: str):
 
 @app.command()
 def gen_igor(prompt: str):
+    """
+    Generate an image of Igor (Idvorkin) using a custom LoRA model based on the given prompt.
+
+    Args:
+        prompt (str): The text prompt to generate the image from.
+    """
     ic(prompt)
     augmented_prompt = prompt_illustrate_igor(prompt)
     ic(augmented_prompt)
@@ -134,6 +146,9 @@ def make_grid_of_images(images):
 
 @app.command()
 def training():
+    """
+    List and display information about model trainings.
+    """
     trainings = replicate.trainings.list()
     for train in trainings:
         ic(train)
@@ -145,6 +160,9 @@ def training():
 
 @app.command()
 def dump():
+    """
+    Dump model information and download model files for the custom Idvorkin LoRA model.
+    """
     model = replicate.models.get("idvorkin/idvorkin-flux-lora-1")
     # write model to file
     ic(model)
