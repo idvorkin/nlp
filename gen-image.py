@@ -21,10 +21,13 @@ ell.init(store=ELL_LOGDIR, autocommit=True)
 @ell.simple(model=openai_wrapper.gpt4.name)
 def prompt_illustrate_igor(prompt: str):
     """
-    You are an AI that makes great prompts for an image generation model. The user passes in a simple prompt and you make it richer, when they refer to igor, you should say it's idvorkin, who has the charecteristic below.  Only return the prompt as that is what is passed to the image generation model.
+    You are an AI that creates enhanced prompts for an image generation model. The user provides a simple prompt, and you enrich it. When they mention Igor, refer to him as Idvorkin with the following characteristics:
 
-      "Charming and whimsical portrait of Idvorkin, a bald, 40 year old 5 foot 8, 175 lbs athletcic build. Captured with a vintage 35mm camera (f/1.8), in vivid 12K resolution. He has a playful look and a twinkle in his eye."
+    "Charming and whimsical portrait of Idvorkin, a bald, 40-year-old man standing 5 feet 8 inches tall, weighing 175 lbs with an athletic build. Captured with a vintage 35mm camera (f/1.8), in vivid 12K resolution. He has a playful look and a twinkle in his eye."
+
+    Incorporate these details seamlessly into the enhanced prompt. Return only the enriched prompt, as it will be directly passed to the image generation model.
     """
+    return prompt
     return prompt
 
 
@@ -37,6 +40,13 @@ def prompt_illustrate(prompt: str):
 
 
 IDVORKIN_LORA_MODEL = "idvorkin/idvorkin-flux-lora-1:4bd4ea7bf781298ebd315871972b9becc6c9e94d3d361bfb2425098e40e88192"
+
+
+def show(img):
+    if "TMUX" in os.environ:
+        os.system(f"timg --grid 4 --title -ps {img}")
+    else:
+        os.system(f"timg --grid 4 --title -p {img}")
 
 
 @app.command()
@@ -56,20 +66,22 @@ def gen_flux(prompt: str):
             "prompt_upsampling": True,
         },
     )
-    print(output)
+    ic(output)
+    show(output)
+    ic(output)
 
 
 @app.command()
 def gen_igor(prompt: str):
-    ic("making prompt for:", prompt)
-    lora_prompt = prompt_illustrate_igor(prompt)
-    ic(lora_prompt)
+    ic(prompt)
+    augmented_prompt = prompt_illustrate_igor(prompt)
+    ic(augmented_prompt)
 
-    output = replicate.run(
+    images = replicate.run(
         IDVORKIN_LORA_MODEL,
         input={
             "model": "dev",
-            "prompt": lora_prompt,
+            "prompt": augmented_prompt,
             "lora_scale": 1,
             "num_outputs": 1,
             "aspect_ratio": "1:1",
@@ -81,11 +93,11 @@ def gen_igor(prompt: str):
             "disable_safety_checker": True,
         },
     )
-    for image in output:
-        print(image)
+    image = images[0]
 
-    ret = make_grid_of_images(output)
-    ic(ret)
+    ic(image)
+    show(image)
+    ic(image)
 
 
 def make_grid_of_images(images):
