@@ -78,6 +78,7 @@ fabric = "fabric:app"
 illustrate = "illustrate:app"
 vapi_sim = "vapi_sim:app"
 recognize = "recognize:app"
+image = "image:app"
 
 [tool.pyright]
 # ...
