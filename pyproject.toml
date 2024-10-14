@@ -7,7 +7,7 @@ name = "idvorkin_nlp"
 version = "0.1.0"
 dependencies = [
     "icecream",
-    # "ell-ai", #groan This need numpy > 2, which no one supports yet. BLEH, manual hacks time
+    "ell-ai", #groan This need numpy > 2, which no one supports yet. BLEH, manual hacks time
     "rich",
     "pydantic",
     "loguru",
@@ -78,7 +78,6 @@ fabric = "fabric:app"
 illustrate = "illustrate:app"
 vapi_sim = "vapi_sim:app"
 recognize = "recognize:app"
-image = "image:app"
 
 [tool.pyright]
 # ...
