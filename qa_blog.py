@@ -1,4 +1,5 @@
 #!python3
+import asyncio
 from langchain.callbacks.tracers.langchain import LangChainTracer
 import requests
 from functools import lru_cache
@@ -285,7 +286,7 @@ def ask(
     facts: Annotated[int, typer.Option()] = 5,
     debug: bool = typer.Option(True),
 ):
-    response = iask(question, facts, debug)
+    response = asyncio.run(iask(question, facts, debug))
     print(response)
 
 
