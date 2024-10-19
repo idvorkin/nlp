@@ -72,9 +72,9 @@ def gen_flux(prompt: str):
             "prompt_upsampling": True,
         },
     )
-    ic(output.url)
+    ic(output)
     show(output)
-    ic(output.url)
+    ic(output)
 
 
 @app.command()
@@ -107,9 +107,9 @@ def gen_igor(prompt: str):
     )
     image = images[0]
 
-    ic(image.url)
+    ic(image)
     show(image)
-    ic(image.url)
+    ic(image)
 
 
 def make_grid_of_images(images):
