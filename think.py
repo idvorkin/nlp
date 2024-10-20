@@ -171,7 +171,7 @@ async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
     user_text = openai_wrapper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)
 
-    if tokens < 60_000:  # Groq limits to 60K ish
+    if tokens < 16_000:  # Groq limits to 60K ish
         # only add Llama if the text is small
         llms += [langchain_helper.get_model(llama=True)]
 
