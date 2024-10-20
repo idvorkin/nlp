@@ -714,7 +714,8 @@ def captions(
 ):
     """
     Convert captions files into readable text. You can get them via
-    youtube-dl --write-sub --sub-format srt --skip-download
+    yt-dlp --write-sub --sub-format srt --skip-download
+    yt-dlp --write-auto-sub --skip-download
     """
 
     original_user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
@@ -742,6 +743,7 @@ A sentence should not be more then 30 words, and a paragraph should not be more 
         prompt_to_gpt = remove_trailing_spaces(prompt)
         base_query_from_dict(locals())
         print("----")
+
 
 @app.command()
 def captions_fix(
@@ -792,6 +794,7 @@ Also include nice titles
     prompt = f"""{user_text}"""
     prompt_to_gpt = remove_trailing_spaces(prompt)
     base_query_from_dict(locals())
+
 
 @app.command()
 def fix(
