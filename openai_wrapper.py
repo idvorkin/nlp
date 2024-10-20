@@ -202,7 +202,7 @@ def get_ell_model(
     elif claude:
         return "claude-3-5-sonnet-20240620"
     elif llama:
-        raise NotImplementedError("llama")
+        return "llama-3.2-90b-vision-preview"
     else:
         return gpt4.name
 
@@ -219,6 +219,7 @@ def tool_choice(fn):
     ic(r)
     return r
 
+
 def get_text_from_path_or_stdin(path):
     import sys
     from pathlib import Path
@@ -228,6 +229,7 @@ def get_text_from_path_or_stdin(path):
     if path.startswith("http"):
         import requests
         import html2text
+
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
         }
