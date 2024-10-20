@@ -181,6 +181,7 @@ def ask_gpt_n(
 
 def get_ell_model(
     openai: bool = False,
+    openai_cheap: bool = False,
     google: bool = False,
     claude: bool = False,
     llama: bool = False,
@@ -189,7 +190,7 @@ def get_ell_model(
     See changes in diff
     """
     # if more then one is true, exit and fail
-    count_true = sum([openai, google, claude, llama])
+    count_true = sum([openai, google, claude, llama, openai_cheap])
     if count_true > 1:
         print("Only one model can be selected")
         exit(1)
@@ -203,6 +204,8 @@ def get_ell_model(
         return "claude-3-5-sonnet-20240620"
     elif llama:
         return "llama-3.2-90b-vision-preview"
+    elif openai_cheap:
+        return "gpt-4o-mini"
     else:
         return gpt4.name
 

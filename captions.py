@@ -7,6 +7,7 @@ import ell
 import os
 import openai_wrapper
 from loguru import logger
+from icecream import ic
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
@@ -17,7 +18,8 @@ ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
 ell.init(store=ELL_LOGDIR, autocommit=True)
 
 
-@ell.simple(model=openai_wrapper.get_ell_model(openai=True))
+# Use the cheap modle as this is an easy task we put a lot of text through.
+@ell.simple(model=openai_wrapper.get_ell_model(openai_cheap=True))
 def prompt_captions_to_human_readable(captions: str, last_chunk: str):
     """
     You are a super smart AI, who understands captions formats, and also English grammar and spelling.
@@ -30,7 +32,8 @@ def prompt_captions_to_human_readable(captions: str, last_chunk: str):
 
     A sentence should not be more than 30 words, and a paragraph should not be more than 10 sentences.
 
-    If you think we're in an add, put it into <sponsor> </sponsor> links
+    The podcast has ads/sponsors. I don't want to see them. If you see one, don't include it. Just say "**Ad break**" in a new paragraph and skip the transcribe
+
 
     If you can figure out who is speaking start his paragraphs with "**HOST:**" or  "**GUEST1:**" etc.
 
@@ -66,7 +69,12 @@ def to_human():
 def split_string(input_string):
     # TODO: update this to use the tokenizer
     # Output size is 16K, so let that be the chunk size
-    chunk_size = 20_000
+    # A very rough estimate might suggest that a VTT file could be around 1.5 to 3 times larger than the plain text, depending on how verbose the timestamps and metadata are compared to the actual dialogue or text content. However, this is just an approximation and can vary significantly based on the specific content and structure of the VTT file.
+    chars_per_token = 4
+    max_tokens = 15_000
+    vtt_multiplier = 2
+    chunk_size = chars_per_token * max_tokens * vtt_multiplier
+    ic(int(len(input_string) / chunk_size))
     for i in range(0, len(input_string), chunk_size):
         chunk = input_string[i : i + chunk_size]
         yield chunk
