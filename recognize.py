@@ -24,16 +24,6 @@ app = typer.Typer(no_args_is_help=True)
 init_ell()
 
 
-@app.command()
-def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
-    """
-    Launch the ELL Studio interface for interactive model exploration and testing.
-
-    This command opens the ELL Studio, allowing users to interactively work with
-    language models, test prompts, and analyze responses in a user-friendly environment.
-    """
-    run_studio(port=port)
-
 
 def count_image_tokens(image: Image.Image):
     """
@@ -185,12 +175,19 @@ def pretty_print(result: ImageRecognitionResult):
 def recognize(
     json: bool = typer.Option(False, "--json", help="Output result as JSON"),
     fx: bool = typer.Option(False, "--fx", help="Call fx on the output JSON"),
+    studio: bool = typer.Option(False, "--studio", help="Launch ELL Studio for interactive exploration"),
+    port: int = typer.Option(None, help="Port to run the ELL Studio on (only used with --studio)"),
 ):
     """
     Recognizes text from an image in the clipboard and prints the result.
     If --json flag is set, dumps the result as JSON.
     If --fx flag is set, calls fx on the output JSON.
+    If --studio flag is set, launches ELL Studio for interactive exploration.
     """
+    if studio:
+        run_studio(port=port)
+        return
+
     import json as json_module
 
     answer: ImageRecognitionResult = prompt_recognize(clipboard_to_image()).parsed  # type: ignore
