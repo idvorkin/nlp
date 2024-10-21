@@ -9,7 +9,7 @@ import asyncio
 
 def get_caller_filename():
     current_file = inspect.currentframe().f_code.co_filename
-    for frame_info in inspect.stack()[1:]:
+    for frame_info in inspect.stack():
         if frame_info.filename != current_file:
             return os.path.splitext(os.path.basename(frame_info.filename))[0]
     return "unknown"
@@ -21,8 +21,7 @@ def get_ell_logdir():
 
 
 def init_ell():
-    ELL_LOGDIR = get_ell_logdir()
-    ell.init(store=ELL_LOGDIR, autocommit=True)
+    ell.init(store=get_ell_logdir(), autocommit=True)
     ell.models.groq.register()
 
 
@@ -64,30 +63,44 @@ def is_port_in_use(port):
     return result == 0
 
 
-def open_browser():
-    subprocess.run(["open", "http://127.0.0.1:5555"])
+def open_browser(port):
+    subprocess.run(["open", f"http://127.0.0.1:{port}"])
 
 
-async def run_server_and_open_browser():
-    # Start the server asynchronously
+def find_available_port(start_port=5000, max_port=65535):
+    for port in range(start_port, max_port + 1):
+        if not is_port_in_use(port):
+            return port
+    raise RuntimeError("No available ports found")
+
+
+async def run_server_and_open_browser(logdir):
+    port = find_available_port()
+    ic(logdir)
+
+    # Start the server asynchronously with the found port
     server_process = await asyncio.create_subprocess_exec(
-        "ell-studio", "--storage", get_ell_logdir()
+        "ell-studio", "--storage", logdir, "--port", str(port)
     )
 
     # Wait for 2 seconds
     await asyncio.sleep(2)
 
-    # Open the browser
-    open_browser()
+    # Open the browser with the same port
+    open_browser(port)
 
     # Keep the server running
     await server_process.wait()
 
 
-def studio():
-    if not is_port_in_use(5555):
-        # Run the async function
-        asyncio.run(run_server_and_open_browser())
-    else:
-        ic("Studio is already running")
-        open_browser()
+def run_studio():
+    try:
+        # Need to get the logdir from the caller which we
+        # can't get once we go asyn
+        logdir = get_ell_logdir()
+        ic(logdir)
+        asyncio.run(run_server_and_open_browser(logdir))
+    except RuntimeError as e:
+        ic(f"Error: {e}")
+    except Exception as e:
+        ic(f"An unexpected error occurred: {e}")

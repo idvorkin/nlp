@@ -9,7 +9,7 @@ from loguru import logger
 import ell
 import openai
 from PIL import Image, ImageDraw
-from ell_helper import get_ell_model, init_ell, studio
+from ell_helper import get_ell_model, init_ell, run_studio
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
@@ -78,8 +78,8 @@ def groq():
 
 
 @app.command()
-def studio_command():
-    studio()
+def studio():
+    run_studio()
 
 
 @logger.catch()
