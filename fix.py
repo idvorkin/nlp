@@ -37,7 +37,22 @@ def prompt_fix(user_text: str):
 
 
 @app.command()
-def fix():
+def fix(
+    studio: bool = Option(False, help="Launch the ELL Studio interface"),
+    port: int = Option(
+        None, help="Port to run the ELL Studio on (only used with --studio)"
+    ),
+):
+    """
+    Fix text or launch the ELL Studio interface.
+
+    This command allows you to fix text or open the ELL Studio for
+    interactive model exploration and testing.
+    """
+    if studio:
+        run_studio(port=port)
+        return
+
     start = datetime.now()
 
     user_text = "".join(sys.stdin.readlines())
@@ -49,17 +64,6 @@ def fix():
     print("--erase me--")
 
     print(fixed)
-
-
-@app.command()
-def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
-    """
-    Launch the ELL Studio interface for interactive model exploration and testing.
-
-    This command opens the ELL Studio, allowing users to interactively work with
-    language models, test prompts, and analyze responses in a user-friendly environment.
-    """
-    run_studio(port=port)
 
 
 if __name__ == "__main__":

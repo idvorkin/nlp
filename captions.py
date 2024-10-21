@@ -4,22 +4,31 @@
 import typer
 from rich.console import Console
 import ell
-import os
-import openai_wrapper
 from loguru import logger
 from icecream import ic
+from ell_helper import init_ell, run_studio, get_ell_model
+from typer import Option
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
 
-# Define ELL_LOGDIR as a constant
-ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
-
-ell.init(store=ELL_LOGDIR, autocommit=True)
+# Initialize ELL
+init_ell()
 
 
-# Use the cheap modle as this is an easy task we put a lot of text through.
-@ell.simple(model=openai_wrapper.get_ell_model(openai_cheap=True))
+@app.command()
+def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
+    """
+    Launch the ELL Studio interface for interactive model exploration and testing.
+
+    This command opens the ELL Studio, allowing users to interactively work with
+    language models, test prompts, and analyze responses in a user-friendly environment.
+    """
+    run_studio(port=port)
+
+
+# Use the cheap model as this is an easy task we put a lot of text through.
+@ell.simple(model=get_ell_model(openai_cheap=True))
 def prompt_captions_to_human_readable(captions: str, last_chunk: str):
     """
     You are a super smart AI, who understands captions formats, and also English grammar and spelling.
@@ -91,7 +100,7 @@ def captions_fix():
     """
     user_text = "".join(typer.get_text_stream("stdin").readlines())
 
-    @ell.complex(model=openai_wrapper.get_ell_model(openai=True))
+    @ell.complex(model=get_ell_model(openai=True))
     def fix_captions(transcript: str):
         """
         You are an AI expert at fixing up captions files.
