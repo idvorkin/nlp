@@ -7,18 +7,19 @@ from rich.console import Console
 import typer
 from icecream import ic
 from pathlib import Path
-import openai_wrapper
-import ell
 import os
+import ell
+from ell_helper import init_ell, run_studio, get_ell_model
+from typer import Option
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
 
-ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
-ell.init(store=ELL_LOGDIR, autocommit=True)
+# Initialize ELL
+init_ell()
 
 
-@ell.simple(model=openai_wrapper.gpt4.name)
+@ell.simple(model=get_ell_model(openai=True))
 def prompt_illustrate_igor(prompt: str):
     """
     You are an AI that creates enhanced prompts for an image generation model. The user provides a simple prompt, and you enrich it. When they mention Igor, refer to him as Idvorkin with the following characteristics:
@@ -28,10 +29,9 @@ def prompt_illustrate_igor(prompt: str):
     Incorporate these details seamlessly into the enhanced prompt. Return only the enriched prompt, as it will be directly passed to the image generation model.
     """
     return prompt
-    return prompt
 
 
-@ell.simple(model=openai_wrapper.gpt4.name)
+@ell.simple(model=get_ell_model(openai=True))
 def prompt_illustrate(prompt: str):
     """
     You are an AI that makes great prompts for an image generation model. The user passes in a simple prompt and you make it richer,
@@ -186,6 +186,17 @@ def dump():
         filename = file_url.split("/")[-1]
         with open(filename, "wb") as f:
             f.write(response.content)
+
+
+@app.command()
+def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
+    """
+    Launch the ELL Studio interface for interactive model exploration and testing.
+
+    This command opens the ELL Studio, allowing users to interactively work with
+    language models, test prompts, and analyze responses in a user-friendly environment.
+    """
+    run_studio(port=port)
 
 
 @logger.catch()

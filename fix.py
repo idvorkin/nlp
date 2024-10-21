@@ -7,16 +7,15 @@ from rich.console import Console
 from icecream import ic
 import openai_wrapper
 import ell
-import os
 from datetime import datetime
+from ell_helper import init_ell, run_studio, get_ell_model
+from typer import Option
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
 
-# Define ELL_LOGDIR as a constant
-ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
-
-ell.init(store=ELL_LOGDIR, autocommit=True)
+# Initialize ELL
+init_ell()
 
 
 @logger.catch()
@@ -24,7 +23,7 @@ def app_wrap_loguru():
     app()
 
 
-@ell.simple(model=openai_wrapper.gpt4.name)
+@ell.simple(model=get_ell_model(openai=True))
 def prompt_fix(user_text: str):
     """You are an advanced AI with superior spelling correction abilities.
     Your task is to correct any spelling errors you encounter in the text provided below.
@@ -50,6 +49,17 @@ def fix():
     print("--erase me--")
 
     print(fixed)
+
+
+@app.command()
+def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
+    """
+    Launch the ELL Studio interface for interactive model exploration and testing.
+
+    This command opens the ELL Studio, allowing users to interactively work with
+    language models, test prompts, and analyze responses in a user-friendly environment.
+    """
+    run_studio(port=port)
 
 
 if __name__ == "__main__":
