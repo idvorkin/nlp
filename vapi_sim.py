@@ -1,7 +1,6 @@
 #!python3
 
 import os
-
 import typer
 from icecream import ic
 from loguru import logger
@@ -10,16 +9,16 @@ from rich.console import Console
 import requests
 import ell
 from ell import Message
-import openai_wrapper
-
-ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
-ell.init(store=ELL_LOGDIR, autocommit=True)
-
+from ell_helper import init_ell, run_studio, get_ell_model
+from typer import Option
 
 DEFAULT_SEARCH_QUERY = "What's the weather in moscow"
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
+
+# Initialize ELL
+init_ell()
 
 
 @ell.tool()
@@ -59,7 +58,7 @@ def call_tony_server_as_vapi(api, **kwargs):
 TONY_TOOLS = [journal_append, journal_read, search, library_arrivals]
 
 
-@ell.complex(model=openai_wrapper.get_ell_model(openai=True), tools=TONY_TOOLS)
+@ell.complex(model=get_ell_model(openai=True), tools=TONY_TOOLS)
 def prompt_to_llm(message_history: list[Message]):
     return (
         [
@@ -82,8 +81,22 @@ def get_tony_server_url(dev_server: bool) -> str:
 
 
 @app.command()
-def tony(dev_server: bool = False):
-    """Talk to Toni"""
+def tony(
+    dev_server: bool = Option(False, help="Use the development server"),
+    studio: bool = Option(False, help="Launch the ELL Studio interface"),
+    port: int = Option(
+        None, help="Port to run the ELL Studio on (only used with --studio)"
+    ),
+):
+    """
+    Talk to Tony or launch the ELL Studio interface.
+
+    This command allows you to interact with Tony or open the ELL Studio for
+    interactive model exploration and testing.
+    """
+    if studio:
+        run_studio(port=port)
+        return
 
     ic("v0.0.4")
 

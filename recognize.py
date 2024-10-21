@@ -6,26 +6,33 @@ from PIL import Image
 import typer
 import ell
 import AppKit
-import os
 from pydantic import BaseModel, Field
 from typing import Optional, List
-
-
 from loguru import logger
 from rich.console import Console
 from icecream import ic
 import math
-import openai_wrapper
-
-# import openai_wrapper
 from pathlib import Path
 import subprocess
+from ell_helper import init_ell, run_studio, get_ell_model
+from typer import Option
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
 
-ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
-ell.init(store=ELL_LOGDIR, autocommit=True)
+# Initialize ELL
+init_ell()
+
+
+@app.command()
+def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
+    """
+    Launch the ELL Studio interface for interactive model exploration and testing.
+
+    This command opens the ELL Studio, allowing users to interactively work with
+    language models, test prompts, and analyze responses in a user-friendly environment.
+    """
+    run_studio(port=port)
 
 
 def count_image_tokens(image: Image.Image):
@@ -147,9 +154,9 @@ class ImageRecognitionResult(BaseModel):
 
 
 @ell.complex(
-    model=openai_wrapper.get_ell_model(openai=True),
+    model=get_ell_model(openai=True),
     response_format=ImageRecognitionResult,
-)  # type: ignore
+)
 def prompt_recognize(image: Image.Image):
     system = """
     You are passed in an image that I created myself so there are no copyright issues.
