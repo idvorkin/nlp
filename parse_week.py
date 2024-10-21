@@ -16,31 +16,11 @@ from rich.console import Console
 from rich.table import Table
 from rich import print
 from icecream import ic
+from pathlib import Path
 
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
-
-useful_prompt_info = """
-
-Here are the special rules you’ve mentioned that I should follow when helping you with your weekly report:
-
-    Tech Exploration is Personal: Tech exploration, including coding, AI tools, and similar activities, is for your personal enjoyment and growth, not for creating joy for others. Make sure to frame this appropriately.
-
-    Tristan Only for Physical Health: Tristan, your trainer, should only be mentioned in the context of physical health and fitness. Avoid including him in other sections like friends unless it's directly related to training or fitness progress.
-
-    Joy Refers to Others' Joy: "Joy" activities refer to activities that create joy for others, not your own joy. Be mindful when discussing joy-related activities.
-
-    Clarity on Hijirida's Concepts: Hijirida introduced two specific concepts:
-
-        Doing things you're passionate about, rather than just optimizing for the best outcome.
-        Finding natural ways to spend time with your kids, such as creating a "study hall" at a coffee shop.
-        Don’t Forget Family Routine: You always walk your kids to school, and this makes you happy. Include this as a part of the family section whenever it’s relevant.
-
-        Categorize Work and Tech Correctly: Work-related tasks like date affinity for memories or Cyrus' support case belong in the Work section, not Tech Guru.
-
-
-"""
 
 
 def df_to_table(
@@ -241,6 +221,38 @@ def csv(transpose: bool = False, weeks: int = 10):
         base.T.to_csv(sys.stdout)
     else:
         base.to_csv(sys.stdout)
+
+
+@app.command()
+def print_prompt():
+    report_template_path = Path.home() / "gits/igor2/week_report/week_template.md"
+    report_template = report_template_path.read_text()
+    useful_prompt_info = f"""
+
+    Let's write a report together summarizing my week. I'll start by giving you my journal entries.
+
+    <instructions>
+    When writing the report:
+
+    * For every section,use bullet points, 3 to 6 each. Be specific use nouns and examples
+
+    * Tech Exploration is Personal: Tech exploration, including coding, AI tools, and similar activities, is for your personal enjoyment and growth, not for creating joy for others. Make sure to frame this appropriately.
+
+    * Tristan Only for Physical Health: Tristan, your trainer, should only be mentioned in the context of physical health and fitness. Avoid including him in other sections like friends unless it's directly related to training or fitness progress.
+
+    * Joy Refers to Others' Joy: "Joy" activities refer to activities that create joy for others, not your own joy. Be mindful when discussing joy-related activities.
+
+
+    * Categorize Work and Tech Correctly: Work-related tasks like date affinity for memories or Cyrus' support case belong in the Work section, not Tech Guru.
+    </instructions>
+
+    Report Template
+    <template>
+    {report_template}
+    </template>
+
+    """
+    print(useful_prompt_info)
 
 
 @logger.catch
