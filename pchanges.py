@@ -20,12 +20,13 @@ from pydantic import BaseModel
 from rich import print as rich_print
 from rich.console import Console
 from functools import partial
+from ell_helper import get_ell_model, init_ell, run_studio
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
 
-ELL_LOGDIR = os.path.expanduser("~/tmp/ell_logdir")
-ell.init(store=ELL_LOGDIR, autocommit=True)
+# Initialize ELL
+init_ell()
 
 
 class Diff(BaseModel):
@@ -461,3 +462,7 @@ ___
 if __name__ == "__main__":
     ic("main")
     app_wrap_loguru()
+
+@app.command()
+def studio():
+    run_studio()
