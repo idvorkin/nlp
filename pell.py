@@ -3,6 +3,7 @@
 
 
 import typer
+from typer import Option
 from icecream import ic
 from rich.console import Console
 from loguru import logger
@@ -17,6 +18,17 @@ openai_client = openai.Client()
 
 # Initialize ELL
 init_ell()
+
+
+@app.command()
+def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
+    """
+    Launch the ELL Studio interface for interactive model exploration and testing.
+
+    This command opens the ELL Studio, allowing users to interactively work with
+    language models, test prompts, and analyze responses in a user-friendly environment.
+    """
+    run_studio(port=port)
 
 
 @app.command()
@@ -75,11 +87,6 @@ def groq():
     draw.rectangle([100, 100, 199, 199], fill=(255, 255, 0))
     response2 = hello_groq_image(img)
     ic(response2)
-
-
-@app.command()
-def studio():
-    run_studio()
 
 
 @logger.catch()

@@ -13,6 +13,7 @@ from typing import Tuple
 import openai_wrapper
 import pudb
 import typer
+from typer import Option
 from icecream import ic
 import ell
 from loguru import logger
@@ -30,8 +31,14 @@ init_ell()
 
 
 @app.command()
-def studio():
-    run_studio()
+def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
+    """
+    Launch the ELL Studio interface for interactive model exploration and testing.
+
+    This command opens the ELL Studio, allowing users to interactively work with
+    language models, test prompts, and analyze responses in a user-friendly environment.
+    """
+    run_studio(port=port)
 
 
 class Diff(BaseModel):

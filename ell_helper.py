@@ -74,8 +74,9 @@ def find_available_port(start_port=5000, max_port=65535):
     raise RuntimeError("No available ports found")
 
 
-async def run_server_and_open_browser(logdir):
-    port = find_available_port()
+async def run_server_and_open_browser(logdir, port=None):
+    if port is None:
+        port = find_available_port()
     ic(logdir)
 
     # Start the server asynchronously with the found port
@@ -93,13 +94,13 @@ async def run_server_and_open_browser(logdir):
     await server_process.wait()
 
 
-def run_studio():
+def run_studio(port=None):
     try:
         # Need to get the logdir from the caller which we
         # can't get once we go asyn
         logdir = get_ell_logdir()
         ic(logdir)
-        asyncio.run(run_server_and_open_browser(logdir))
+        asyncio.run(run_server_and_open_browser(logdir, port))
     except RuntimeError as e:
         ic(f"Error: {e}")
     except Exception as e:
