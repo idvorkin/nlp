@@ -30,17 +30,6 @@ app = typer.Typer(no_args_is_help=True)
 init_ell()
 
 
-@app.command()
-def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
-    """
-    Launch the ELL Studio interface for interactive model exploration and testing.
-
-    This command opens the ELL Studio, allowing users to interactively work with
-    language models, test prompts, and analyze responses in a user-friendly environment.
-    """
-    run_studio(port=port)
-
-
 class Diff(BaseModel):
     FilePath: Path
     StartRevision: str
@@ -165,7 +154,12 @@ def assess(
     google: bool = False,
     claude: bool = False,
     llama: bool = False,
+    studio: bool = Option(False, help="Launch the ELL Studio interface"),
+    port: int = Option(None, help="Port to run the ELL Studio on (if studio flag is set)"),
 ):
+    if studio:
+        run_studio(port=port)
+        return
     llm = openai_wrapper.get_ell_model(
         openai=openai, google=google, claude=claude, llama=llama
     )
