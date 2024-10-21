@@ -29,6 +29,11 @@ app = typer.Typer(no_args_is_help=True)
 init_ell()
 
 
+@app.command()
+def studio():
+    run_studio()
+
+
 class Diff(BaseModel):
     FilePath: Path
     StartRevision: str
@@ -144,7 +149,7 @@ def tomorrow():
 
 
 @app.command()
-def changes(
+def assess(
     directory: Path = Path("."),
     before=tomorrow(),
     after="7 days ago",
@@ -228,7 +233,7 @@ async def get_changed_files(first_commit, last_commit):
     return changed_files
 
 
-@ell.simple(model=openai_wrapper.get_ell_model(claude=True))
+@ell.simple(model=get_ell_model(claude=True))
 def prompt_summarize_diff_summaries(diff_summary):
     instructions = """
 <instructions>
@@ -454,7 +459,6 @@ ___
 
     if gist:
         import langchain_helper
-        import openai_wrapper
 
         langchain_helper.to_gist(output_file_path)
 
@@ -462,7 +466,3 @@ ___
 if __name__ == "__main__":
     ic("main")
     app_wrap_loguru()
-
-@app.command()
-def studio():
-    run_studio()
