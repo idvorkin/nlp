@@ -93,6 +93,8 @@ class AnalysisQuestions:
         return [
             "Summary",
             "Implications and Impact",
+            "Most Novel Ideas"
+            "Most Interesting Ideas"
             "Critical Assumptions and Risks",
             "Reflection Questions",
             "Contextual Background",
