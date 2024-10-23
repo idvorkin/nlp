@@ -5,6 +5,7 @@ import inspect
 import subprocess
 import socket
 import asyncio
+from pathlib import Path
 
 
 def get_caller_filename():
@@ -105,3 +106,16 @@ def run_studio(port=None):
         ic(f"Error: {e}")
     except Exception as e:
         ic(f"An unexpected error occurred: {e}")
+
+
+#  Todo- dedup with the one in langhchain helper
+def to_gist(path: Path):
+    gist = subprocess.run(
+        ["gh", "gist", "create", str(path.absolute())],
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    ic(gist)
+    ic(gist.stdout.strip())
+    subprocess.run(["open", gist.stdout.strip()])

@@ -223,12 +223,67 @@ def tool_choice(fn):
     return r
 
 
+def get_youtube_transcript(url):
+    from yt_dlp import YoutubeDL
+
+    ic("Downloading captions from youtube")
+
+    # random tmp file name for transcript
+    transcript_file_base = f"transcript_{int(time.time())}"
+    transcript_file_name = f"{transcript_file_base}.en.vtt"
+    transcript_file_template = f"{transcript_file_base}.%(ext)s"
+
+    ydl_opts = {
+        "skip_download": True,  # We only want to download the transcript, not the video
+        "writesubtitles": True,  # Download subtitles
+        "subtitleslangs": [
+            "en"
+        ],  # Specify the language of the subtitles, e.g., 'en' for English
+        "subtitlesformat": "vtt",  # Format of the subtitles
+        "writeautomaticsub": True,
+        "outtmpl": transcript_file_template,  # Output file name
+        "quiet": True,  # Suppress output to stdout
+        "no_warnings": True,  # Suppress warnings
+    }
+
+    with YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(
+            url, download=False
+        )  # Extract video info without downloading the video
+        subtitles = info.get("subtitles", {})
+        automatic_captions = info.get("automatic_captions", {})
+
+        ic(subtitles)
+        if "en" in subtitles or "en" in automatic_captions:
+            ydl.download([url])  # Download the transcript
+        else:
+            raise ValueError("No English subtitles found.")
+
+        subtitle_file = transcript_file_name
+        with open(subtitle_file, "r", encoding="utf-8") as f:
+            transcript = f.read()
+
+        # erase the transcript file after reading
+        Path(transcript_file_name).unlink(missing_ok=True)
+
+        # # Clean up the transcript
+        # import re
+        # transcript = re.sub(r'WEBVTT\n\n', '', transcript)
+        # transcript = re.sub(r'\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}\n', '', transcript)
+        # transcript = re.sub(r'\n\n', ' ', transcript)
+
+        return transcript.strip()
+
+
 def get_text_from_path_or_stdin(path):
     import sys
     from pathlib import Path
 
     if not path:  # read from stdin
         return "".join(sys.stdin.readlines())
+    if path.startswith("https://youtu.be") or path.startswith("https://youtube.com"):
+        return get_youtube_transcript(path)
+
     if path.startswith("http"):
         import requests
         import html2text

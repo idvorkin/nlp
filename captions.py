@@ -6,8 +6,10 @@ from rich.console import Console
 import ell
 from loguru import logger
 from icecream import ic
-from ell_helper import init_ell, run_studio, get_ell_model
+from ell_helper import init_ell, run_studio, get_ell_model, to_gist
 from typer import Option
+import openai_wrapper
+from pathlib import Path
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
@@ -60,7 +62,7 @@ def prompt_captions_to_human_readable(captions: str, last_chunk: str):
 
 
 @app.command()
-def to_human():
+def to_human(path: str = typer.Argument(None), gist: bool = True):
     """
     Process captions from standard input and output formatted text.
 
@@ -68,13 +70,32 @@ def to_human():
     and prints the formatted output. It uses AI to improve readability
     and structure of the captions.
     """
-    user_text = "".join(typer.get_text_stream("stdin").readlines())
+
+    header = f"""
+*Transcribed [{path}]({path}) via [transcribe.py](https://github.com/idvorkin/nlp/blob/main/transcribe.py)*
+"""
+    user_text = openai_wrapper.get_text_from_path_or_stdin(path)
+    ic(header)
+    output_text = header + "\n"
 
     last_chunk = ""
-    for chunk in split_string(user_text):
+    for i, chunk in enumerate(split_string(user_text), 1):
+        print(f"Processing chunk {i}")
         response = prompt_captions_to_human_readable(chunk, last_chunk)
         last_chunk = chunk
-        print(response)
+        output_text += str(response)
+    # TODO Add gist support later
+
+    output_path = Path(
+        "~/tmp/human_captions.md"
+    ).expanduser()  # get smarter about naming these.
+    output_path.write_text(output_text)
+    ic(output_path)
+    if gist:
+        # create temp file and write print buffer to it
+        to_gist(output_path)
+    else:
+        print(output_text)
 
 
 def split_string(input_string):
