@@ -35,6 +35,8 @@ def prompt_captions_to_human_readable(captions: str, last_chunk: str):
 
     You will be given captions as input, you should output the text that can be read by a human like a book.
 
+    **The output should be vebatim. You should not summarize/condense text**
+
     Be sure to include punctuation, correct errors and include paragraphs when they make sense.
 
     Even if the person is talking continuously, still make sentences and paragraphs.
