@@ -7,7 +7,7 @@ prompts: ["prompts.py:promptfoo_markdown_test"]
 providers:
   - openai:gpt-4
   - openai:chat:gpt-3.5-turbo
-  - anthropic:messages:claude-3-sonnet-20240229
+  - anthropic:messages:claude-3-5-sonnet-20241022
   - id: openai:chat:llama3-70b-8192
     config:
       apiBaseUrl: https://api.groq.com/openai/v1
