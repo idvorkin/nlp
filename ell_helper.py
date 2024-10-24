@@ -48,7 +48,7 @@ def get_ell_model(
     if google:
         raise NotImplementedError("google")
     elif claude:
-        return "claude-3-5-sonnet-20240620"
+        return "claude-3-5-sonnet-20241022"
     elif llama:
         return "llama-3.2-90b-vision-preview"
     elif openai_cheap:
