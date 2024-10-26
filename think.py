@@ -287,7 +287,7 @@ def app_wrap_loguru():
     app()
 
 
-def exa_search(query: str, num_results: int = 5) -> str:
+def exa_search(query: str, num_results: int = 20) -> str:
     exa = Exa(api_key=os.environ.get("EXA_API_KEY"))
 
     if not isinstance(query, str) or not query.startswith(("http://", "https://")):
@@ -296,14 +296,16 @@ def exa_search(query: str, num_results: int = 5) -> str:
     results = exa.find_similar_and_contents(
         query,
         num_results=num_results,
+        summary=True,
         highlights={"num_sentance": 3, "highlights_per_url": 2},
     )
 
     search_results = ""
     for result in results.results:
         search_results += f"- [{result.title}]({result.url})\n"
+        search_results += f"  - {result.summary}\n"
         for highlight in result.highlights:
-            search_results += f"  - {highlight}\n"
+            search_results += f"      - {highlight}\n"
 
     return search_results
 
