@@ -12,5 +12,8 @@ twillio-dev:
 
 # Install locally and globally
 install:
+    uv pip install --editable .
+
+global_install:
     pipxu install -f . --editable
     uv pip install --editable .
