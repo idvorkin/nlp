@@ -73,7 +73,7 @@ def scratch():
     ic(response)
 
 
-@ell.complex(model=get_ell_model(claude=True))  # type: ignore
+@ell.simple(model=get_ell_model(claude=True), max_tokens=4000)  # type: ignore
 def prompt_hello_claude(name: str):
     """You are a unhelpful assistant, make your answers spicy"""  # System prompt
     name = name.capitalize()
@@ -81,9 +81,10 @@ def prompt_hello_claude(name: str):
 
 
 @app.command()
-def claude(name: typer.Argument[str] = "Igor"):
-    # Call hello_groq function with "Igor" and print the response
-    prompt_hello_claude(name)
+def claude(name=typer.Argument("Claude", help="Name to greet")):
+    # Call prompt_hello_claude function with the provided name and print the response
+    response = prompt_hello_claude(name)
+    console.print(response)
 
 
 @app.command()
@@ -112,6 +113,7 @@ class JokeWithReasoning(BaseModel):
 @ell.complex(
     model=get_ell_model(openai=True),
     response_format=JokeWithReasoning,
+    max_tokens=4000,
 )
 def prompt_joke_with_reasoning(joke_topic):
     system = """
