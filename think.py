@@ -19,6 +19,8 @@ import openai_wrapper
 from icecream import ic
 from openai_wrapper import num_tokens_from_string
 from pydantic import BaseModel
+from exa_py import Exa
+import os
 
 
 class GroupOfPoints(BaseModel):
@@ -193,7 +195,8 @@ async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
     header = f"""
 *🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - using {category_desc}*
 {thinking_about}
-    """
+
+"""
 
     def do_llm_think(llm) -> List[[str, BaseChatModel]]:  # type: ignore
         from langchain.schema.output_parser import StrOutputParser
@@ -220,6 +223,7 @@ async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
 {analysis}
 
 </details>
+
 """
     # parsed = [markdown_to_analyze_artifact(analysis) for analysis, _, _ in analyzed_artifacts]
     # merged = merge_analyze_artifacts(parsed)
@@ -230,6 +234,24 @@ async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
     # """
 
     output_text = header + "\n" + body
+
+    # NOTE: Exa only works with URLs
+    exa_search_results = exa_search(path)
+    if exa_search_results:
+        output_text += f"""
+<details>
+<summary>
+
+# -- Exa.Ai: Related Search Results --
+
+</summary>
+
+{exa_search_results}
+
+</details>
+
+    """
+
     output_path = Path("~/tmp/think.md").expanduser()  # get smarter about naming these.
     output_path.write_text(output_text)
     ic(output_path)
@@ -263,6 +285,27 @@ def think(
 @logger.catch()
 def app_wrap_loguru():
     app()
+
+
+def exa_search(query: str, num_results: int = 5) -> str:
+    exa = Exa(api_key=os.environ.get("EXA_API_KEY"))
+
+    if not isinstance(query, str) or not query.startswith(("http://", "https://")):
+        return ""
+
+    results = exa.find_similar_and_contents(
+        query,
+        num_results=num_results,
+        highlights={"num_sentance": 3, "highlights_per_url": 2},
+    )
+
+    search_results = ""
+    for result in results.results:
+        search_results += f"- [{result.title}]({result.url})\n"
+        for highlight in result.highlights:
+            search_results += f"  - {highlight}\n"
+
+    return search_results
 
 
 if __name__ == "__main__":
