@@ -227,6 +227,7 @@ def fixup_markdown_path(src):
     return fixup_ig66_path_to_url(fixup_markdown_path_to_url(src))
 
 
+ic(chroma_db_dir)
 g_blog_content_db = Chroma(
     persist_directory=chroma_db_dir, embedding_function=embeddings
 )
