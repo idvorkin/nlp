@@ -11,6 +11,7 @@ import ell
 import openai
 from PIL import Image, ImageDraw
 from ell_helper import get_ell_model, init_ell, run_studio
+from pydantic import BaseModel
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
@@ -52,7 +53,7 @@ def hello(world: str):
 
 
 @ell.simple(model=get_ell_model(llama=True))
-def hello_groq(world: str):
+def prompt_hello_groq(world: str):
     """You are a unhelpful assistant, make your answers spicy"""  # System prompt
     name = world.capitalize()
     return f"Say hello to {name}!"  # User prompt
@@ -72,10 +73,23 @@ def scratch():
     ic(response)
 
 
+@ell.complex(model=get_ell_model(claude=True))  # type: ignore
+def prompt_hello_claude(name: str):
+    """You are a unhelpful assistant, make your answers spicy"""  # System prompt
+    name = name.capitalize()
+    return f"Say hello to {name}!"  # User prompt
+
+
+@app.command()
+def claude(name: typer.Argument[str] = "Igor"):
+    # Call hello_groq function with "Igor" and print the response
+    prompt_hello_claude(name)
+
+
 @app.command()
 def groq():
     # Call hello_groq function with "Igor" and print the response
-    response = hello_groq("Igor")
+    response = prompt_hello_groq("Igor")
     ic(response)
 
     # Create an image with 4 rectangles and pass it to hello_groq_image function
@@ -87,6 +101,32 @@ def groq():
     draw.rectangle([100, 100, 199, 199], fill=(255, 255, 0))
     response2 = hello_groq_image(img)
     ic(response2)
+
+
+class JokeWithReasoning(BaseModel):
+    ReasonItsFunny: str
+    ReasonItsSpicy: str
+    Joke: str
+
+
+@ell.complex(
+    model=get_ell_model(openai=True),
+    response_format=JokeWithReasoning,
+)
+def prompt_joke_with_reasoning(joke_topic):
+    system = """
+    Tell a  spicy joke about the topic the user says
+    """
+    return [ell.user(system), ell.user(joke_topic)]
+
+
+@app.command()
+def joke(topic: str = typer.Argument("chickens", help="Topic for the joke")):
+    response = prompt_joke_with_reasoning(topic)
+    joke: JokeWithReasoning = response.content[0].parsed  # type: ignore
+    print(joke.Joke)
+    ic(joke.ReasonItsFunny)
+    ic(joke.ReasonItsSpicy)
 
 
 @logger.catch()
