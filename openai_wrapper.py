@@ -253,7 +253,6 @@ def get_youtube_transcript(url):
         subtitles = info.get("subtitles", {})
         automatic_captions = info.get("automatic_captions", {})
 
-        ic(subtitles)
         if "en" in subtitles or "en" in automatic_captions:
             ydl.download([url])  # Download the transcript
         else:
@@ -281,7 +280,11 @@ def get_text_from_path_or_stdin(path):
 
     if not path:  # read from stdin
         return "".join(sys.stdin.readlines())
-    if path.startswith("https://youtu.be") or path.startswith("https://youtube.com"):
+    if (
+        path.startswith("https://youtu.be")
+        or path.startswith("https://youtube.com")
+        or path.startswith("https://www.youtube.com")
+    ):
         return get_youtube_transcript(path)
 
     if path.startswith("http"):
