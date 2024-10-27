@@ -1,22 +1,16 @@
-# This configuration compares LLM output of 2 prompts x 2 GPT models across 3 test cases.
-# Learn more: https://promptfoo.dev/docs/configuration/guide
-description: "Verify Quality of the Human Engineer Feedback"
-
+description: Verify Quality of the Human Engineer Feedback
 providers:
   - openai:gpt-4o
   - anthropic:messages:claude-3-5-sonnet-20241022
   - id: groq:llama-3.1-70b-versatile
-
 levels:
   - e3
   - e4
   - e5
   - e6
-
 projects:
   - Shared Albums in Instagram Feature
   - Reels Monetization
-
 tests:
   - vars:
       project: Shared Albums in Instagram Feature
@@ -42,16 +36,70 @@ tests:
   - vars:
       project: Reels Monetization
       level: e6
-
+  - vars:
+      level: e3
+      project: Virtual Reality Collaboration Tool
+  - vars:
+      level: e4
+      project: AI-Based Content Moderation System
+  - vars:
+      level: e5
+      project: Machine Learning Model for Ad Targeting
+  - vars:
+      level: e6
+      project: GraphQL API Overhaul
+  - vars:
+      level: e3
+      project: End-to-End Encryption for Messenger
+  - vars:
+      level: e4
+      project: User Activity Analytics Dashboard
+  - vars:
+      level: e5
+      project: AR Filters for Instagram
+  - vars:
+      level: e6
+      project: Global Data Replication Strategy
+  - vars:
+      level: e3
+      project: Internal Developer Tools
+  - vars:
+      level: e4
+      project: Automated Testing Framework
+  - vars:
+      level: e5
+      project: Scalable Microservices Architecture
+  - vars:
+      level: e6
+      project: Cross-Platform Video Calling Feature
+  - vars:
+      level: e3
+      project: Chatbot Integration for Customer Support
+  - vars:
+      level: e4
+      project: Real-time Notification System
+  - vars:
+      level: e5
+      project: Highly Available Distributed Systems
 prompts:
-  - |
-    You are a fictitious E6 (Principal) engineer at Meta giving Bob, a {{level}} engineer, end of half feedback for their work on {{project}}.
+  - >
+    You are a fictitious E6 (Principal) engineer at Meta giving Bob, a {{level}}
+    engineer, end of half feedback for their work on {{project}}.
+
     - Explain why the behavior is or is not appropriate
+
     - Do not give any preamble, only include the feedback
+
     - Include concrete examples and bullet points
-    - Keep the feedback around 300 words of positive aspects and 300 words of growth opportunities
-    - Do not use weasel-words/superlatives, talk about expectations relative to level instead
+
+    - Keep the feedback around 300 words of positive aspects and 300 words of
+    growth opportunities
+
+    - Do not use weasel-words/superlatives, talk about expectations relative to
+    level instead
+
     - Use concrete numbers whenever possible
+
     Useful information:
       - E3 -> Junior Engineer, becoming independent
       - E4 -> Journeyman Engineer, independent execution with low ambiguity, guidance from senior engineers
