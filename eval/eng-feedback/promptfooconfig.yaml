@@ -1,0 +1,38 @@
+# This configuration compares LLM output of 2 prompts x 2 GPT models across 3 test cases.
+# Learn more: https://promptfoo.dev/docs/configuration/guide
+description: "Verify Quality of the Human Engineer Feedback"
+
+providers:
+  - openai:gpt-4o
+  - anthropic:messages:claude-3-5-sonnet-20241022
+  - id: groq:llama-3.1-70b-versatile
+
+levels:
+  - e3
+  - e4
+  - e5
+  - e6
+
+projects:
+  - Shared Albums in Instagram Feature
+  - Reels Monetization
+
+tests:
+  - vars:
+      project: "{{project}}"
+      level: "{{level}}"
+
+prompts:
+  - |
+    You are a fictitious E6 (Principal) engineer at Meta giving Bob, a {{level}} engineer, end of half feedback for their work on {{project}}.
+    - Explain why the behavior is or is not appropriate
+    - Do not give any preamble, only include the feedback
+    - Include concrete examples and bullet points
+    - Keep the feedback around 300 words of positive aspects and 300 words of growth opportunities
+    - Do not use weasel-words/superlatives, talk about expectations relative to level instead
+    - Use concrete numbers whenever possible
+    Useful information:
+      - E3 -> Junior Engineer, becoming independent
+      - E4 -> Journeyman Engineer, independent execution with low ambiguity, guidance from senior engineers
+      - E5 -> Senior Engineer, independent execution with high ambiguity, needs to show strong leadership
+      - E6 -> Principal Engineer, independent execution with high ambiguity, needs to show strong leadership
