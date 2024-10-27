@@ -20,7 +20,21 @@ init_ell()
 
 
 @ell.simple(model=get_ell_model(openai=True))
-def prompt_illustrate_igor(prompt: str):
+def prompt_illustrate_igor_pixar(prompt: str, pixar):
+    """
+    You are an AI that creates enhanced prompts for an image generation model. The user provides a simple prompt, and you enrich it. When they mention Igor, refer to him as Idvorkin with the following characteristics:
+
+    "Charming and whimsical portrait of Idvorkin, a bald, 40-year-old man standing 5 feet 8 inches tall, weighing 175 lbs with an athletic build. Captured with a vintage 35mm camera (f/1.8), in vivid 12K resolution. He has a playful look and a twinkle in his eye."
+
+    Start the prompt with "Encanto style"
+
+    Incorporate these details seamlessly into the enhanced prompt. Return only the enriched prompt, as it will be directly passed to the image generation model.
+    """
+    return prompt
+
+
+@ell.simple(model=get_ell_model(openai=True))
+def prompt_illustrate_igor(prompt: str, pixar):
     """
     You are an AI that creates enhanced prompts for an image generation model. The user provides a simple prompt, and you enrich it. When they mention Igor, refer to him as Idvorkin with the following characteristics:
 
@@ -44,9 +58,9 @@ IDVORKIN_LORA_MODEL = "idvorkin/idvorkin-flux-lora-1:4bd4ea7bf781298ebd315871972
 
 def show(img):
     if "TMUX" in os.environ:
-        os.system(f"timg --grid 4 --title -ps {img}")
+        os.system(f"timg --grid 2 --title -ps {img}")
     else:
-        os.system(f"timg --grid 4 --title -p {img}")
+        os.system(f"timg --grid 2 --title -p {img}")
 
 
 @app.command()
@@ -78,7 +92,7 @@ def gen_flux(prompt: str):
 
 
 @app.command()
-def gen_igor(prompt: str):
+def gen_igor(prompt: str, pixar: bool = True):
     """
     Generate an image of Igor (Idvorkin) using a custom LoRA model based on the given prompt.
 
@@ -86,8 +100,16 @@ def gen_igor(prompt: str):
         prompt (str): The text prompt to generate the image from.
     """
     ic(prompt)
-    augmented_prompt = prompt_illustrate_igor(prompt)
+    augmented_prompt = (
+        prompt_illustrate_igor(prompt)
+        if not pixar
+        else prompt_illustrate_igor_pixar(prompt, pixar)
+    )
     ic(augmented_prompt)
+
+    extra_lora = ""
+    if pixar:
+        extra_lora = "huggingface.co/dallinmackay/Encanto-FLUX"
 
     images = replicate.run(
         IDVORKIN_LORA_MODEL,
@@ -103,6 +125,7 @@ def gen_igor(prompt: str):
             "extra_lora_scale": 0.8,
             "num_inference_steps": 28,
             "disable_safety_checker": True,
+            "extra_lora": extra_lora,
         },
     )
     image = images[0]
