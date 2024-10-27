@@ -30,37 +30,35 @@ def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
 
 
 # Use the cheap model as this is an easy task we put a lot of text through.
-@ell.simple(model=get_ell_model(openai_cheap=True))
+@ell.complex(model=get_ell_model(openai=True))
 def prompt_captions_to_human_readable(captions: str, last_chunk: str):
-    """
-    You are a super smart AI, who understands captions formats, and also English grammar and spelling.
+    system = f"""
+        You are a super smart AI who understands caption formats, English grammar, and spelling.
 
-    You will be given captions as input, you should output the text that can be read by a human like a book.
+        You will be given captions as input. Output the text in a human-readable format, like a book.
 
-    **The output should be vebatim. You should not summarize/condense text**
+        **The output should be verbatim. Do not summarize or condense text.**
 
-    Be sure to include punctuation, correct errors and include paragraphs when they make sense.
+        Include punctuation, correct errors, and add paragraphs where appropriate.
 
-    If it's been more then a minute since the last timestamp, output a timestamp like [00:01:00] on it's own line, ideally on a switch from guest to host.
+        To help users, we emit jumpable time codes like [00:01:00] based on the input time codes.  It should be on it's own line, ideally when switching from guest to host, representing the time code of the discussion in the original input so the user can find that time code. The timecode should be a markdown link e.g. [00:06:00](https://mypodcast/play/xxx?t=360s)
 
-    Even if the person is talking continuously, still make sentences and paragraphs.
+        Even if a person is talking continuously, break the text into sentences and paragraphs.
 
-    A sentence should not be more than 30 words, and a paragraph should not be more than 10 sentences.
+        Limit sentences to 30 words and paragraphs to 10 sentences.
 
-    The podcast has ads/sponsors. I don't want to see them. If you see one, don't include it. Just say "**Ad break**" in a new paragraph and skip the transcribe
+        For ads/sponsors, skip the transcription and insert "**Ad break**" in a new paragraph.
 
+        If you can identify speakers, start their paragraphs with "**HOST:**" or "**GUEST1:**", etc.
 
-    If you can figure out who is speaking start his paragraphs with "**HOST:**" or  "**GUEST1:**" etc.
+        You are processing the podcast in chunks. The last chunk before the one you are processing is:
+        <lastchunk>
+        {last_chunk}
+        </lastchunk>
 
-    Because the podcast is long, you are looking 1 chunk at at a time. The last chunk before the one you are proecssing is
-    <lastchunk>
-    {last_chunk}
-    </lastchunk>
-
-    Do not output the last chunk, it's just htere to give you context in the chunk you are processing.
-
-    """
-    return captions
+        Do not output the last chunk; it's provided for context in the chunk you are processing.
+        """
+    return [ell.system(system), ell.user(captions)]  # type: ignore
 
 
 @app.command()
@@ -81,11 +79,16 @@ def to_human(path: str = typer.Argument(None), gist: bool = True):
     output_text = header + "\n"
 
     last_chunk = ""
-    for i, chunk in enumerate(split_string(user_text), 1):
-        print(f"Processing chunk {i}")
+    for i, chunk in enumerate(split_string(user_text), 0):
+        tokens = openai_wrapper.num_tokens_from_string(chunk)
+        ic(i, tokens)
         response = prompt_captions_to_human_readable(chunk, last_chunk)
-        last_chunk = chunk
-        output_text += str(response)
+        response = response.content[0].text
+        last_chunk = response
+        output_text += "\n" + response
+        if i > 2:
+            ic("BREAKING EARLY WHILE DEBUGGING")
+            break
     # TODO Add gist support later
 
     output_path = Path(
@@ -105,7 +108,7 @@ def split_string(input_string):
     # Output size is 16K, so let that be the chunk size
     # A very rough estimate might suggest that a VTT file could be around 1.5 to 3 times larger than the plain text, depending on how verbose the timestamps and metadata are compared to the actual dialogue or text content. However, this is just an approximation and can vary significantly based on the specific content and structure of the VTT file.
     chars_per_token = 4
-    max_tokens = 15_000
+    max_tokens = 2_000
     vtt_multiplier = 2
     chunk_size = chars_per_token * max_tokens * vtt_multiplier
     ic(int(len(input_string) / chunk_size))
