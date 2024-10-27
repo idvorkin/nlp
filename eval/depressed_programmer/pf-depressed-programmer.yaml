@@ -3,11 +3,11 @@
 description: "My first eval"
 
 prompts:
-  - "Write 3 jokes about {{topic}}, and explain why they are funny. Start with the list of jokes - **then** list the explanations after"
+  - "Write 3 spicey jokes about {{topic}}, and explain why they are funny, and explain with why they are spcy. Start with the list of jokes - **then** list the explanations after"
 
 providers:
   - openai:gpt-4o
-  - anthropic:messages:claude-3-5-sonnet-20240620
+  - anthropic:messages:claude-3-5-sonnet-20241022
   # - google:gemini-pro
   # - id: openai:chat:meta/llama-3.1-405b-instruct
   - id: groq:llama-3.1-70b-versatile
@@ -17,6 +17,12 @@ providers:
 tests:
   - vars:
       topic: manic depressive programmer
+    assert:
+      # Foue: ensure that the output is funny
+      - type: select-best
+        value: ensure that the output is funny
+  - vars:
+      topic: FAANG programmer in Denmark
     assert:
       # Foue: ensure that the output is funny
       - type: select-best
