@@ -41,6 +41,8 @@ def prompt_captions_to_human_readable(captions: str, last_chunk: str):
 
     Be sure to include punctuation, correct errors and include paragraphs when they make sense.
 
+    If it's been more then a minute since the last timestamp, output a timestamp like [00:01:00] on it's own line, ideally on a switch from guest to host.
+
     Even if the person is talking continuously, still make sentences and paragraphs.
 
     A sentence should not be more than 30 words, and a paragraph should not be more than 10 sentences.
