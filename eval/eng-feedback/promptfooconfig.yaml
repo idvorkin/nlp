@@ -19,8 +19,29 @@ projects:
 
 tests:
   - vars:
-      project: "{{project}}"
-      level: "{{level}}"
+      project: Shared Albums in Instagram Feature
+      level: e3
+  - vars:
+      project: Shared Albums in Instagram Feature
+      level: e4
+  - vars:
+      project: Shared Albums in Instagram Feature
+      level: e5
+  - vars:
+      project: Shared Albums in Instagram Feature
+      level: e6
+  - vars:
+      project: Reels Monetization
+      level: e3
+  - vars:
+      project: Reels Monetization
+      level: e4
+  - vars:
+      project: Reels Monetization
+      level: e5
+  - vars:
+      project: Reels Monetization
+      level: e6
 
 prompts:
   - |
