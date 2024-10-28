@@ -30,7 +30,7 @@ def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
 
 
 # Use the cheap model as this is an easy task we put a lot of text through.
-@ell.complex(model=get_ell_model(openai=True))
+@ell.complex(model=get_ell_model(openai_cheap=True))
 def prompt_captions_to_human_readable(captions: str, last_chunk: str, youtube_url: str):
     system = f"""You are an expert at converting raw video captions into clean, readable text. Your task is to:
 
@@ -38,13 +38,17 @@ def prompt_captions_to_human_readable(captions: str, last_chunk: str, youtube_ur
 2. Fix grammar, spelling, and punctuation
 3. Break text into logical paragraphs (max 10 sentences per paragraph)
 4. Keep sentences under 30 words
-5. Add speaker labels like "**HOST:**" or "**GUEST1:**" when speakers change, do not use a speaker label if the speaker is the same as the last speaker
-6. Insert timecodes in this format: [00:01:34]({youtube_url}&t=94s)
-   - Add them on a speaker change if we haven't had a timecode in the last 2 minutes
-   - Put them on their own line
+5. Speaker labels: 
+    - Prepend the paragraph with a speaker labels like "**HOST:**" or "**GUEST1:**" when speakers change.  
+    - Do not use a speaker label if the speaker is the same as the last speaker
+    - Insert blank lines between speaker changes
+
+6. Timecodes: Insert timecodes in this format: [00:01:34]({youtube_url}&t=94s)
+   - Add a timecode on a speaker change if we haven't had a timecode in the last 2 minutes
    - For timestamp 00:06:09.500, output [00:06:09]({youtube_url}&t=369s)
+   - Put them on the line with a speaker change e.g. **HOST:** [00:06:09]({youtube_url}&t=369s) And now I'm going to talk about...
 7. Replace ad/sponsor segments with "**Ad break**" on its own line
-8. Never summarize or condense the content (except adbreaks)
+8. Never summarize or condense the content (except ad/sponsor segments)
 9. Process only the new captions, not the previous chunk
 
 Previous chunk for context (do not include in output):
@@ -140,7 +144,7 @@ def split_string(input_string):
     # Output size is 16K, so let that be the chunk size
     # A very rough estimate might suggest that a VTT file could be around 1.5 to 3 times larger than the plain text, depending on how verbose the timestamps and metadata are compared to the actual dialogue or text content. However, this is just an approximation and can vary significantly based on the specific content and structure of the VTT file.
     chars_per_token = 4
-    max_tokens = 4_000
+    max_tokens = 24_000
     vtt_multiplier = 2
     chunk_size = chars_per_token * max_tokens * vtt_multiplier
     ic(int(len(input_string) / chunk_size))
