@@ -14,6 +14,5 @@ twillio-dev:
 install:
     uv pip install --editable .
 
-global_install:
-    pipxu install -f . --editable
-    uv pip install --editable .
+global-install: install
+    pipxu install -f . --editable --python /Users/idvorkin/homebrew/bin/python3.12
