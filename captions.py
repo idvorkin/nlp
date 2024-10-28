@@ -31,34 +31,65 @@ def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
 
 # Use the cheap model as this is an easy task we put a lot of text through.
 @ell.complex(model=get_ell_model(openai=True))
-def prompt_captions_to_human_readable(captions: str, last_chunk: str):
-    system = f"""
-        You are a super smart AI who understands caption formats, English grammar, and spelling.
+def prompt_captions_to_human_readable(captions: str, last_chunk: str, youtube_url: str):
+    system = f"""You are an expert at converting raw video captions into clean, readable text. Your task is to:
 
-        You will be given captions as input. Output the text in a human-readable format, like a book.
+1. Convert VTT captions into properly formatted markdown text
+2. Fix grammar, spelling, and punctuation
+3. Break text into logical paragraphs (max 10 sentences per paragraph)
+4. Keep sentences under 30 words
+5. Add speaker labels like "**HOST:**" or "**GUEST1:**" when speakers change, do not use a speaker label if the speaker is the same as the last speaker
+6. Insert timecodes in this format: [00:01:34]({youtube_url}&t=94s)
+   - Add them on a speaker change if we haven't had a timecode in the last 2 minutes
+   - Put them on their own line
+   - For timestamp 00:06:09.500, output [00:06:09]({youtube_url}&t=369s)
+7. Replace ad/sponsor segments with "**Ad break**" on its own line
+8. Never summarize or condense the content (except adbreaks)
+9. Process only the new captions, not the previous chunk
 
-        **The output should be verbatim. Do not summarize or condense text.**
+Previous chunk for context (do not include in output):
+<lastchunk>
+{last_chunk}
+</lastchunk>
 
-        Include punctuation, correct errors, and add paragraphs where appropriate.
-
-        To help users, we emit jumpable time codes like [00:01:00] based on the input time codes.  It should be on it's own line, ideally when switching from guest to host, representing the time code of the discussion in the original input so the user can find that time code. The timecode should be a markdown link e.g. [00:06:00](https://mypodcast/play/xxx?t=360s)
-
-        Even if a person is talking continuously, break the text into sentences and paragraphs.
-
-        Limit sentences to 30 words and paragraphs to 10 sentences.
-
-        For ads/sponsors, skip the transcription and insert "**Ad break**" in a new paragraph.
-
-        If you can identify speakers, start their paragraphs with "**HOST:**" or "**GUEST1:**", etc.
-
-        You are processing the podcast in chunks. The last chunk before the one you are processing is:
-        <lastchunk>
-        {last_chunk}
-        </lastchunk>
-
-        Do not output the last chunk; it's provided for context in the chunk you are processing.
-        """
+Format the output as clean markdown text with proper paragraphs, punctuation and speaker labels.
+"""
     return [ell.system(system), ell.user(captions)]  # type: ignore
+
+
+def get_canonic_youtube_url(path: str) -> str:
+    """Extract and normalize a YouTube URL from a path string.
+
+    Handles various YouTube URL formats including:
+    - youtube.com/watch?v=VIDEO_ID
+    - youtu.be/VIDEO_ID
+    - youtube.com/v/VIDEO_ID
+    - youtube.com/embed/VIDEO_ID
+
+    Returns:
+        Canonical form: https://youtube.com/watch?v=VIDEO_ID
+        Empty string if no YouTube URL found
+    """
+    if not path or not isinstance(path, str):
+        return ""
+
+    import re
+
+    # Match common YouTube URL patterns
+    patterns = [
+        r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)",
+        r"(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)",
+        r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([a-zA-Z0-9_-]+)",
+        r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]+)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, path)
+        if match:
+            video_id = match.group(1)
+            return f"https://youtube.com/watch?v={video_id}"
+
+    return ""
 
 
 @app.command()
@@ -71,10 +102,14 @@ def to_human(path: str = typer.Argument(None), gist: bool = True):
     and structure of the captions.
     """
 
+    path = get_canonic_youtube_url(path)
+    if not path:
+        raise ValueError("No YouTube URL found in the provided path")
+    youtube_url = path
     header = f"""
 *Transcribed [{path}]({path}) via [transcribe.py](https://github.com/idvorkin/nlp/blob/main/transcribe.py)*
 """
-    user_text = openai_wrapper.get_text_from_path_or_stdin(path)
+    user_text = openai_wrapper.get_text_from_path_or_stdin(youtube_url)
     ic(header)
     output_text = header + "\n"
 
@@ -82,14 +117,11 @@ def to_human(path: str = typer.Argument(None), gist: bool = True):
     for i, chunk in enumerate(split_string(user_text), 0):
         tokens = openai_wrapper.num_tokens_from_string(chunk)
         ic(i, tokens)
-        response = prompt_captions_to_human_readable(chunk, last_chunk)
+
+        response = prompt_captions_to_human_readable(chunk, last_chunk, youtube_url)
         response = response.content[0].text
         last_chunk = response
         output_text += "\n" + response
-        if i > 2:
-            ic("BREAKING EARLY WHILE DEBUGGING")
-            break
-    # TODO Add gist support later
 
     output_path = Path(
         "~/tmp/human_captions.md"
@@ -108,7 +140,7 @@ def split_string(input_string):
     # Output size is 16K, so let that be the chunk size
     # A very rough estimate might suggest that a VTT file could be around 1.5 to 3 times larger than the plain text, depending on how verbose the timestamps and metadata are compared to the actual dialogue or text content. However, this is just an approximation and can vary significantly based on the specific content and structure of the VTT file.
     chars_per_token = 4
-    max_tokens = 2_000
+    max_tokens = 4_000
     vtt_multiplier = 2
     chunk_size = chars_per_token * max_tokens * vtt_multiplier
     ic(int(len(input_string) / chunk_size))
