@@ -177,7 +177,8 @@ async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
 
     if tokens < 16_000:  # Groq limits to 60K ish
         # only add Llama if the text is small
-        llms += [langchain_helper.get_model(llama=True)]
+        # llms += [langchain_helper.get_model(llama=True)]
+        pass
 
     categories = AnalysisQuestions.default()
     category_desc = "default questions"
