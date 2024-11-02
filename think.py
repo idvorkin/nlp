@@ -104,6 +104,14 @@ class AnalysisQuestions:
         ]
 
     @staticmethod
+    def interests():
+        return [
+            "Summary",
+            "Implications and Impact",
+            "Most Novel Ideas" "Most Interesting Ideas" "Reflection Questions",
+        ]
+
+    @staticmethod
     def core_problem():
         return [
             "What's the real problem you are trying to solve?",
@@ -168,7 +176,9 @@ Ensure that you consider the type of artifact you are analyzing. For instance, i
     )
 
 
-async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
+async def a_think(
+    gist: bool, writer: bool, path: str, core_problems: bool, interests: bool
+):
     # claude is now too slow to use compared to gpto
     llms = langchain_helper.get_models(openai=True, claude=True)
 
@@ -188,6 +198,12 @@ async def a_think(gist: bool, writer: bool, path: str, core_problems: bool):
     if writer:
         categories = AnalysisQuestions.writer()
         category_desc = "writer questions"
+    if writer:
+        categories = AnalysisQuestions.writer()
+        category_desc = "writer questions"
+    if interests:
+        categories = AnalysisQuestions.interests()
+        category_desc = "interests"
 
     # todo add link to categories being used.
 
@@ -273,12 +289,19 @@ def think(
     gist: bool = True,
     core_problems: bool = False,  # Use core problems answers
     writer: bool = False,  # Use core problems answers
+    interests: bool = False,  # Use core problems answers
     path: str = typer.Argument(None),
 ):
     langchain_helper.langsmith_trace_if_requested(
         trace,
         lambda: asyncio.run(
-            a_think(gist=gist, writer=writer, path=path, core_problems=core_problems)
+            a_think(
+                gist=gist,
+                writer=writer,
+                path=path,
+                core_problems=core_problems,
+                interests=interests,
+            )
         ),
     )
 
