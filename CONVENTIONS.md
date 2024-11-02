@@ -10,3 +10,5 @@ Use types, when using types, prefer using builtins like foo | None vs foo: Optio
 
 Perfer returnign from a function vs nesting ifs
 Prfer descriptive variable names over comments
+
+Use python3 to run commands
