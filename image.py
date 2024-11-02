@@ -10,7 +10,8 @@ from pathlib import Path
 import os
 import ell
 from ell_helper import init_ell, run_studio, get_ell_model
-from typer import Option
+from typing import Annotated
+import sys
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
@@ -20,7 +21,7 @@ init_ell()
 
 
 @ell.simple(model=get_ell_model(openai=True))
-def prompt_illustrate_igor_pixar(prompt: str, pixar):
+def prompt_illustrate_igor_pixar(prompt: str):
     """
     You are an AI that creates enhanced prompts for an image generation model. The user provides a simple prompt, and you enrich it. When they mention Igor, refer to him as Idvorkin with the following characteristics:
 
@@ -34,7 +35,7 @@ def prompt_illustrate_igor_pixar(prompt: str, pixar):
 
 
 @ell.simple(model=get_ell_model(openai=True))
-def prompt_illustrate_igor(prompt: str, pixar):
+def prompt_illustrate_igor(prompt: str):
     """
     You are an AI that creates enhanced prompts for an image generation model. The user provides a simple prompt, and you enrich it. When they mention Igor, refer to him as Idvorkin with the following characteristics:
 
@@ -64,15 +65,42 @@ def show(img):
 
 
 @app.command()
-def gen_flux(prompt: str):
+def gen_flux(
+    prompt: Annotated[
+        str,
+        typer.Argument(
+            help="Text prompt to generate the image from (can also be provided via stdin)",
+            show_default="A pixar style 3d render of a raccoon",
+        ),
+    ] = "A pixar style 3d render of a raccoon",
+    raw: Annotated[
+        bool, typer.Option(help="Use raw prompt without enhancement")
+    ] = False,
+):
     """
     Generate an image using the Flux model based on the given prompt.
 
     Args:
         prompt (str): The text prompt to generate the image from.
+        raw (bool): If True, use the raw prompt without enhancement
     """
-    ic(prompt)
-    augmented_prompt = prompt_illustrate(prompt)
+    # Get prompt from stdin if available
+    if not sys.stdin.isatty():
+        stdin_prompt = sys.stdin.read().strip()
+        if stdin_prompt:
+            prompt = stdin_prompt
+            ic("using STDIN:", prompt)
+
+    if not prompt:
+        raise typer.BadParameter("No prompt provided via argument or stdin")
+
+    ic("final prompt:", prompt)
+
+    if raw:
+        augmented_prompt = prompt
+    else:
+        augmented_prompt = prompt_illustrate(prompt)
+
     ic(augmented_prompt)
 
     output = replicate.run(
@@ -92,19 +120,46 @@ def gen_flux(prompt: str):
 
 
 @app.command()
-def gen_igor(prompt: str, pixar: bool = True):
+def gen_igor(
+    prompt: Annotated[
+        str,
+        typer.Argument(
+            help="Text prompt to generate an image of Igor (can also be provided via stdin)",
+            show_default="A pixar style 3d render of Igor",
+        ),
+    ] = "A pixar style 3d render of Igor",
+    pixar: Annotated[bool, typer.Option(help="Use Pixar style rendering")] = True,
+    raw: Annotated[
+        bool, typer.Option(help="Use raw prompt without enhancement")
+    ] = False,
+):
     """
     Generate an image of Igor (Idvorkin) using a custom LoRA model based on the given prompt.
 
     Args:
         prompt (str): The text prompt to generate the image from.
+        pixar (bool): If True, use Pixar style rendering
+        raw (bool): If True, use the raw prompt without enhancement
     """
-    ic(prompt)
-    augmented_prompt = (
-        prompt_illustrate_igor(prompt)
-        if not pixar
-        else prompt_illustrate_igor_pixar(prompt, pixar)
-    )
+    # Get prompt from stdin if available
+    if not sys.stdin.isatty():
+        stdin_prompt = sys.stdin.read().strip()
+        if stdin_prompt:
+            prompt = stdin_prompt
+            ic("using STDIN:", prompt)
+
+    if not prompt:
+        raise typer.BadParameter("No prompt provided via argument or stdin")
+
+    ic("final prompt:", prompt)
+    if raw:
+        augmented_prompt = prompt
+    else:
+        augmented_prompt = (
+            prompt_illustrate_igor(prompt)
+            if not pixar
+            else prompt_illustrate_igor_pixar(prompt)
+        )
     ic(augmented_prompt)
 
     extra_lora = ""
@@ -212,7 +267,11 @@ def dump():
 
 
 @app.command()
-def studio(port: int = Option(None, help="Port to run the ELL Studio on")):
+def studio(
+    port: Annotated[
+        int | None, typer.Option(help="Port to run the ELL Studio on")
+    ] = None,
+):
     """
     Launch the ELL Studio interface for interactive model exploration and testing.
 
