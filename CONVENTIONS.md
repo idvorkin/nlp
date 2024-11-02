@@ -1,14 +1,20 @@
 # Coding conventions used in this project
 
-For CLIs use a typer app
-Use ic to do logging
-Use rich for pretty printing
-Use loguru for logging
-Use typer for cli apps
-Use pydantic for data validation
-Use types, when using types, prefer using builtins like foo | None vs foo: Optional[str]
+For CLIs, use a Typer app.
+Use `ic` for logging.
+Use Rich for pretty printing.
+Use Loguru for logging.
+Use Typer for CLI apps.
+Use Pydantic for data validation.
+Use types; when using types, prefer using built-ins like `foo | None` vs `foo: Optional[str]`.
+When using Typer, use the latest syntax for arguments and options.
 
-Perfer returnign from a function vs nesting ifs
-Prfer descriptive variable names over comments
+```python
+    name: Annotated[Optional[str], typer.Argument()] = None
+    def main(name: Annotated[str, typer.Argument()] = "Wade Wilson"):
+    lastname: Annotated[str, typer.Option(help="Last name of person to greet.")] = "",
+    formal: Annotated[bool, typer.Option(help="Say hi formally.")] = False,
+```
 
-Use python3 to run commands
+Prefer returning from a function vs nesting ifs.
+Prefer descriptive variable names over comments.
