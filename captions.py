@@ -40,8 +40,8 @@ def prompt_captions_to_human_readable(captions: str, last_chunk: str, youtube_ur
 3. Fix grammar, spelling, and punctuation
 4. Break text into logical paragraphs (max 10 sentences per paragraph)
 5. Keep sentences under 30 words
-6. Speaker labels: 
-    - Prepend the paragraph with a speaker labels like "**HOST:**" or "**GUEST1:**" when speakers change.  
+6. Speaker labels:
+    - Prepend the paragraph with a speaker labels like "**HOST:**" or "**GUEST1:**" when speakers change.
     - Do not use a speaker label if the speaker is the same as the last speaker
     - Insert blank lines between speaker changes
 
@@ -112,7 +112,7 @@ def to_human(path: str = typer.Argument(None), gist: bool = True):
         raise ValueError("No YouTube URL found in the provided path")
     youtube_url = path
     header = f"""
-*Transcribed [{path}]({path}) via [transcribe.py](https://github.com/idvorkin/nlp/blob/main/transcribe.py)*
+*Transcribed [{path}]({path}) via [captions.py](https://github.com/idvorkin/nlp/blob/0367de7dd5338a3111a5b002554ea121d8b142b3/captions.py#L101)
 """
     user_text = openai_wrapper.get_text_from_path_or_stdin(youtube_url)
     ic(header)
