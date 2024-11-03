@@ -36,7 +36,7 @@ def prompt_captions_to_human_readable(captions: str, last_chunk: str, youtube_ur
     system = f"""You are an expert at converting raw video captions into clean, readable markdown text. Your task is to:
 
 1. Convert VTT captions into properly formatted markdown text
-2. Never summarize or condense the content (except ad/sponsor segments - which can be removed)
+2. Never summarize or condense the content (except ad/sponsor segments - which you should remove)
 3. Fix grammar, spelling, and punctuation
 4. Break text into logical paragraphs (max 10 sentences per paragraph)
 5. Keep sentences under 30 words
@@ -44,6 +44,7 @@ def prompt_captions_to_human_readable(captions: str, last_chunk: str, youtube_ur
     - Prepend the paragraph with a speaker labels like "**HOST:**" or "**GUEST1:**" when speakers change.
     - Do not use a speaker label if the speaker is the same as the last speaker
     - Insert blank lines between speaker changes
+    - A speaker change should always result in a new line
 
 7. Timecodes: Insert timecodes in this format: [00:01:34]({youtube_url}&t=94s)
    - Add a timecode on a speaker change if we haven't seen a timecode in the last 2 minutes (e.g. we're doing a speaker switch at 7:00 and last timecode was at 5:00)
@@ -126,7 +127,7 @@ def to_human(path: str = typer.Argument(None), gist: bool = True):
         response = prompt_captions_to_human_readable(chunk, last_chunk, youtube_url)
         response = response.content[0].text
         last_chunk = response
-        output_text += "\n" + response
+        output_text += "\n|\n" + response
 
         elapsed = round(time.time() - start_time)
         ic(i, tokens, len(response), f"{elapsed}s")
@@ -148,7 +149,7 @@ def split_string(input_string):
     # Output size is 16K, so let that be the chunk size
     # A very rough estimate might suggest that a VTT file could be around 1.5 to 3 times larger than the plain text, depending on how verbose the timestamps and metadata are compared to the actual dialogue or text content. However, this is just an approximation and can vary significantly based on the specific content and structure of the VTT file.
     chars_per_token = 4
-    max_tokens = 2_000  # not sure optimal chunk size
+    max_tokens = 4_000  # not sure optimal chunk size
     vtt_multiplier = 2
     chunk_size = chars_per_token * max_tokens * vtt_multiplier
     ic(int(len(input_string) / chunk_size))
