@@ -107,13 +107,26 @@ def stdin(
     prompt: str = typer.Option("*"),
     stream: bool = typer.Option(True),
     u4: bool = typer.Option(False),
+    silent: bool = typer.Option(True, help="Suppress debug output"),
 ):
+    # Temporarily disable ic output if silent mode
+    def noop(*args, **kwargs):
+        pass
+
+    if silent:
+        ic = noop
+
     process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = prompt.replace("*", user_text)
 
-    base_query_from_dict(locals())
+    try:
+        base_query_from_dict(locals())
+    finally:
+        # Restore ic if it was disabled
+        if silent:
+            ic.enable()
 
 
 @app.command()
@@ -714,19 +727,28 @@ def fix(
     responses: int = typer.Option(1),
     to_fzf: bool = typer.Option(False),
     u4: bool = typer.Option(True),
+    silent: bool = typer.Option(True, help="Suppress debug output"),
 ):
-    process_shared_app_options(ctx)
-    user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
-    system_prompt = """You are an advanced AI with superior spelling correction abilities.
+    # Temporarily disable ic output if silent mode
+    if silent:
+        ic.disable()
+    try:
+        process_shared_app_options(ctx)
+        user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
+        system_prompt = """You are an advanced AI with superior spelling correction abilities.
 Your task is to correct any spelling errors you encounter in the text provided below.
 The text is markdown, don't change the markdown formatting.
 Don't add a markdown block around the entire text
 Don't change any meanings
-    """
-    gpt_start_with = ""
-    prompt = f"""{user_text}"""
-    prompt_to_gpt = remove_trailing_spaces(prompt)
-    base_query_from_dict(locals())
+        """
+        gpt_start_with = ""
+        prompt = f"""{user_text}"""
+        prompt_to_gpt = remove_trailing_spaces(prompt)
+        base_query_from_dict(locals())
+    finally:
+        # Restore ic if it was disabled
+        if silent:
+            ic.enable()
 
 
 @app.command()
