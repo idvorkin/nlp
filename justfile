@@ -18,4 +18,4 @@ install:
     uv pip install --editable .
 
 global-install: install
-    pipxu install -f . --editable --python /Users/idvorkin/homebrew/bin/python3.12
+    pipxu install -f . --editable --python $(which python3.12)
