@@ -289,7 +289,7 @@ class JournalEntry:
             if is_blank_line:
                 continue
 
-            is_date_line = line.startswith("750 words for:")
+            is_date_line = "750 words for:" in line
             if is_date_line:
                 iso_date_pattern = r"\d{4}-\d{2}-\d{2}"
                 match = re.search(iso_date_pattern, line)
