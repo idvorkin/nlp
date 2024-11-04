@@ -107,26 +107,13 @@ def stdin(
     prompt: str = typer.Option("*"),
     stream: bool = typer.Option(True),
     u4: bool = typer.Option(False),
-    silent: bool = typer.Option(True, help="Suppress debug output"),
 ):
-    # Temporarily disable ic output if silent mode
-    def noop(*args, **kwargs):
-        pass
-
-    if silent:
-        ic = noop
-
     process_shared_app_options(ctx)
     user_text = remove_trailing_spaces("".join(sys.stdin.readlines()))
     gpt_start_with = ""
     prompt_to_gpt = prompt.replace("*", user_text)
 
-    try:
-        base_query_from_dict(locals())
-    finally:
-        # Restore ic if it was disabled
-        if silent:
-            ic.enable()
+    base_query_from_dict(locals())
 
 
 @app.command()
