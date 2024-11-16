@@ -166,8 +166,63 @@ def podcast(
 
 
 @app.command()
+def google_multi():
+    # https://cloud.google.com/text-to-speech/docs/create-dialogue-with-multispeakers#example_of_how_to_use_multi-speaker_markup
+    from google.cloud import texttospeech_v1beta1
+
+    # Define the conversation as a list of tuples (speaker, text)
+    conversation = [
+        ("R", "I've heard that Freddy feedback is amazing!"),
+        ("S", "Oh? What's so good about it?"),
+        ("R", "Well.."),
+        ("S", "Well what?"),
+        ("R", "Well, you should find it out by yourself!"),
+        ("S", "Alright alright, let's try it out!"),
+    ]
+
+    # Instantiates a client
+    client = texttospeech_v1beta1.TextToSpeechClient()
+    multi_speaker_markup = texttospeech_v1beta1.MultiSpeakerMarkup()
+
+    # Create turns from conversation data
+    for speaker, text in conversation:
+        turn = texttospeech_v1beta1.MultiSpeakerMarkup.Turn()
+        turn.text = text
+        turn.speaker = speaker
+        multi_speaker_markup.turns.append(turn)
+
+    # Set the text input to be synthesized
+    synthesis_input = texttospeech_v1beta1.SynthesisInput(
+        multi_speaker_markup=multi_speaker_markup
+    )
+
+    # Build the voice request, select the language code ('en-US') and the ssml
+    # voice gender ('neutral')
+    voice = texttospeech_v1beta1.VoiceSelectionParams(
+        language_code="en-US", name="en-US-Studio-MultiSpeaker"
+    )
+
+    # Select the type of audio file you want returned
+    audio_config = texttospeech_v1beta1.AudioConfig(
+        audio_encoding=texttospeech_v1beta1.AudioEncoding.MP3
+    )
+
+    # Perform the text-to-speech request on the text input with the selected
+    # voice parameters and audio file type
+    response = client.synthesize_speech(
+        input=synthesis_input, voice=voice, audio_config=audio_config
+    )
+
+    # The response's audio_content is binary.
+    with open("output.mp3", "wb") as out:
+        # Write the response to the output file.
+        out.write(response.audio_content)
+        print('Audio content written to file "output.mp3"')
+
+
+@app.command()
 def merge_audio(directory: Path):
-    # Specify the directory where your audio files are located
+    # Specify the directory where youjjjjr audio files are located
 
     # Function to extract the numeric part from the filename for sorting
     def extract_number(file_name):
