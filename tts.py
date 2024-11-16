@@ -164,9 +164,14 @@ def podcast(
 
 @app.command()
 def google_multi(pod=Path("pod.json"), speak: bool = True):
-    # https://cloud.google.com/text-to-speech/docs/create-dialogue-with-multispeakers#example_of_how_to_use_multi-speaker_markup
     from google.cloud import texttospeech_v1beta1 as tts
-    from google.cloud.texttospeech_v1beta1 import MultiSpeakerMarkup, AudioEncoding, VoiceSelectionParams, SynthesisInput, AudioConfig
+    from google.cloud.texttospeech_v1beta1 import (
+        MultiSpeakerMarkup,
+        AudioEncoding,
+        VoiceSelectionParams,
+        SynthesisInput,
+        AudioConfig,
+    )
 
     conversation = []
     # load the podcast
@@ -180,18 +185,31 @@ def google_multi(pod=Path("pod.json"), speak: bool = True):
         MultiSpeakerMarkup.Turn(text=turn["text"], speaker=turn["speaker"])
         for turn in conversation
     ]
-    multi_speaker_markup = MultiSpeakerMarkup(turns=markupTurns)
 
+    # Remap speakers to be R,S,M be dynamic in how you build that
+    original_speakers = set([turn.speaker for turn in markupTurns])
+    ic(original_speakers)
+    valid_google_speakers = "R,S,T,U".split(",")
+    # map from original speakers to valid google speakers
+    speaker_map = {
+        speaker: valid_google_speakers[index]
+        for index, speaker in enumerate(original_speakers)
+    }
+    ic(speaker_map)
+    for turn in markupTurns:
+        turn.speaker = speaker_map[turn.speaker]
+
+    multi_speaker_markup = MultiSpeakerMarkup(turns=markupTurns)
+    ic(multi_speaker_markup)
 
     # Perform the text-to-speech request on the text input with the selected
     # voice parameters and audio file type
     response = tts.TextToSpeechClient().synthesize_speech(
-        input=SynthesisInput(multi_speaker_markup),
+        input=SynthesisInput(multi_speaker_markup=multi_speaker_markup),
         voice=VoiceSelectionParams(
-            language_code="en-US",
-            name="en-US-Studio-MultiSpeaker"
+            language_code="en-US", name="en-US-Studio-MultiSpeaker"
         ),
-        audio_config=AudioConfig(audio_encoding=AudioEncoding.MP3)
+        audio_config=AudioConfig(audio_encoding=AudioEncoding.MP3),
     )
 
     # The response's audio_content is binary.
