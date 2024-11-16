@@ -165,7 +165,7 @@ def podcast(
 @app.command()
 def google_multi(pod=Path("pod.json"), speak: bool = True):
     # https://cloud.google.com/text-to-speech/docs/create-dialogue-with-multispeakers#example_of_how_to_use_multi-speaker_markup
-    from google.cloud import texttospeech_v2beta1 as tts
+    from google.cloud import texttospeech_v1beta1 as tts
     from google.cloud.texttospeech_v1beta1 import MultiSpeakerMarkup, AudioEncoding, VoiceSelectionParams, SynthesisInput, AudioConfig
 
     conversation = []
