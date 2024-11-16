@@ -4,7 +4,7 @@ import typer
 from loguru import logger
 from icecream import ic
 from wordcloud import WordCloud
-import langchain_helper
+from openai_wrapper import get_text_from_path_or_stdin
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -12,7 +12,7 @@ app = typer.Typer(no_args_is_help=True)
 @app.command()
 def dump_cloud(path: str = "", top: int = 40):
     wc = WordCloud(min_word_length=3)
-    raw_words = langchain_helper.get_text_from_path_or_stdin(path)
+    raw_words = get_text_from_path_or_stdin(path)
     # create dict of word frequencies
     words = wc.process_text(raw_words)
     # make tuples from words and frequencies
