@@ -53,6 +53,7 @@ dependencies = [
     "yt-dlp",
     "numpy",
     "exa-py",
+    "google-cloud-texttospeech",
 ]
 
 [tool.setuptools]
