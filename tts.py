@@ -166,18 +166,32 @@ def podcast(
 
 
 @app.command()
-def google_multi():
+def google_multi(speak: bool = True):
     # https://cloud.google.com/text-to-speech/docs/create-dialogue-with-multispeakers#example_of_how_to_use_multi-speaker_markup
     from google.cloud import texttospeech_v1beta1
 
     # Define the conversation as a list of tuples (speaker, text)
     conversation = [
-        ("R", "I've heard that Freddy feedback is amazing!"),
-        ("S", "Oh? What's so good about it?"),
-        ("R", "Well.."),
-        ("S", "Well what?"),
-        ("R", "Well, you should find it out by yourself!"),
-        ("S", "Alright alright, let's try it out!"),
+        ("S", "Man, don't you hate it when you need to write feedback?"),
+        (
+            "R",
+            "Tell me about it, normally I just procrastinate and can't get it done, I just dread PSCs",
+        ),
+        ("S", "What if I told you I used to be like that, but not any more"),
+        ("R", "I'd say you're a liar. But seriously, what changed?"),
+        ("S", "I started using Freddy feedback!"),
+        ("R", "Freddy feedback? What the heck is that?"),
+        ("S", "Well.."),
+        ("R", "Well what?"),
+        ("S", "Well, it's like a feedback writing coach!"),
+        ("R", "Wait, how does that work"),
+        (
+            "S",
+            "Well you kind of just tell it what you're thinking and it asks you questions till your feedback is clear!",
+        ),
+        ("R", "That sounds amazing! How do I try that?"),
+        ("S", "Goto fburl.com/freddy"),
+        ("R", "Sweet - I owe you one!"),
     ]
 
     # Instantiates a client
@@ -214,10 +228,16 @@ def google_multi():
     )
 
     # The response's audio_content is binary.
-    with open("output.mp3", "wb") as out:
+    output_path = "output.wav"  # not sure why, but it's only outputing wav
+    ic(output_path)
+    with open(output_path, "wb") as out:
         # Write the response to the output file.
         out.write(response.audio_content)
-        print('Audio content written to file "output.mp3"')
+
+    if speak:
+        ic(speak)
+        # play via afplay
+        subprocess.run(["afplay", output_path])
 
 
 @app.command()
