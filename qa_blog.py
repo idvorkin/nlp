@@ -543,7 +543,7 @@ Last documents:
 
 # @logger.catch()
 def app_wrap_loguru():
-    langchain_helper.langsmith_trace(app)
+    app()
 
 
 if __name__ == "__main__":
