@@ -116,7 +116,8 @@ def ic_flat_response(response: dict):
     ic(r)
 
 
-def feedback_positive_generic():
+@app.command()
+def generic_positive():
     freddy = FreddyChatBot()
     response = freddy.call("Bob is a great co-worker")
     ic_flat_response(response)
@@ -124,9 +125,10 @@ def feedback_positive_generic():
     ic_flat_response(response)
 
 
-def feedback_negative_generic():
+@app.command()
+def generic_negative():
     freddy = FreddyChatBot()
-    response = freddy.call("Bob is a bad co-worker")
+    response = freddy.call("Bob is poopy")
     ic_flat_response(response)
 
 
