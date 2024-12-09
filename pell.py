@@ -59,8 +59,8 @@ def prompt_hello_groq(world: str):
     return f"Say hello to {name}!"  # User prompt
 
 
-@ell.complex(model=get_ell_model(llama=True))  # type: ignore
-def hello_groq_image(image: Image.Image):
+@ell.complex(model=get_ell_model(llama_vision=True))  # type: ignore
+def prompt_recognize_groq_image(image: Image.Image):
     system = """
     You are passed in an image that I created myself so there are no copyright issues, describe what is in it
     """
@@ -100,7 +100,7 @@ def groq():
     draw.rectangle([100, 0, 199, 99], fill=(0, 255, 0))
     draw.rectangle([0, 100, 99, 199], fill=(0, 0, 255))
     draw.rectangle([100, 100, 199, 199], fill=(255, 255, 0))
-    response2 = hello_groq_image(img)
+    response2 = prompt_recognize_groq_image(img)
     ic(response2)
 
 
@@ -121,6 +121,16 @@ def prompt_joke_with_reasoning(joke_topic):
     """
     return [ell.user(system), ell.user(joke_topic)]
 
+
+@app.command()
+def groq_models():
+    import requests
+    import os
+    # curl https://api.groq.com/openai/v1/models \ -H "Authorization: Bearer $GROQ_API_KEY"jkjf0w
+    response = requests.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}"})
+    models = response.json()["data"]
+    for model in models:
+        ic(model["id"])
 
 @app.command()
 def joke(topic: str = typer.Argument("chickens", help="Topic for the joke")):

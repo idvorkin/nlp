@@ -6,6 +6,8 @@ import subprocess
 import socket
 import asyncio
 from pathlib import Path
+from groq import Groq
+from anthropic import Anthropic
 
 
 def get_caller_filename():
@@ -23,7 +25,11 @@ def get_ell_logdir():
 
 def init_ell():
     ell.init(store=get_ell_logdir(), autocommit=True)
-    ell.models.groq.register()
+    groq = Groq()
+    ell.config.register_model("llama-3.3-70b-versatile", default_client=groq)
+    ell.config.register_model("llama-3.2-90b-vision-preview", default_client=groq)
+    anthropic = Anthropic()
+    ell.config.register_model("claude-3-5-sonnet-20241022", default_client=anthropic)
 
 
 def get_ell_model(
@@ -32,12 +38,13 @@ def get_ell_model(
     google: bool = False,
     claude: bool = False,
     llama: bool = False,
+    llama_vision: bool = False,
 ) -> str:
     """
     Select and return the appropriate ELL model based on the provided flags.
     """
     # if more then one is true, exit and fail
-    count_true = sum([openai, google, claude, llama, openai_cheap])
+    count_true = sum([openai, google, claude, llama, openai_cheap, llama_vision])
     if count_true > 1:
         print("Only one model can be selected")
         exit(1)
@@ -49,8 +56,10 @@ def get_ell_model(
         raise NotImplementedError("google")
     elif claude:
         return "claude-3-5-sonnet-20241022"
-    elif llama:
+    elif llama_vision:
         return "llama-3.2-90b-vision-preview"
+    elif llama:
+        return "llama-3.3-70b-versatile"
     elif openai_cheap:
         return "gpt-4o-mini"
     else:
@@ -106,6 +115,7 @@ def run_studio(port=None):
         ic(f"Error: {e}")
     except Exception as e:
         ic(f"An unexpected error occurred: {e}")
+
 
 
 #  Todo- dedup with the one in langhchain helper
