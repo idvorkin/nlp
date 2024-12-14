@@ -12,7 +12,6 @@ import typer
 from langchain.prompts import ChatPromptTemplate
 
 from loguru import logger
-from rich.console import print
 from rich.console import Console
 import langchain_helper
 import openai_wrapper
@@ -96,10 +95,8 @@ class AnalysisQuestions:
     def default():
         return [
             "Summary",
-            "Implications and Impact",
-            "Most Novel Ideas"
-            "Most Interesting Ideas"
-            "Critical Assumptions and Risks",
+            "Most Novel Ideas" "Implications and Impact",
+            "Most Interesting Ideas" "Critical Assumptions and Risks",
             "Reflection Questions",
             "Contextual Background",
             "Related Topics",
@@ -213,19 +210,25 @@ async def a_think(
     if path and path.startswith(("http://", "https://")):
         try:
             response = requests.get(path, timeout=5)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            title = f" ({soup.title.string.strip()})" if soup.title else ""
-        except:
+            soup = BeautifulSoup(response.text, "html.parser")
+            title = f" ({soup.title.string.strip('()')})" if soup.title else ""
+        except Exception as _:
             pass
-    
-    thinking_about = f"*Thinking about {path}{title}*" if path else ""
+
+    thinking_about = (
+        f"*Thinking about [{title}]({path})*"
+        if title
+        else f"*Thinking about [{path}]({path})*"
+        if path
+        else ""
+    )
     ic("starting to think", tokens)
     from datetime import datetime
+
     today = datetime.now().strftime("%Y-%m-%d")
     header = f"""
-*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - {today} - using {category_desc}*
+*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - {today} - using {category_desc}* <br/>
 {thinking_about}
-
 """
 
     def do_llm_think(llm) -> List[[str, BaseChatModel]]:  # type: ignore
