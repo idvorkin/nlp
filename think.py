@@ -21,6 +21,8 @@ from openai_wrapper import num_tokens_from_string
 from pydantic import BaseModel
 from exa_py import Exa
 import os
+import requests
+from bs4 import BeautifulSoup
 
 
 class GroupOfPoints(BaseModel):
@@ -207,7 +209,16 @@ async def a_think(
 
     # todo add link to categories being used.
 
-    thinking_about = f"*Thinking about {path}*" if path else ""
+    title = ""
+    if path and path.startswith(("http://", "https://")):
+        try:
+            response = requests.get(path, timeout=5)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            title = f" ({soup.title.string.strip()})" if soup.title else ""
+        except:
+            pass
+    
+    thinking_about = f"*Thinking about {path}{title}*" if path else ""
     ic("starting to think", tokens)
     header = f"""
 *🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - using {category_desc}*
