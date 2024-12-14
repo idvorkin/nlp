@@ -16,8 +16,8 @@ client = openai.Client(
     api_key=os.environ["GOOGLE_API_KEY"],
 )
 
-# model_to_use = "gemini-1.5-flash-002"
-model_to_use = "gemini-1.5-pro-002"
+model_to_use = "gemini-2.0-flash-exp"
+# model_to_use = "gemini-1.5-pro-002"
 # Register the model with your custom client
 ell.config.register_model(model_to_use, client)
 
@@ -50,12 +50,14 @@ E.g.
 |A          | B         | C         |
 |Hello World| 123       | 456       |
 
-- When parts are illegible, indicate with [illegible].
-- When you're less sure about a word, indicate with [guess]
+- When you're not sure about a transcription, indicate with [guessing].
 - If date is on first row, include it in the page title
 - Merge multiple lines into a single line if they are part of the same paragraph, smart wrapping at 120 char mark
 - Fix spelling mistakes
+- Expand abbreviations you have avery  high confidence in
 - If there seem to be headings/lists throughout the doc
+- YAB = Yesterday Awesome Because
+- TAB = Today Awesome Because
 
 At the end of the document, include an analysis section it should include: 
 - Summary of the document
@@ -70,7 +72,7 @@ At the end of the document, include an analysis section it should include:
     
     The list becomes
     
-    YAB: 
+    Yesterday Awesome Because:
         - blah
         - Bloop
     
