@@ -12,7 +12,7 @@ import typer
 from langchain.prompts import ChatPromptTemplate
 
 from loguru import logger
-from rich import print
+from rich.console import print
 from rich.console import Console
 import langchain_helper
 import openai_wrapper
@@ -220,8 +220,10 @@ async def a_think(
     
     thinking_about = f"*Thinking about {path}{title}*" if path else ""
     ic("starting to think", tokens)
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
     header = f"""
-*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - using {category_desc}*
+*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - {today} - using {category_desc}*
 {thinking_about}
 
 """
