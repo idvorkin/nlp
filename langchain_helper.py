@@ -65,7 +65,8 @@ def get_model(
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        model = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest")
+        # model = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest")
+        model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp")
     elif claude:
         from langchain_anthropic import ChatAnthropic
 
@@ -73,7 +74,7 @@ def get_model(
     elif llama:
         from langchain_groq import ChatGroq
 
-        model = ChatGroq(model_name="llama-3.1-70b-versatile")
+        model = ChatGroq(model_name="llama-3.3-70b-versatile")
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
@@ -151,5 +152,3 @@ def to_gist(path: Path):
     ic(gist)
     ic(gist.stdout.strip())
     subprocess.run(["open", gist.stdout.strip()])
-
-

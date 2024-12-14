@@ -180,7 +180,7 @@ async def a_think(
     gist: bool, writer: bool, path: str, core_problems: bool, interests: bool
 ):
     # claude is now too slow to use compared to gpto
-    llms = langchain_helper.get_models(openai=True, claude=True)
+    llms = langchain_helper.get_models(openai=True, claude=True, google=True)
 
     user_text = openai_wrapper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)
