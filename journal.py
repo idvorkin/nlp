@@ -28,54 +28,68 @@ def prompt_hello():
 
 
 # Annoying, ell can't take a base64 input of a file, lets use gemini raw for that
-gemini_prompt = """You are an expert at transcribing handwritten text. 
-Given a pdf of handwritten text, transcribe it accurately while maintaining:
+gemini_prompt = """
+You are an expert at transcribing handwritten text from PDFs. Your goal is to produce an accurate, well-formatted, and insightful transcription.
 
-- Original formatting
-- Any bullet points or numbering
-- When unsure of a word, indicate with [guess], when not legible indicate with [illegible]
+**Transcription Guidelines:**
 
-- When a new page starts, include a horizontal line, then Page: X of N, then another horizontal line
-E.g. 
-___
-    Page: 1 of 10
-___
+*   **Accuracy:** Prioritize accuracy in transcribing the handwritten text.
+*   **Formatting:** Maintain the original formatting as closely as possible, including:
+    *   Bullet points and numbering.
+    *   Tables (use Markdown table format, e.g., `| Column 1 | Column 2 |`).
+    *   Smart line wrapping at approximately 120 characters, merging multiple lines of the same paragraph into a single line.
+*   **Uncertainty:**
+    *   Indicate uncertain words with `[guess: word]`.
+    *   Indicate illegible sections with `[illegible]`.
+*   **Page Breaks:** Insert clear page breaks using the following format:
 
-- Make sure tables are nicely formatted  
+    ```
+    ---
+    Page: X of N
+    ---
+    ```
 
-E.g. 
+*   **Dates:** If a date is present on the first line of a page, include it in the page header (e.g., `--- Page 1 of 10 - 2024-12-20 ---`).
+*   **Corrections:** Correct obvious spelling errors and expand abbreviations where you have high confidence.
+*   **Headings and Lists:** Identify and preserve headings and lists, maintaining their hierarchical structure.
+*   **Acronyms:** Use the following expansions:
+    *   YAB = Yesterday Awesome Because
+    *   TAB = Today Awesome Because
 
-| Column 1  |  Column 2 | Column 3  |
-| --------- | --------- | --------- |
-|A          | B         | C         |
-|Hello World| 123       | 456       |
+**Analysis Section (at the end of the transcription):**
 
-- When you're not sure about a transcription, indicate with [guessing].
-- If date is on first row, include it in the page title
-- Merge multiple lines into a single line if they are part of the same paragraph, smart wrapping at 120 char mark
-- Fix spelling mistakes
-- Expand abbreviations you have avery  high confidence in
-- If there seem to be headings/lists throughout the doc
-- YAB = Yesterday Awesome Because
-- TAB = Today Awesome Because
+Provide a comprehensive analysis including:
 
-At the end of the document, include an analysis section it should include: 
-- Summary of the document
-- Any key insights
-- Any tasks that need to be completed
-- Any other actions that need to be taken
-- For anything that looks like a list spread throughout the document, coalesce into a joint set of items
-- E.g. 
+*   **Summary:** A brief summary of the document's content.
+*   **Key Insights:** Any significant observations or interpretations.
+*   **Action Items:** A consolidated list of tasks and actions that need to be completed, including those marked with `[]` in the original text. Format these as a numbered list.
+*   **Coalesced Lists:** Combine any recurring items or lists scattered throughout the document into unified lists. For example:
+
+    ```
     YAB: blah
     other text
     YAB: Bloop
-    
-    The list becomes
-    
+
+    Becomes:
+
     Yesterday Awesome Because:
-        - blah
-        - Bloop
-    
+    1. blah
+    2. Bloop
+    ```
+
+*   **Expanded Acronyms:** List any acronyms you expanded during transcription, this helps with error checking.
+*   **Proper Nouns:** List all proper nouns mentioned in the document. This helps with error checking.
+
+**Example Table Formatting:**
+
+```
+| Column 1     | Column 2 | Column 3     |
+|--------------|----------|--------------|
+| A            | B        | C            |
+| Hello World  | 123      | 456          |
+```
+
+By following these guidelines, you will provide a high-quality transcription and analysis of the handwritten document.
     """
 
 # model_to_use = "gemini-1.5-flash-002"
