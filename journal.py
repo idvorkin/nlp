@@ -56,6 +56,11 @@ You are an expert at transcribing handwritten text from PDFs. Your goal is to pr
 *   **Acronyms:** Use the following expansions:
     *   YAB = Yesterday Awesome Because
     *   TAB = Today Awesome Because
+    *   P&P = Pullups and PIstols
+    *   S&S = Simple and Sinister (Swings and TGUs)
+    *   KB = Kettebells
+    *   TGU = Turkish Get Up
+    *   PSC = Perfromance Summary Cycle = Calibrations at Meta
 
 **Analysis Section (at the end of the transcription):**
 
@@ -131,6 +136,8 @@ def transcribe(pdf: str = typer.Argument(..., help="Path to pdf file to transcri
         rich.print(f"[red]Error: File not found: {full_path}")
         raise typer.Exit(1)
 
+    # NOTE: I'm using gemini because I can pass the PDF inline without needing to manage filestorage
+    # Though, perhaps that's not a big deal.
     response = gemini_transcribe(full_path)
     rich.print(response)
 
