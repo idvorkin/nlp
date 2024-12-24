@@ -10,18 +10,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Tuple
 
-import openai_wrapper
 import pudb
 import typer
 from typer import Option
 from icecream import ic
-import ell
 from loguru import logger
 from pydantic import BaseModel
+import ell
+from ell_helper import get_ell_model, init_ell, run_studio
 from rich import print as rich_print
 from rich.console import Console
 from functools import partial
-from ell_helper import get_ell_model, init_ell, run_studio
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
@@ -42,7 +41,6 @@ def process_shared_app_options(ctx: typer.Context):
         pudb.set_trace()
 
 
-openai_wrapper.setup_secret()
 
 
 @logger.catch()
@@ -160,7 +158,7 @@ def assess(
     if studio:
         run_studio(port=port)
         return
-    llm = openai_wrapper.get_ell_model(
+    llm = get_ell_model(
         openai=openai, google=google, claude=claude, llama=llama
     )
     achanges_params = llm, before, after, gist
@@ -312,7 +310,7 @@ Order files by magnitude/importance of change, use same rules as with summary
 
 
 # Function to create the prompt
-@ell.simple(model=openai_wrapper.get_ell_model(openai=True))
+@ell.simple(model=get_ell_model(openai=True))
 def prompt_summarize_diff(file, diff_content, repo_path, end_rev):
     instructions = f""" You are an expert programmer, who is charged with explaining code changes concisely.
 
