@@ -5,8 +5,9 @@ import re
 from pathlib import Path
 import asyncio
 from typing import List
-
+from datetime import timedelta
 from langchain_core import messages
+from langchain_core.language_models import BaseChatModel
 from langchain_core.language_models import BaseChatModel
 
 import typer
@@ -24,6 +25,19 @@ import os
 import requests
 from bs4 import BeautifulSoup
 
+
+class AnalysisResult(BaseModel):
+    analysis: str
+    llm: BaseChatModel 
+    duration: timedelta
+
+class AnalysisBody(BaseModel):
+    body: str
+    artifacts: List[AnalysisResult]
+
+class CategoryInfo(BaseModel):
+    categories: List[str]
+    description: str
 
 class GroupOfPoints(BaseModel):
     Description: str
@@ -188,39 +202,69 @@ Duration: {duration.total_seconds():.2f} seconds
 
 
 
-async def a_think(
-    gist: bool, writer: bool, path: str, core_problems: bool, interests: bool
-):
-    # Ensure output directory exists
-    output_dir = Path("~/tmp").expanduser()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    # claude is now too slow to use compared to gpto
-    llms = langchain_helper.get_models(openai=True, claude=True, google=True)
-
-    user_text = openai_wrapper.get_text_from_path_or_stdin(path)
-    tokens = num_tokens_from_string(user_text)
-
-    # if tokens < 16_000:  # Groq limits to 60K ish
-    # only add Llama if the text is small
-    llms += [langchain_helper.get_model(llama=True)]
-
+def get_categories_and_description(core_problems: bool, writer: bool, interests: bool) -> CategoryInfo:
     categories = AnalysisQuestions.default()
     category_desc = "default questions"
+    
     if core_problems:
         categories = AnalysisQuestions.core_problem()
         category_desc = "core problems"
     if writer:
         categories = AnalysisQuestions.writer()
         category_desc = "writer questions"
-    if writer:
-        categories = AnalysisQuestions.writer()
-        category_desc = "writer questions"
     if interests:
         categories = AnalysisQuestions.interests()
         category_desc = "interests"
+        
+    return CategoryInfo(categories=categories, description=category_desc)
 
-    # todo add link to categories being used.
+async def generate_analysis_body(user_text: str, categories: List[str], llms: List[BaseChatModel]) -> AnalysisBody:
+    def do_llm_think(llm):
+        return (
+            prompt_think_about_document(user_text, categories=categories)
+            | llm
+            | StrOutputParser()
+        )
 
+    analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
+    
+    results = [
+        AnalysisResult(analysis=analysis, llm=llm, duration=duration)
+        for analysis, llm, duration in analyzed_artifacts
+    ]
+
+    body = ""
+    for result in results:
+        body += f"""
+<details>
+<summary>
+
+# -- model: {langchain_helper.get_model_name(result.llm)} | {result.duration.total_seconds():.2f} seconds --
+
+</summary>
+
+{result.analysis}
+
+</details>
+
+"""
+    return AnalysisBody(body=body, artifacts=results)
+
+async def a_think(
+    gist: bool, writer: bool, path: str, core_problems: bool, interests: bool
+):
+    output_dir = Path("~/tmp").expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    llms = langchain_helper.get_models(openai=True, claude=True, google=True)
+
+    user_text = openai_wrapper.get_text_from_path_or_stdin(path)
+    tokens = num_tokens_from_string(user_text)
+
+    if tokens < 16_000:
+        llms += [langchain_helper.get_model(llama=True)]
+
+    category_info = get_categories_and_description(core_problems, writer, interests)
+    
     title = ""
     if path and path.startswith(("http://", "https://")):
         try:
@@ -237,45 +281,16 @@ async def a_think(
         if path
         else ""
     )
-    ic("starting to think", tokens)
-    from datetime import datetime
 
     today = datetime.now().strftime("%Y-%m-%d")
     header = f"""
-*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - {today} - using {category_desc}* <br/>
+*🧠 via [think.py](https://github.com/idvorkin/nlp/blob/main/think.py) - {today} - using {category_info.description}* <br/>
 {thinking_about}
 """
 
-    def do_llm_think(llm) -> List[[str, BaseChatModel]]:  # type: ignore
-        from langchain.schema.output_parser import StrOutputParser
-
-        # return prompt_think_about_document(user_text) | llm.with_structured_output( AnalyzeArtifact)
-        return (
-            prompt_think_about_document(user_text, categories=categories)
-            | llm
-            | StrOutputParser()
-        )
-
-    analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
-
-    body = ""
-    for analysis, llm, duration in analyzed_artifacts:
-        body += f"""
-<details>
-<summary>
-
-# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --
-
-</summary>
-
-{analysis}
-
-</details>
-
-"""
-    # """
-
-    output_text = header + "\n" + body
+    ic("starting to think", tokens)
+    analysis_body = await generate_analysis_body(user_text, category_info.categories, llms)
+    output_text = header + "\n" + analysis_body.body
 
     # Create the main analysis file
     output_path = output_dir / "think.md"
@@ -284,13 +299,13 @@ async def a_think(
     # Run all model summaries in parallel
     model_summary_tasks = [
         generate_model_summary(
-            llm,
-            make_summary_prompt(body, categories),
+            result.llm,
+            make_summary_prompt(analysis_body.body, category_info.categories),
             header,
             output_dir,
-            duration
+            result.duration
         )
-        for llm, _, duration in analyzed_artifacts
+        for result in analysis_body.artifacts
     ]
     model_summaries = [
         summary
