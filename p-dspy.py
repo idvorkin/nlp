@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!python3
 from loguru import logger
 import typer
 from typing import Annotated
@@ -11,16 +11,18 @@ app = typer.Typer()
 def app_wrap_loguru():
     app()
 
+
+default_model = "openai/gpt-4o"
 @app.command()
 def main(
     prompt: Annotated[str, typer.Argument(help="Prompt to test with DSPy")] = "What is machine learning?",
-    model: Annotated[str, typer.Option(help="Model to use (default: gpt-3.5-turbo)")] = "gpt-3.5-turbo",
+    model: Annotated[str, typer.Option(help=f"Model to use (default: {default_model})")] = default_model,
 ):
     """
     Play with DSPy functionality
     """
     # Initialize DSPy with the specified model
-    lm = dspy.OpenAI(model=model)
+    lm = dspy.LM(model=model)
     dspy.settings.configure(lm=lm)
 
     # Create a basic DSPy program
