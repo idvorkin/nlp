@@ -117,6 +117,7 @@ def gen_flux(
     ic(output)
     show(output)
     ic(output)
+    print (str(output))
 
 
 @app.command()
