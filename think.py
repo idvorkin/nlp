@@ -229,7 +229,7 @@ def get_categories_and_description(core_problems: bool, writer: bool, interests:
         category_desc = "writer questions"
     if interests:
         categories = AnalysisQuestions.interests()
-        category_desc = "interests"
+        category_desc = "interests questions"
         
     return CategoryInfo(categories=categories, description=category_desc)
 
