@@ -1,6 +1,7 @@
 #!python3
 
 
+import re
 from pathlib import Path
 import asyncio
 from typing import List
@@ -36,58 +37,6 @@ class Section(BaseModel):
 
 class ArtifactReport(BaseModel):
     Sections: List[Section]
-
-
-def markdown_to_analyze_artifact(markdown: str) -> ArtifactReport:
-    sections = []
-    current_section: Section = None  # type: ignore
-    current_topic: GroupOfPoints = None  # type: ignore
-
-    for line in markdown.splitlines():
-        line = line.strip()
-        if line.startswith("## "):  # This is a section
-            if current_section:
-                sections.append(current_section)
-            current_section = Section(Title=line[3:].strip(), Topics=[])
-        elif line.startswith("### "):  # This is a topic
-            if current_topic:
-                current_section.Topics.append(current_topic)
-            current_topic = GroupOfPoints(Description=line[4:].strip(), Points=[])
-        elif line.startswith("* ") or line.startswith("- "):  # This is a point
-            if current_topic is not None:
-                current_topic.Points.append(line[2:].strip())
-
-    # Add the last topic and section
-    if current_topic:
-        current_section.Topics.append(current_topic)
-    if current_section:
-        sections.append(current_section)
-
-    return ArtifactReport(Sections=sections)
-
-
-def merge_analyze_artifacts(reports: List[ArtifactReport]) -> ArtifactReport:
-    all_sections = [section for report in reports for section in report.Sections]
-    unique_section_titles = list(set([section.Title for section in all_sections]))
-
-    merged_report = ArtifactReport(Sections=[])
-
-    for section_title in unique_section_titles:
-        # get the topics for that section across all artifacts
-        sections = [
-            section
-            for report in reports
-            for section in report.Sections
-            if section.Title == section_title
-        ]
-        ic(section_title, sections)
-        # flatten the topics
-        topics = [topic for section in sections for topic in section.Topics]
-        ic(topics)
-
-        merged_report.Sections.append(Section(Title=section_title, Topics=topics))
-
-    return merged_report
 
 
 class AnalysisQuestions:
@@ -175,9 +124,73 @@ Ensure that you consider the type of artifact you are analyzing. For instance, i
     )
 
 
+def sanitize_filename(filename: str) -> str:
+    """Convert a string into a safe filename."""
+    # Replace invalid characters with underscores
+    filename = re.sub(r'[<>:"/\\|?*]', "_", filename)
+    # Remove any non-ASCII characters
+    filename = "".join(char for char in filename if ord(char) < 128)
+    return filename.strip()
+
+
+def make_summary_prompt(content: str, sections: List[str]):
+    # Create a summarization prompt for models to analyze all outputs
+    return ChatPromptTemplate.from_messages(
+        [
+            messages.SystemMessage(
+                content=f"""You are an expert at synthesizing multiple analyses into clear, actionable insights.
+    Review the analyses below from different AI models and create a concise summary that:
+    1. Identifies the most valuable insights across all analyses
+    2. Ranks points by importance and actionability
+    3. Groups related ideas together
+    4. Highlights where models agree and where only 1 model observes something
+    4.1 Where models (or a subset of models) agree, include the point form summary of each agreement
+    4.2 Where only a single model observes something, include the original text from the models that disagree
+    5. Preserves the original section structure e.g.
+    {sections}
+
+
+    Format your response in markdown with:
+    - Clear section headers
+    - Bullet points for key insights
+    - Brief notes on model consensus/disagreement where relevant
+    """
+            ),
+            messages.HumanMessage(content=content),
+        ]
+    )
+
+
+# Helper function for parallel summary generation
+async def generate_model_summary(llm, summary_prompt, header, output_dir):
+    try:
+        model_name = langchain_helper.get_model_name(llm)
+        summary = await (summary_prompt | llm).ainvoke({})
+
+        if not summary:  # Add error handling for empty summaries
+            ic(f"Warning: Empty summary from {model_name}")
+            return None
+
+        summary_path = output_dir / f"summary_{sanitize_filename(model_name)}.md"
+        summary_text = f"""
+# Model Summary by {model_name}
+{header}
+
+{summary.content if hasattr(summary, 'content') else summary}
+"""
+        summary_path.write_text(summary_text)
+        return summary_path
+    except Exception as e:
+        ic(f"Error generating summary for {model_name}: {e}")
+        return None
+
+
 async def a_think(
     gist: bool, writer: bool, path: str, core_problems: bool, interests: bool
 ):
+    # Ensure output directory exists
+    output_dir = Path("~/tmp").expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
     # claude is now too slow to use compared to gpto
     llms = langchain_helper.get_models(openai=True, claude=True, google=True)
 
@@ -257,41 +270,38 @@ async def a_think(
 </details>
 
 """
-    # parsed = [markdown_to_analyze_artifact(analysis) for analysis, _, _ in analyzed_artifacts]
-    # merged = merge_analyze_artifacts(parsed)
-    # # overwrite the body text with the parsed version
-    # body += f"""
-    # --Merged--
-    # {merged.model_dump_json(indent=2)}
     # """
 
     output_text = header + "\n" + body
 
-    # NOTE: Exa only works with URLs
-    exa_search_results = exa_search(path)
-    if exa_search_results:
-        output_text += f"""
-<details>
-<summary>
-
-# -- Exa.Ai: Related Search Results --
-
-</summary>
-
-{exa_search_results}
-
-</details>
-
-    """
-
-    output_path = Path("~/tmp/think.md").expanduser()  # get smarter about naming these.
+    # Create the main analysis file
+    output_path = output_dir / "think.md"
     output_path.write_text(output_text)
-    ic(output_path)
+
+    # Run all model summaries in parallel
+    model_summary_tasks = [
+        generate_model_summary(
+            llm, make_summary_prompt(body, categories), header, output_dir
+        )
+        for llm in llms
+    ]
+    model_summaries = [
+        summary
+        for summary in await asyncio.gather(*model_summary_tasks)
+        if summary is not None
+    ]
+
+    # Create list of files to include in gist
+    files_to_gist = [output_path] + model_summaries
+
     if gist:
-        # create temp file and write print buffer to it
-        langchain_helper.to_gist(output_path)
+        # Use to_gist_multiple instead of to_gist
+        langchain_helper.to_gist_multiple(files_to_gist)
     else:
         print(output_text)
+        for summary_path in model_summaries:
+            print(f"\n=== Summary by {summary_path.stem} ===\n")
+            print(summary_path.read_text())
 
 
 console = Console()
