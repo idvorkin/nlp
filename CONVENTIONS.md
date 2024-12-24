@@ -16,8 +16,33 @@ When using Typer, use the latest syntax for arguments and options.
     formal: Annotated[bool, typer.Option(help="Say hi formally.")] = False,
 ```
 
+### Code Style
+
 Prefer returning from a function vs nesting ifs.
 Prefer descriptive variable names over comments.
 Avoid nesting ifs, return from functions as soon as you can
+
+### Types
+
+Use types whenever possible.
+Use the latest syntax for types (3.12)
+Don't use tuples, define pydantic types for return values. Call Them FunctionReturn for the function name
+<examples>
+For a Single Item Return
+Function: get_user_profile()
+Return Type: UserProfileResponse
+For Multiple Items
+Function: list_users()
+Return Type: UserListResponse or PaginatedUsersResponse
+For Aggregated Data
+Function: get_sales_summary()
+Return Type: SalesSummaryResult
+For Nested or Composite Data
+Function: get_order_details()
+Return Type: OrderDetailsResponse (which may include nested models like ProductInfo or ShippingDetails).
+</examples>
+
+### Testing
+
 When possible update the tests to reflect the new changes.
 Tests are in the test directory
