@@ -21,7 +21,7 @@ dependencies = [
     "langchain-openai",
     "langchain-groq",
     "pandas",
-    "dspy-ai",
+    "dspy",
     "elevenlabs",
     "langchain-google-genai",
     "langchain-google-genai",
@@ -63,12 +63,13 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "image", "captions", "ell_helper", "dspy"]
+py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "image", "captions", "ell_helper", "pdspy"]
 
 [project.scripts]
 gpt = "gpt3:app"
 think = "think:app"
 pell = "pell:app"
+pdspy = "pdspy:app"
 pchanges = "pchanges:app"
 gpt3 = "gpt3:app"
 ij = "igor_journal:app"
