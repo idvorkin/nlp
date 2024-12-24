@@ -164,8 +164,8 @@ def make_summary_prompt(content: str, sections: List[str]):
 
 # Helper function for parallel summary generation
 async def generate_model_summary(llm, summary_prompt, header, output_dir, duration):
+    model_name = langchain_helper.get_model_name(llm)
     try:
-        model_name = langchain_helper.get_model_name(llm)
         summary = await (summary_prompt | llm).ainvoke({})
 
         if not summary:  # Add error handling for empty summaries
@@ -183,8 +183,9 @@ Duration: {duration.total_seconds():.2f} seconds
         summary_path.write_text(summary_text)
         return summary_path
     except Exception as e:
-        ic(f"Error generating summary for {model_name}: {e}")
+        ic(f"Error generating summary for", model_name, e)
         return None
+
 
 
 async def a_think(
