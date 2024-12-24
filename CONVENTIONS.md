@@ -19,3 +19,5 @@ When using Typer, use the latest syntax for arguments and options.
 Prefer returning from a function vs nesting ifs.
 Prefer descriptive variable names over comments.
 Avoid nesting ifs, return from functions as soon as you can
+When possible update the tests to reflect the new changes.
+Tests are in the test directory
