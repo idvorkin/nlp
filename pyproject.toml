@@ -62,7 +62,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "image", "captions", "ell_helper"]
+py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "image", "captions", "ell_helper", "dspy"]
 
 [project.scripts]
 gpt = "gpt3:app"
@@ -89,6 +89,7 @@ vapi_sim = "vapi_sim:app"
 recognize = "recognize:app"
 image = "image:app"
 captions = "captions:app"
+dspy = "dspy:app"
 
 [tool.pyright]
 # ...
