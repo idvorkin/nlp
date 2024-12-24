@@ -44,8 +44,9 @@ class AnalysisQuestions:
     def default():
         return [
             "Summary",
-            "Most Novel Ideas" "Implications and Impact",
-            "Most Interesting Ideas" "Critical Assumptions and Risks",
+            "Most Novel Ideas",
+            "Most Interesting Ideas",
+            "Critical Assumptions and Risks",
             "Reflection Questions",
             "Contextual Background",
             "Related Topics",
