@@ -163,7 +163,7 @@ def make_summary_prompt(content: str, sections: List[str]):
 
 
 # Helper function for parallel summary generation
-async def generate_model_summary(llm, summary_prompt, header, output_dir):
+async def generate_model_summary(llm, summary_prompt, header, output_dir, duration):
     try:
         model_name = langchain_helper.get_model_name(llm)
         summary = await (summary_prompt | llm).ainvoke({})
@@ -176,6 +176,7 @@ async def generate_model_summary(llm, summary_prompt, header, output_dir):
         summary_text = f"""
 # Model Summary by {model_name}
 {header}
+Duration: {duration.total_seconds():.2f} seconds
 
 {summary.content if hasattr(summary, 'content') else summary}
 """
@@ -282,9 +283,13 @@ async def a_think(
     # Run all model summaries in parallel
     model_summary_tasks = [
         generate_model_summary(
-            llm, make_summary_prompt(body, categories), header, output_dir
+            llm,
+            make_summary_prompt(body, categories),
+            header,
+            output_dir,
+            duration
         )
-        for llm in llms
+        for llm, _, duration in analyzed_artifacts
     ]
     model_summaries = [
         summary
