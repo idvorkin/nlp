@@ -100,5 +100,4 @@ dev-dependencies = [
     "jupyterlab-lsp",
     "jupyter_contrib_nbextensions",
     "nbdime",
-    "pytest",
 ]
