@@ -46,3 +46,15 @@ Return Type: OrderDetailsResponse (which may include nested models like ProductI
 
 When possible update the tests to reflect the new changes.
 Tests are in the test directory
+
+### Adding Libraries
+
+When adding a new library, ensure it's in pyproject.toml
+
+### Adding New scripts
+
+When adding new scripts, be sure to add them to the scripts section in pyproject.toml
+
+### When running python,
+
+use python3
