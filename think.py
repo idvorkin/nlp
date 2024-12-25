@@ -283,7 +283,14 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     # Add main analysis file with correct gist format
     overview += "- [Complete Analysis](#file-think-md)\n"
     
-    # Add timing breakdown
+    # Add model summaries section with correct gist format
+    overview += "\n## Model Summaries\n\n"
+    for result in analysis_body.artifacts:
+        model_name = langchain_helper.get_model_name(result.llm)
+        safe_name = sanitize_filename(model_name).lower().replace('.', '-')
+        overview += f"- [{model_name}](#file-summary_{safe_name}-md)\n"
+    
+    # Add timing breakdown after all file links
     overview += "\n## Timing Breakdown\n\n"
     overview += "### Initial Analysis Phase\n\n"
     for result in analysis_body.artifacts:
@@ -293,18 +300,15 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     
     overview += f"\n**Total Analysis Time**: {analysis_body.total_analysis_time.total_seconds():.2f} seconds\n"
     
-    # Add model summaries section with correct gist format
     overview += "\n### Summary Phase\n\n"
     for result in analysis_body.artifacts:
         model_name = langchain_helper.get_model_name(result.llm)
         if result.summary_duration:
             duration = result.summary_duration.total_seconds()
-            # Create GitHub gist compatible filename, replacing dots with dashes
-            safe_name = sanitize_filename(model_name).lower().replace('.', '-')
-            overview += f"- [{model_name}](#file-summary_{safe_name}-md) ({duration:.2f} seconds)\n"
+            overview += f"- {model_name}: {duration:.2f} seconds\n"
     
-    # Add grand total using actual timings
-    overview += f"\n## Grand Total Time: {(analysis_body.total_analysis_time + analysis_body.total_summary_time).total_seconds():.2f} seconds\n"
+    overview += f"\n**Total Summary Time**: {analysis_body.total_summary_time.total_seconds():.2f} seconds"
+    overview += f"\n\n## Grand Total Time: {(analysis_body.total_analysis_time + analysis_body.total_summary_time).total_seconds():.2f} seconds\n"
     
     return overview
 
