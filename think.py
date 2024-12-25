@@ -260,6 +260,9 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
         for analysis, llm, duration in analyzed_artifacts
     ]
 
+    # Calculate total analysis time
+    total_analysis_time = sum((result.duration for result in results), timedelta())
+
     body = ""
     for result in results:
         body += f"""
@@ -275,7 +278,12 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
 </details>
 
 """
-    return AnalysisBody(body=body, artifacts=results)
+    return AnalysisBody(
+        body=body, 
+        artifacts=results,
+        total_analysis_time=total_analysis_time,
+        total_summary_time=timedelta()  # Initialize with zero, will be updated later
+    )
 
 def create_overview_content(header: str, analysis_body: AnalysisBody, model_summaries: List[Path]) -> str:
     overview = f"{header}\n\n## Analysis Files\n\n"
