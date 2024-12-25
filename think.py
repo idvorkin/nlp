@@ -32,7 +32,7 @@ def get_latest_github_commit_url() -> str:
         api_url = "https://api.github.com/repos/idvorkin/nlp/commits?path=think.py&page=1&per_page=1"
         response = requests.get(api_url)
         response.raise_for_status()
-        
+
         latest_commit = response.json()[0]
         commit_sha = latest_commit["sha"]
         return f"https://github.com/idvorkin/nlp/blob/{commit_sha}/think.py"
@@ -43,7 +43,7 @@ def get_latest_github_commit_url() -> str:
 
 class AnalysisResult(BaseModel):
     analysis: str
-    llm: BaseChatModel 
+    llm: BaseChatModel
     duration: timedelta
 
 class AnalysisBody(BaseModel):
@@ -220,7 +220,7 @@ Duration: {duration.total_seconds():.2f} seconds
 def get_categories_and_description(core_problems: bool, writer: bool, interests: bool) -> CategoryInfo:
     categories = AnalysisQuestions.default()
     category_desc = "default questions"
-    
+
     if core_problems:
         categories = AnalysisQuestions.core_problem()
         category_desc = "core problems"
@@ -230,7 +230,7 @@ def get_categories_and_description(core_problems: bool, writer: bool, interests:
     if interests:
         categories = AnalysisQuestions.interests()
         category_desc = "interests questions"
-        
+
     return CategoryInfo(categories=categories, description=category_desc)
 
 async def generate_analysis_body(user_text: str, categories: List[str], llms: List[BaseChatModel]) -> AnalysisBody:
@@ -242,7 +242,7 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
         )
 
     analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
-    
+
     results = [
         AnalysisResult(analysis=analysis, llm=llm, duration=duration)
         for analysis, llm, duration in analyzed_artifacts
@@ -275,11 +275,11 @@ async def a_think(
     user_text = openai_wrapper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)
 
-    if tokens < 16_000:
+    if tokens < 30_000:
         llms += [langchain_helper.get_model(llama=True)]
 
     category_info = get_categories_and_description(core_problems, writer, interests)
-    
+
     title = ""
     if path and path.startswith(("http://", "https://")):
         try:
