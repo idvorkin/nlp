@@ -33,11 +33,15 @@ def get_models(
     google: bool = False,
     claude: bool = False,
     llama: bool = False,
+    google_think: bool = False,
 ) -> List[BaseChatModel]:
     ret = []
 
     if google:
         ret.append(get_model(google=True))
+
+    if google_think:
+        ret.append(get_model(google_think=True))
 
     if claude:
         ret.append(get_model(claude=True))
@@ -56,12 +60,13 @@ def get_model(
     google: bool = False,
     claude: bool = False,
     llama: bool = False,
+    google_think: bool = False,
 ) -> BaseChatModel:
     """
     See changes in diff
     """
     # if more then one is true, exit and fail
-    count_true = sum([openai, google, claude, llama])
+    count_true = sum([openai, google, claude, llama, google_think])
     if count_true > 1:
         print("Only one model can be selected")
         exit(1)
@@ -71,9 +76,10 @@ def get_model(
 
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
-
-        # model = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest")
         model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp")
+    elif google_think:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-1219")
     elif claude:
         from langchain_anthropic import ChatAnthropic
 

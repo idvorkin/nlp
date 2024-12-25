@@ -307,7 +307,7 @@ async def a_think(
 ):
     output_dir = Path("~/tmp").expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
-    llms = langchain_helper.get_models(openai=True, claude=True, google=True)
+    llms = langchain_helper.get_models(openai=True, claude=True, google=True, google_think=True)
 
     user_text = openai_wrapper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)
