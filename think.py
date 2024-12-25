@@ -57,6 +57,7 @@ class AnalysisBody(BaseModel):
     artifacts: List[AnalysisResult]
     total_analysis_time: timedelta
     total_summary_time: timedelta
+    exa_results: str = ""
 
 class CategoryInfo(BaseModel):
     categories: List[str]
@@ -245,7 +246,7 @@ def get_categories_and_description(core_problems: bool, writer: bool, interests:
 
     return CategoryInfo(categories=categories, description=category_desc)
 
-async def generate_analysis_body(user_text: str, categories: List[str], llms: List[BaseChatModel]) -> AnalysisBody:
+async def generate_analysis_body(user_text: str, categories: List[str], llms: List[BaseChatModel], path: str = "") -> AnalysisBody:
     def do_llm_think(llm):
         return (
             prompt_think_about_document(user_text, categories=categories)
@@ -278,11 +279,32 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
 </details>
 
 """
+
+    # Add Exa results if path exists
+    exa_content = ""
+    if path:
+        exa_content = exa_search(path)
+        if exa_content:
+            body += f"""
+<details>
+<summary>
+
+# -- Related Content (via Exa) --
+
+</summary>
+
+{exa_content}
+
+</details>
+
+"""
+
     return AnalysisBody(
         body=body, 
         artifacts=results,
         total_analysis_time=total_analysis_time,
-        total_summary_time=timedelta()  # Initialize with zero, will be updated later
+        total_summary_time=timedelta(),  # Initialize with zero, will be updated later
+        exa_results=exa_content
     )
 
 def create_overview_content(header: str, analysis_body: AnalysisBody, model_summaries: List[Path]) -> str:
@@ -329,6 +351,12 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
             duration = result.summary_duration.total_seconds()
             overview += f"| {model_name} | {duration:.2f} |\n"
     
+    if analysis_body.exa_results:
+        overview += "\n### Related Content\n\n"
+        overview += "| Source | Content |\n"
+        overview += "|--------|----------|\n"
+        overview += "| Exa Search | See [Complete Analysis](#file-think-md) |\n"
+    
     return overview
 
 async def a_think(
@@ -363,12 +391,6 @@ async def a_think(
         else ""
     )
 
-    # Get related content from Exa if path provided
-    exa_results = ""
-    if path:  # Only do Exa search if we have a path
-        exa_results = exa_search(path)
-        if exa_results:
-            exa_results = "\n## Related Content (via Exa)\n\n" + exa_results + "\n"
 
     today = datetime.now().strftime("%Y-%m-%d")
     header = f"""
@@ -377,8 +399,8 @@ async def a_think(
 """
 
     ic("starting to think", tokens)
-    analysis_body = await generate_analysis_body(user_text, category_info.categories, llms)
-    output_text = header + "\n" + exa_results + analysis_body.body
+    analysis_body = await generate_analysis_body(user_text, category_info.categories, llms, path)
+    output_text = header + "\n" + analysis_body.body
 
     # Create the main analysis file
     output_path = output_dir / "think.md"
