@@ -42,14 +42,21 @@ def get_latest_github_commit_url() -> str:
         return "https://github.com/idvorkin/nlp/blob/main/think.py"  # Fallback
 
 
+class ModelTiming(BaseModel):
+    analysis_duration: timedelta
+    summary_duration: timedelta
+
 class AnalysisResult(BaseModel):
     analysis: str
     llm: BaseChatModel
     duration: timedelta
+    summary_duration: timedelta | None = None
 
 class AnalysisBody(BaseModel):
     body: str
     artifacts: List[AnalysisResult]
+    total_analysis_time: timedelta
+    total_summary_time: timedelta
 
 class CategoryInfo(BaseModel):
     categories: List[str]
@@ -201,7 +208,7 @@ async def generate_model_summary(llm, summary_prompt, header, output_dir, analys
         end_time = datetime.now()
         summary_duration = end_time - start_time
 
-        if not summary:  # Add error handling for empty summaries
+        if not summary:
             ic(f"Warning: Empty summary from {model_name}")
             return None
 
@@ -284,21 +291,20 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
         duration = result.duration.total_seconds()
         overview += f"- {model_name}: {duration:.2f} seconds\n"
     
-    analysis_total = sum(result.duration.total_seconds() for result in analysis_body.artifacts)
-    overview += f"\n**Total Analysis Time**: {analysis_total:.2f} seconds\n"
+    overview += f"\n**Total Analysis Time**: {analysis_body.total_analysis_time.total_seconds():.2f} seconds\n"
     
     # Add model summaries section with correct gist format
     overview += "\n### Summary Phase\n\n"
     for result in analysis_body.artifacts:
         model_name = langchain_helper.get_model_name(result.llm)
-        duration = result.duration.total_seconds()
-        # Create GitHub gist compatible filename, replacing dots with dashes
-        safe_name = sanitize_filename(model_name).lower().replace('.', '-')
-        overview += f"- [{model_name}](#file-summary_{safe_name}-md) ({duration:.2f} seconds)\n"
+        if result.summary_duration:
+            duration = result.summary_duration.total_seconds()
+            # Create GitHub gist compatible filename, replacing dots with dashes
+            safe_name = sanitize_filename(model_name).lower().replace('.', '-')
+            overview += f"- [{model_name}](#file-summary_{safe_name}-md) ({duration:.2f} seconds)\n"
     
-    # Add grand total
-    total_time = analysis_total * 2  # Approximate since we don't track summary times separately
-    overview += f"\n## Grand Total Time: {total_time:.2f} seconds\n"
+    # Add grand total using actual timings
+    overview += f"\n## Grand Total Time: {(analysis_body.total_analysis_time + analysis_body.total_summary_time).total_seconds():.2f} seconds\n"
     
     return overview
 
@@ -369,7 +375,17 @@ async def a_think(
     model_summaries = [path for path, _ in summary_results]
     summary_durations = [duration for _, duration in summary_results]
 
-    # Create overview file
+    # Calculate total summary time and update analysis results
+    total_summary_time = sum((duration for _, duration in summary_results), timedelta())
+    
+    # Update the analysis results with summary durations
+    for result, (_, duration) in zip(analysis_body.artifacts, summary_results):
+        result.summary_duration = duration
+    
+    analysis_body.total_analysis_time = sum((r.duration for r in analysis_body.artifacts), timedelta())
+    analysis_body.total_summary_time = total_summary_time
+
+    # Create overview file with actual timings
     overview_path = output_dir / "overview.md"
     overview_content = create_overview_content(header, analysis_body, model_summaries)
     overview_path.write_text(overview_content)
