@@ -269,7 +269,7 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
 <details>
 <summary>
 
-# -- model: {langchain_helper.get_model_name(result.llm)} | {result.duration.total_seconds():.2f} seconds --
+# -- {langchain_helper.get_model_name(result.llm)} | {result.duration.total_seconds():.2f} seconds --
 
 </summary>
 
