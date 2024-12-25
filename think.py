@@ -216,6 +216,11 @@ async def generate_model_summary(llm, summary_prompt, header, output_dir, analys
         # Clean up the summary content
         summary_content = summary.content if hasattr(summary, 'content') else summary
         
+        # Handle case where summary is a list (from Gemini)
+        if isinstance(summary_content, list):
+            # Take the second element which typically contains the actual summary
+            summary_content = summary_content[1] if len(summary_content) > 1 else summary_content[0]
+
         # Remove markdown code block tags and thinking process
         summary_content = re.sub(r'```markdown\n|\n```', '', summary_content)
         if '["' in summary_content:  # Check for thinking process
