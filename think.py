@@ -298,22 +298,26 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
         safe_name = sanitize_filename(model_name).lower().replace('.', '-')
         overview += f"- [{model_name}](#file-summary_{safe_name}-md)\n"
     
-    # Add timing breakdown after all file links
+    # Add timing breakdown after all file links using tables
     overview += "\n## Timing Breakdown\n\n"
     overview += "### Initial Analysis Phase\n\n"
+    overview += "| Model | Duration (seconds) |\n"
+    overview += "|-------|-------------------|\n"
     for result in analysis_body.artifacts:
         model_name = langchain_helper.get_model_name(result.llm)
         duration = result.duration.total_seconds()
-        overview += f"- {model_name}: {duration:.2f} seconds\n"
+        overview += f"| {model_name} | {duration:.2f} |\n"
     
     overview += f"\n**Total Analysis Time**: {analysis_body.total_analysis_time.total_seconds():.2f} seconds\n"
     
     overview += "\n### Summary Phase\n\n"
+    overview += "| Model | Duration (seconds) |\n"
+    overview += "|-------|-------------------|\n"
     for result in analysis_body.artifacts:
         model_name = langchain_helper.get_model_name(result.llm)
         if result.summary_duration:
             duration = result.summary_duration.total_seconds()
-            overview += f"- {model_name}: {duration:.2f} seconds\n"
+            overview += f"| {model_name} | {duration:.2f} |\n"
     
     overview += f"\n**Total Summary Time**: {analysis_body.total_summary_time.total_seconds():.2f} seconds"
     overview += f"\n\n## Grand Total Time: {(analysis_body.total_analysis_time + analysis_body.total_summary_time).total_seconds():.2f} seconds\n"
