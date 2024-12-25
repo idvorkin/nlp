@@ -292,9 +292,9 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     for result in analysis_body.artifacts:
         model_name = langchain_helper.get_model_name(result.llm)
         duration = result.duration.total_seconds()
-        # Create GitHub gist compatible filename
-        gist_filename = f"file-summary_{sanitize_filename(model_name).lower()}-md"
-        overview += f"- [{model_name}](#file-summary_{sanitize_filename(model_name).lower()}-md) ({duration:.2f} seconds)\n"
+        # Create GitHub gist compatible filename, replacing dots with dashes
+        safe_name = sanitize_filename(model_name).lower().replace('.', '-')
+        overview += f"- [{model_name}](#file-summary_{safe_name}-md) ({duration:.2f} seconds)\n"
     
     # Add grand total
     total_time = analysis_total * 2  # Approximate since we don't track summary times separately
