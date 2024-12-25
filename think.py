@@ -363,6 +363,13 @@ async def a_think(
         else ""
     )
 
+    # Get related content from Exa if path provided
+    exa_results = ""
+    if path:  # Only do Exa search if we have a path
+        exa_results = exa_search(path)
+        if exa_results:
+            exa_results = "\n## Related Content (via Exa)\n\n" + exa_results + "\n"
+
     today = datetime.now().strftime("%Y-%m-%d")
     header = f"""
 *🧠 via [think.py]({get_latest_github_commit_url()}) - {today} - using {category_info.description}* <br/>
@@ -371,7 +378,7 @@ async def a_think(
 
     ic("starting to think", tokens)
     analysis_body = await generate_analysis_body(user_text, category_info.categories, llms)
-    output_text = header + "\n" + analysis_body.body
+    output_text = header + "\n" + exa_results + analysis_body.body
 
     # Create the main analysis file
     output_path = output_dir / "think.md"
