@@ -193,10 +193,13 @@ def make_summary_prompt(content: str, sections: List[str]):
 
 
 # Helper function for parallel summary generation
-async def generate_model_summary(llm, summary_prompt, header, output_dir, duration):
+async def generate_model_summary(llm, summary_prompt, header, output_dir, analysis_duration):
     model_name = langchain_helper.get_model_name(llm)
+    start_time = datetime.now()
     try:
         summary = await (summary_prompt | llm).ainvoke({})
+        end_time = datetime.now()
+        summary_duration = end_time - start_time
 
         if not summary:  # Add error handling for empty summaries
             ic(f"Warning: Empty summary from {model_name}")
@@ -206,12 +209,13 @@ async def generate_model_summary(llm, summary_prompt, header, output_dir, durati
         summary_text = f"""
 # Model Summary by {model_name}
 {header}
-Duration: {duration.total_seconds():.2f} seconds
+Analysis Duration: {analysis_duration.total_seconds():.2f} seconds
+Summary Duration: {summary_duration.total_seconds():.2f} seconds
 
 {summary.content if hasattr(summary, 'content') else summary}
 """
         summary_path.write_text(summary_text)
-        return summary_path
+        return summary_path, summary_duration
     except Exception as e:
         ic(f"Error generating summary for", model_name, e)
         return None
@@ -272,16 +276,27 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     # Add main analysis file
     overview += "- [Complete Analysis](think.md)\n"
     
-    # Add model summaries with timing information
-    overview += "\n## Model Summaries\n\n"
+    # Add timing breakdown
+    overview += "\n## Timing Breakdown\n\n"
+    overview += "### Initial Analysis Phase\n\n"
+    for result in analysis_body.artifacts:
+        model_name = langchain_helper.get_model_name(result.llm)
+        duration = result.duration.total_seconds()
+        overview += f"- {model_name}: {duration:.2f} seconds\n"
+    
+    analysis_total = sum(result.duration.total_seconds() for result in analysis_body.artifacts)
+    overview += f"\n**Total Analysis Time**: {analysis_total:.2f} seconds\n"
+    
+    # Add model summaries section
+    overview += "\n### Summary Phase\n\n"
     for result in analysis_body.artifacts:
         model_name = langchain_helper.get_model_name(result.llm)
         duration = result.duration.total_seconds()
         overview += f"- [{model_name}](summary_{sanitize_filename(model_name)}.md) ({duration:.2f} seconds)\n"
     
-    # Add total time
-    total_time = sum(result.duration.total_seconds() for result in analysis_body.artifacts)
-    overview += f"\n## Total Analysis Time: {total_time:.2f} seconds\n"
+    # Add grand total
+    total_time = analysis_total * 2  # Approximate since we don't track summary times separately
+    overview += f"\n## Grand Total Time: {total_time:.2f} seconds\n"
     
     return overview
 
@@ -342,11 +357,15 @@ async def a_think(
         )
         for result in analysis_body.artifacts
     ]
-    model_summaries = [
+    summary_results = [
         summary
         for summary in await asyncio.gather(*model_summary_tasks)
         if summary is not None
     ]
+    
+    # Unpack the results
+    model_summaries = [path for path, _ in summary_results]
+    summary_durations = [duration for _, duration in summary_results]
 
     # Create overview file
     overview_path = output_dir / "overview.md"
