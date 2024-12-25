@@ -308,8 +308,6 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
         duration = result.duration.total_seconds()
         overview += f"| {model_name} | {duration:.2f} |\n"
     
-    overview += f"\n**Total Analysis Time**: {analysis_body.total_analysis_time.total_seconds():.2f} seconds\n"
-    
     overview += "\n### Summary Phase\n\n"
     overview += "| Model | Duration (seconds) |\n"
     overview += "|-------|-------------------|\n"
@@ -318,9 +316,6 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
         if result.summary_duration:
             duration = result.summary_duration.total_seconds()
             overview += f"| {model_name} | {duration:.2f} |\n"
-    
-    overview += f"\n**Total Summary Time**: {analysis_body.total_summary_time.total_seconds():.2f} seconds"
-    overview += f"\n\n## Grand Total Time: {(analysis_body.total_analysis_time + analysis_body.total_summary_time).total_seconds():.2f} seconds\n"
     
     return overview
 
