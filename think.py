@@ -7,6 +7,7 @@ import asyncio
 from typing import List
 from datetime import datetime, timedelta
 from langchain_core import messages
+from typing import List
 from langchain_core.language_models import BaseChatModel
 from langchain.schema.output_parser import StrOutputParser
 from langchain_core.language_models import BaseChatModel
@@ -265,6 +266,25 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
 """
     return AnalysisBody(body=body, artifacts=results)
 
+def create_overview_content(header: str, analysis_body: AnalysisBody, model_summaries: List[Path]) -> str:
+    overview = f"{header}\n\n## Analysis Files\n\n"
+    
+    # Add main analysis file
+    overview += "- [Complete Analysis](think.md)\n"
+    
+    # Add model summaries with timing information
+    overview += "\n## Model Summaries\n\n"
+    for result in analysis_body.artifacts:
+        model_name = langchain_helper.get_model_name(result.llm)
+        duration = result.duration.total_seconds()
+        overview += f"- [{model_name}](summary_{sanitize_filename(model_name)}.md) ({duration:.2f} seconds)\n"
+    
+    # Add total time
+    total_time = sum(result.duration.total_seconds() for result in analysis_body.artifacts)
+    overview += f"\n## Total Analysis Time: {total_time:.2f} seconds\n"
+    
+    return overview
+
 async def a_think(
     gist: bool, writer: bool, path: str, core_problems: bool, interests: bool
 ):
@@ -328,13 +348,19 @@ async def a_think(
         if summary is not None
     ]
 
-    # Create list of files to include in gist
-    files_to_gist = [output_path] + model_summaries
+    # Create overview file
+    overview_path = output_dir / "overview.md"
+    overview_content = create_overview_content(header, analysis_body, model_summaries)
+    overview_path.write_text(overview_content)
+
+    # Create list of files to include in gist, with overview first
+    files_to_gist = [overview_path, output_path] + model_summaries
 
     if gist:
         # Use to_gist_multiple instead of to_gist
         langchain_helper.to_gist_multiple(files_to_gist)
     else:
+        print(overview_content)
         print(output_text)
         for summary_path in model_summaries:
             print(f"\n=== Summary by {summary_path.stem} ===\n")
