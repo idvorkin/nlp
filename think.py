@@ -303,7 +303,12 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     overview += "### Initial Analysis Phase\n\n"
     overview += "| Model | Duration (seconds) |\n"
     overview += "|-------|-------------------|\n"
-    for result in analysis_body.artifacts:
+    
+    # Sort analysis results by duration descending
+    sorted_analysis = sorted(analysis_body.artifacts, 
+                           key=lambda x: x.duration.total_seconds(), 
+                           reverse=True)
+    for result in sorted_analysis:
         model_name = langchain_helper.get_model_name(result.llm)
         duration = result.duration.total_seconds()
         overview += f"| {model_name} | {duration:.2f} |\n"
@@ -311,7 +316,14 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     overview += "\n### Summary Phase\n\n"
     overview += "| Model | Duration (seconds) |\n"
     overview += "|-------|-------------------|\n"
-    for result in analysis_body.artifacts:
+    
+    # Sort summary results by duration descending, only including those with summary_duration
+    sorted_summaries = sorted(
+        [r for r in analysis_body.artifacts if r.summary_duration],
+        key=lambda x: x.summary_duration.total_seconds(),  # type: ignore
+        reverse=True
+    )
+    for result in sorted_summaries:
         model_name = langchain_helper.get_model_name(result.llm)
         if result.summary_duration:
             duration = result.summary_duration.total_seconds()
