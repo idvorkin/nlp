@@ -213,14 +213,22 @@ async def generate_model_summary(llm, summary_prompt, header, output_dir, analys
             ic(f"Warning: Empty summary from {model_name}")
             return None
 
+        # Clean up the summary content
+        summary_content = summary.content if hasattr(summary, 'content') else summary
+        
+        # Remove markdown code block tags and thinking process
+        summary_content = re.sub(r'```markdown\n|\n```', '', summary_content)
+        if '["' in summary_content:  # Check for thinking process
+            # Extract just the markdown content after the thinking process
+            summary_content = summary_content.split('```markdown\n')[-1].split('\n```')[0]
+
         summary_path = output_dir / f"summary_{sanitize_filename(model_name)}.md"
-        summary_text = f"""
-# Model Summary by {model_name}
+        summary_text = f"""# Model Summary by {model_name}
 {header}
 Analysis Duration: {analysis_duration.total_seconds():.2f} seconds
 Summary Duration: {summary_duration.total_seconds():.2f} seconds
 
-{summary.content if hasattr(summary, 'content') else summary}
+{summary_content}
 """
         summary_path.write_text(summary_text)
         return summary_path, summary_duration
