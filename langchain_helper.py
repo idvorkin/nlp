@@ -13,12 +13,19 @@ import asyncio
 
 def get_model_name(model: BaseChatModel):
     # if model has model_name, return that
+    model_name = ""
     if hasattr(model, "model_name") and model.model_name != "":  # type: ignore
-        return model.model_name  # type: ignore
-    if hasattr(model, "model") and model.model != "":  # type: ignore
-        return model.model  # type: ignore
+        model_name = model.model_name  # type: ignore
+    elif hasattr(model, "model") and model.model != "":  # type: ignore
+        model_name = model.model  # type: ignore
     else:
-        return str(model)
+        model_name = str(model)
+    
+    # Remove "models/" prefix if present
+    if model_name.startswith("models/"):
+        model_name = model_name[7:]  # Skip "models/"
+        
+    return model_name
 
 
 def get_models(
