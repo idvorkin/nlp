@@ -326,43 +326,27 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     # Add main analysis file with correct gist format
     overview += "- [Complete Analysis](#file-think-md)\n"
     
-    # Add model summaries section with correct gist format
-    overview += "\n## Model Summaries\n\n"
-    for result in analysis_body.artifacts:
+    # Add timing breakdown using a single combined table
+    overview += "\n## Model Performance\n\n"
+    overview += "| Model | Analysis (seconds) | Summary (seconds) |\n"
+    overview += "|-------|-------------------|------------------|\n"
+    
+    # Sort by total time (analysis + summary) descending
+    def total_time(result):
+        summary_time = result.summary_duration.total_seconds() if result.summary_duration else 0
+        return result.duration.total_seconds() + summary_time
+    
+    sorted_results = sorted(analysis_body.artifacts, 
+                          key=total_time,
+                          reverse=True)
+
+    for result in sorted_results:
         model_name = langchain_helper.get_model_name(result.llm)
         safe_name = sanitize_filename(model_name).lower().replace('.', '-')
-        overview += f"- [{model_name}](#file-summary_{safe_name}-md)\n"
-    
-    # Add timing breakdown after all file links using tables
-    overview += "\n## Timing Breakdown\n\n"
-    overview += "### Initial Analysis Phase\n\n"
-    overview += "| Model | Duration (seconds) |\n"
-    overview += "|-------|-------------------|\n"
-    
-    # Sort analysis results by duration descending
-    sorted_analysis = sorted(analysis_body.artifacts, 
-                           key=lambda x: x.duration.total_seconds(), 
-                           reverse=True)
-    for result in sorted_analysis:
-        model_name = langchain_helper.get_model_name(result.llm)
-        duration = result.duration.total_seconds()
-        overview += f"| {model_name} | {duration:.2f} |\n"
-    
-    overview += "\n### Summary Phase\n\n"
-    overview += "| Model | Duration (seconds) |\n"
-    overview += "|-------|-------------------|\n"
-    
-    # Sort summary results by duration descending, only including those with summary_duration
-    sorted_summaries = sorted(
-        [r for r in analysis_body.artifacts if r.summary_duration],
-        key=lambda x: x.summary_duration.total_seconds(),  # type: ignore
-        reverse=True
-    )
-    for result in sorted_summaries:
-        model_name = langchain_helper.get_model_name(result.llm)
-        if result.summary_duration:
-            duration = result.summary_duration.total_seconds()
-            overview += f"| {model_name} | {duration:.2f} |\n"
+        model_link = f"[{model_name}](#file-summary_{safe_name}-md)"
+        analysis_duration = f"{result.duration.total_seconds():.2f}"
+        summary_duration = f"{result.summary_duration.total_seconds():.2f}" if result.summary_duration else "N/A"
+        overview += f"| {model_link} | {analysis_duration} | {summary_duration} |\n"
     
     if analysis_body.exa_results:
         overview += "\n### Related Content\n\n"
@@ -451,7 +435,14 @@ async def a_think(
     analysis_body.total_summary_time = total_summary_time
 
     # Create overview file with actual timings
-    overview_path = output_dir / "overview.md"
+    # Get title from the soup if available
+    overview_filename = "overview"
+    if title:
+        # Clean the title for filename use
+        clean_title = sanitize_filename(title).lower().replace(' ', '-')
+        overview_filename = f"overview-{clean_title}"
+    
+    overview_path = output_dir / f"{overview_filename}.md"
     overview_content = create_overview_content(header, analysis_body, model_summaries)
     overview_path.write_text(overview_content)
 
