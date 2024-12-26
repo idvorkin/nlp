@@ -427,7 +427,7 @@ async def achanges(llms: List[BaseChatModel], before, after, gist):
                 ic(f"running on {file} with {langchain_helper.get_model_name(llm)}")
                 return await (
                     prompt_summarize_diff(
-                        file, diff_content, repo_path=repo_url, end_rev=last
+                        file, diff_content, repo_path=repo_info.url, end_rev=last
                     )
                     | llm
                 ).ainvoke({})
@@ -493,7 +493,7 @@ ___
     
     today = datetime.now().strftime("%Y-%m-%d")
     github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
-    overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url(repo_name, "changes.py")}) - {today}*
+    overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url(repo_info.name, "changes.py")}) - {today}*
 
 Changes to {github_repo_diff_link} From [{after}] To [{before}]
 
