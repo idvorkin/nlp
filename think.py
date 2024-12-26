@@ -436,13 +436,13 @@ async def a_think(
 
     # Create overview file with actual timings
     # Get title from the soup if available
-    overview_filename = "overview"
+    overview_filename = "a_overview"
     if title:
         # Clean the title by removing parentheses and extra spaces
         clean_title = title.strip('() ')
         # Convert to filename-safe format
         clean_title = sanitize_filename(clean_title).lower().replace(' ', '-')
-        overview_filename = f"{clean_title}--overview"
+        overview_filename = f"a_{clean_title}--overview"
     
     overview_path = output_dir / f"{overview_filename}.md"
     overview_content = create_overview_content(header, analysis_body, model_summaries)
