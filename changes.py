@@ -407,21 +407,28 @@ def DirectoryContext(directory: Path):
 
 
 async def achanges(llms: List[BaseChatModel], before, after, gist):
-    ic("v 0.0.3")
+    ic("v 0.0.4")
     start = datetime.now()
     repo_url, repo_name = get_repo_path()
 
-    first, last = await first_last_commit(before, after)
+    # Run first_last_commit and get_changed_files in parallel
+    first_last, _ = await asyncio.gather(
+        first_last_commit(before, after),
+        get_changed_files("", "")  # Placeholder, will be updated
+    )
+    first, last = first_last
+    
+    # Get updated changed files with correct commit hashes
     changed_files = await get_changed_files(first, last)
     changed_files = [file for file in changed_files if not is_skip_file(file)]
 
+    # Get all file diffs in parallel
     file_diffs = await asyncio.gather(
         *[get_file_diff(file, first, last) for file in changed_files]
     )
 
-    # Create analysis results for each model
-    analysis_results = []
-    for llm in llms:
+    # Process all models in parallel
+    async def process_model(llm):
         model_start = datetime.now()
         max_parallel = asyncio.Semaphore(100)
 
@@ -435,37 +442,37 @@ async def achanges(llms: List[BaseChatModel], before, after, gist):
                     | llm
                 ).ainvoke({})
 
+        # Run all file analyses for this model in parallel
         ai_invoke_tasks = [
             concurrent_llm_call(file, diff_content) for file, diff_content in file_diffs
         ]
-
         results = [result.content for result in await asyncio.gather(*ai_invoke_tasks)]
         results.sort(key=lambda x: len(x), reverse=True)
         code_based_diff_report = "\n\n___\n\n".join(results)
         
         # Get summary for this model
-        summary_all_diffs = (
+        summary_all_diffs = await (
             (prompt_summarize_diff_summaries(code_based_diff_report) | llm)
-            .invoke({})
-            .content
+            .ainvoke({})
         )
+        summary_content = summary_all_diffs.content if hasattr(summary_all_diffs, 'content') else summary_all_diffs
         
         model_end = datetime.now()
-        analysis_duration = model_end - model_start
-        
-        analysis_results.append({
+        return {
             "model": llm,
             "model_name": langchain_helper.get_model_name(llm),
-            "analysis_duration": analysis_duration,
+            "analysis_duration": model_end - model_start,
             "diff_report": code_based_diff_report,
-            "summary": summary_all_diffs
-        })
+            "summary": summary_content
+        }
 
-    # Create individual model summary files
-    output_dir = Path(".")
-    for result in analysis_results:
+    # Run all models in parallel
+    analysis_results = await asyncio.gather(*(process_model(llm) for llm in llms))
+
+    # Create all output files in parallel
+    async def write_model_summary(result):
         model_name = result["model_name"]
-        safe_model_name = langchain_helper.get_model_name(result["model"]).lower().replace(".", "-")
+        safe_model_name = model_name.lower().replace(".", "-")
         
         github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
         model_output = f"""
@@ -481,12 +488,18 @@ ___
 ___
 {result["diff_report"]}
 """
-        summary_path = output_dir / f"summary_{safe_model_name}.md"
-        summary_path.write_text(model_output)
+        summary_path = Path(".") / f"summary_{safe_model_name}.md"
+        await asyncio.to_thread(summary_path.write_text, model_output)
+        return summary_path
 
-    # Create overview file
+    # Write all summary files in parallel
+    summary_paths = await asyncio.gather(
+        *(write_model_summary(result) for result in analysis_results)
+    )
+
+    # Create and write overview file
     overview_filename = f"a_{repo_name.split('/')[-1]}--overview"
-    overview_path = output_dir / f"{overview_filename}.md"
+    overview_path = Path(".") / f"{overview_filename}.md"
     
     overview_content = f"""### Changes Analysis Overview
 
@@ -500,16 +513,13 @@ ___
         duration = int(result["analysis_duration"].total_seconds())
         overview_content += f"| [{model_name}](#file-summary_{safe_name}-md) | {duration} |\n"
 
-    overview_path.write_text(overview_content)
+    # Write overview file
+    await asyncio.to_thread(overview_path.write_text, overview_content)
 
-    # Create list of files to include in gist
-    files_to_gist = [overview_path] + [
-        output_dir / f"summary_{langchain_helper.get_model_name(result['model']).lower().replace('.', '-')}.md"
-        for result in analysis_results
-    ]
+    files_to_gist = [overview_path] + list(summary_paths)
 
     if gist:
-        langchain_helper.to_gist_multiple(files_to_gist)
+        await asyncio.to_thread(langchain_helper.to_gist_multiple, files_to_gist)
     else:
         print(overview_content)
         for result in analysis_results:
