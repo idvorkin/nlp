@@ -5,8 +5,11 @@ import typer
 import ell
 import rich
 import os
+import tempfile
+import requests
 from pathlib import Path
 from icecream import ic
+from urllib.parse import urlparse
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -127,18 +130,36 @@ def gemini_transcribe(pdf_path: str):
 
 
 @app.command()
-def transcribe(pdf: str = typer.Argument(..., help="Path to pdf file to transcribe")):
-    """Transcribe handwritten text from an image file"""
-    # Expand user path if needed
-    full_path = os.path.expanduser(pdf)
+def transcribe(pdf: str = typer.Argument(..., help="Path or URL to pdf file to transcribe")):
+    """Transcribe handwritten text from a PDF file or URL"""
+    
+    # Check if input is a URL
+    parsed = urlparse(pdf)
+    is_url = bool(parsed.scheme and parsed.netloc)
+    
+    if is_url:
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=True) as tmp_file:
+            # Download the file
+            response = requests.get(pdf)
+            response.raise_for_status()  # Raise exception for bad status codes
+            
+            # Write to temporary file
+            tmp_file.write(response.content)
+            tmp_file.flush()
+            
+            # Use the temporary file path
+            full_path = tmp_file.name
+            response = gemini_transcribe(full_path)
+            # File will be automatically deleted when the with block exits
+    else:
+        # Handle local file as before
+        full_path = os.path.expanduser(pdf)
+        if not os.path.exists(full_path):
+            rich.print(f"[red]Error: File not found: {full_path}")
+            raise typer.Exit(1)
+        response = gemini_transcribe(full_path)
 
-    if not os.path.exists(full_path):
-        rich.print(f"[red]Error: File not found: {full_path}")
-        raise typer.Exit(1)
-
-    # NOTE: I'm using gemini because I can pass the PDF inline without needing to manage filestorage
-    # Though, perhaps that's not a big deal.
-    response = gemini_transcribe(full_path)
     rich.print(response)
 
 

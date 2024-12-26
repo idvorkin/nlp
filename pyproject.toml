@@ -60,6 +60,7 @@ dependencies = [
     "google-cloud-texttospeech",
     "pytest",
     "pytest-asyncio",
+    "requests",
 ]
 
 [tool.setuptools]
