@@ -501,7 +501,10 @@ ___
     overview_filename = f"a_{repo_name.split('/')[-1]}--overview"
     overview_path = Path(".") / f"{overview_filename}.md"
     
-    overview_content = f"""### Changes Analysis Overview
+    github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
+    overview_content = f"""### Changes to {github_repo_diff_link} From [{after}] To [{before}]
+
+### Analysis Overview
 
 | Model | Analysis Duration (seconds) |
 |-------|---------------------------|
