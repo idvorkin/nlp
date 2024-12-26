@@ -64,7 +64,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "image", "captions", "ell_helper", "pdspy", "qa_blog", "discord_helper"]
+py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "image", "captions", "ell_helper", "pdspy", "qa_blog", "discord_helper", "journal"]
 
 [project.scripts]
 gpt = "gpt3:app"
@@ -94,6 +94,7 @@ image = "image:app"
 captions = "captions:app"
 dspy = "dspy:app"
 qa_blog = "qa_blog:app_wrap_loguru"
+journal = "journal:app"
 
 [tool.pyright]
 # ...
