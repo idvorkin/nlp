@@ -5,7 +5,7 @@ import asyncio
 import subprocess
 
 from langchain_core import messages
-from typing import Tuple
+from typing import List, Tuple
 
 import openai_wrapper
 import pudb
@@ -151,15 +151,18 @@ def changes(
     after="7 days ago",
     trace: bool = False,
     gist: bool = True,
-    openai: bool = False,
-    google: bool = False,
-    claude: bool = False,
+    openai: bool = True,
+    claude: bool = True,
+    google: bool = True,
     llama: bool = False,
 ):
-    llm = langchain_helper.get_model(
-        openai=openai, google=google, claude=claude, llama=llama
-    )
-    achanges_params = llm, before, after, gist
+    llms = langchain_helper.get_models(openai=openai, claude=claude, google=google)
+    
+    # Add llama only if requested
+    if llama:
+        llms.append(langchain_helper.get_model(llama=True))
+        
+    achanges_params = llms, before, after, gist
 
     # check if direcotry is in a git repo, if so go to the root of the repo
     is_git_repo = subprocess.run(
@@ -403,8 +406,8 @@ def DirectoryContext(directory: Path):
         os.chdir(original_directory)
 
 
-async def achanges(llm: BaseChatModel, before, after, gist):
-    ic("v 0.0.2")
+async def achanges(llms: List[BaseChatModel], before, after, gist):
+    ic("v 0.0.3")
     start = datetime.now()
     repo_url, repo_name = get_repo_path()
 
@@ -415,64 +418,104 @@ async def achanges(llm: BaseChatModel, before, after, gist):
     file_diffs = await asyncio.gather(
         *[get_file_diff(file, first, last) for file in changed_files]
     )
-    # add some rate limiting
-    max_parallel = asyncio.Semaphore(100)
 
-    async def concurrent_llm_call(file, diff_content):
-        async with max_parallel:
-            ic(f"running on {file}")
-            return await (
-                prompt_summarize_diff(
-                    file, diff_content, repo_path=repo_url, end_rev=last
-                )
-                | llm
-            ).ainvoke({})
+    # Create analysis results for each model
+    analysis_results = []
+    for llm in llms:
+        model_start = datetime.now()
+        max_parallel = asyncio.Semaphore(100)
 
-    ai_invoke_tasks = [
-        concurrent_llm_call(file, diff_content) for file, diff_content in file_diffs
-    ]
+        async def concurrent_llm_call(file, diff_content):
+            async with max_parallel:
+                ic(f"running on {file} with {langchain_helper.get_model_name(llm)}")
+                return await (
+                    prompt_summarize_diff(
+                        file, diff_content, repo_path=repo_url, end_rev=last
+                    )
+                    | llm
+                ).ainvoke({})
 
-    results = [result.content for result in await asyncio.gather(*ai_invoke_tasks)]
-    timestamp_summarize_diff_in_parallel = datetime.now()
+        ai_invoke_tasks = [
+            concurrent_llm_call(file, diff_content) for file, diff_content in file_diffs
+        ]
 
-    # I think this can be done by the reorder_diff_summary command
-    results.sort(key=lambda x: len(x), reverse=True)
+        results = [result.content for result in await asyncio.gather(*ai_invoke_tasks)]
+        results.sort(key=lambda x: len(x), reverse=True)
+        code_based_diff_report = "\n\n___\n\n".join(results)
+        
+        # Get summary for this model
+        summary_all_diffs = (
+            (prompt_summarize_diff_summaries(code_based_diff_report) | llm)
+            .invoke({})
+            .content
+        )
+        
+        model_end = datetime.now()
+        analysis_duration = model_end - model_start
+        
+        analysis_results.append({
+            "model": llm,
+            "model_name": langchain_helper.get_model_name(llm),
+            "analysis_duration": analysis_duration,
+            "diff_report": code_based_diff_report,
+            "summary": summary_all_diffs
+        })
 
-    code_based_diff_report = "\n\n___\n\n".join(results)
-
-    ic(code_based_diff_report)
-
-    summary_all_diffs = (
-        (prompt_summarize_diff_summaries(code_based_diff_report) | llm)
-        .invoke({})
-        .content
-    )
-    timestamp_summarize_all_diffs = datetime.now()
-
-    ## Pre-ranked output
-    github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
-    output = f"""
+    # Create individual model summary files
+    output_dir = Path(".")
+    for result in analysis_results:
+        model_name = result["model_name"]
+        safe_model_name = langchain_helper.get_model_name(result["model"]).lower().replace(".", "-")
+        
+        github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
+        model_output = f"""
 ### Changes to {github_repo_diff_link} From [{after}] To [{before}]
-* Model: {langchain_helper.get_model_name(llm)}
-* Duration Diffs: {int((timestamp_summarize_diff_in_parallel - start).total_seconds())} seconds
-* Duration Summary: {int((timestamp_summarize_all_diffs - timestamp_summarize_diff_in_parallel).total_seconds())} seconds
-* Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S") }
+* Model: {model_name}
+* Duration: {int(result["analysis_duration"].total_seconds())} seconds
+* Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 ___
 ### Table of Contents (code)
 {create_markdown_table_of_contents(changed_files)}
 ___
-{summary_all_diffs}
+{result["summary"]}
 ___
-{code_based_diff_report}
+{result["diff_report"]}
 """
-    rich_print(output)
+        summary_path = output_dir / f"summary_{safe_model_name}.md"
+        summary_path.write_text(model_output)
 
-    output_file_path = Path(f"summary_{repo_name.split('/')[-1]}.md")
-    with output_file_path.open("w", encoding="utf-8"):
-        output_file_path.write_text(output)
+    # Create overview file
+    overview_filename = f"a_{repo_name.split('/')[-1]}--overview"
+    overview_path = output_dir / f"{overview_filename}.md"
+    
+    overview_content = f"""### Changes Analysis Overview
+
+| Model | Analysis Duration (seconds) |
+|-------|---------------------------|
+"""
+    
+    for result in sorted(analysis_results, key=lambda x: x["analysis_duration"].total_seconds(), reverse=True):
+        model_name = result["model_name"]
+        safe_name = model_name.lower().replace(".", "-")
+        duration = int(result["analysis_duration"].total_seconds())
+        overview_content += f"| [{model_name}](#file-summary_{safe_name}-md) | {duration} |\n"
+
+    overview_path.write_text(overview_content)
+
+    # Create list of files to include in gist
+    files_to_gist = [overview_path] + [
+        output_dir / f"summary_{langchain_helper.get_model_name(result['model']).lower().replace('.', '-')}.md"
+        for result in analysis_results
+    ]
 
     if gist:
-        langchain_helper.to_gist(output_file_path)
+        langchain_helper.to_gist_multiple(files_to_gist)
+    else:
+        print(overview_content)
+        for result in analysis_results:
+            model_name = result["model_name"]
+            print(f"\n=== Analysis by {model_name} ===\n")
+            print(result["diff_report"])
 
 
 if __name__ == "__main__":
