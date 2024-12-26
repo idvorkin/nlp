@@ -321,14 +321,11 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
     )
 
 def create_overview_content(header: str, analysis_body: AnalysisBody, model_summaries: List[Path]) -> str:
-    overview = f"{header}\n\n## Analysis Files\n\n"
+    # Start directly with the analysis files link
+    overview = "- [Complete Analysis](#file-think-md)\n"
     
-    # Add main analysis file with correct gist format
-    overview += "- [Complete Analysis](#file-think-md)\n"
-    
-    # Add timing breakdown using a single combined table
-    overview += "\n## Model Performance\n\n"
-    overview += "| Model | Analysis (seconds) | Summary (seconds) |\n"
+    # Add timing breakdown table without a header
+    overview += "\n| Model | Analysis (seconds) | Summary (seconds) |\n"
     overview += "|-------|-------------------|------------------|\n"
     
     # Sort by total time (analysis + summary) descending
@@ -349,8 +346,7 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
         overview += f"| {model_link} | {analysis_duration} | {summary_duration} |\n"
     
     if analysis_body.exa_results:
-        overview += "\n### Related Content\n\n"
-        overview += "| Source | Content |\n"
+        overview += "\n| Source | Content |\n"
         overview += "|--------|----------|\n"
         overview += "| Exa Search | See [Complete Analysis](#file-think-md) |\n"
     
