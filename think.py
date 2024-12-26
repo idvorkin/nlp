@@ -40,6 +40,7 @@ class AnalysisResult(BaseModel):
     llm: BaseChatModel
     duration: timedelta
     summary_duration: timedelta | None = None
+    summary_content: str = ""  # Store the actual summary content
 
 class AnalysisBody(BaseModel):
     body: str
@@ -225,7 +226,7 @@ Summary Duration: {summary_duration.total_seconds():.2f} seconds
 {summary_content}
 """
         summary_path.write_text(summary_text)
-        return summary_path, summary_duration
+        return summary_path, summary_duration, summary_content  # Return the summary content
     except Exception as e:
         ic(f"Error generating summary for", model_name, e)
         return None
@@ -310,8 +311,11 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
     )
 
 def create_overview_content(header: str, analysis_body: AnalysisBody, model_summaries: List[Path]) -> str:
-    # Start directly with the analysis files link
-    overview = "- [Complete Analysis](#file-think-md)\n"
+    # Start with the header
+    overview = f"{header}\n\n"
+    
+    # Add analysis files link
+    overview += "- [Complete Analysis](#file-think-md)\n"
     
     # Add timing breakdown table without a header
     overview += "\n| Model | Analysis (seconds) | Summary (seconds) | Analysis Size (KB) | Summary Size (KB) |\n"
@@ -326,9 +330,9 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
         safe_name = sanitize_filename(model_name).lower().replace('.', '-')
         model_link = f"[{model_name}](#file-summary_{safe_name}-md)"
         
-        # Calculate sizes in KB
+        # Calculate sizes in KB using actual content
         analysis_size = len(result.analysis) / 1024
-        summary_size = len(result.summary_duration.content if hasattr(result.summary_duration, 'content') else str(result.summary_duration)) / 1024 if result.summary_duration else 0
+        summary_size = len(result.summary_content) / 1024 if result.summary_content else 0
         
         # Format durations and sizes
         analysis_duration = f"{result.duration.total_seconds():.2f}"
@@ -410,9 +414,14 @@ async def a_think(
         if summary is not None
     ]
     
-    # Unpack the results
-    model_summaries = [path for path, _ in summary_results]
-    summary_durations = [duration for _, duration in summary_results]
+    # Unpack the results - now including summary content
+    model_summaries = [path for path, _, _ in summary_results]
+    summary_durations = [duration for _, duration, _ in summary_results]
+    
+    # Update analysis results with summary content
+    for result, (_, duration, content) in zip(analysis_body.artifacts, summary_results):
+        result.summary_duration = duration
+        result.summary_content = content
 
     # Calculate total summary time and update analysis results
     total_summary_time = sum((duration for _, duration in summary_results), timedelta())
