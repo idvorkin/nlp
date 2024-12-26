@@ -314,25 +314,29 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     overview = "- [Complete Analysis](#file-think-md)\n"
     
     # Add timing breakdown table without a header
-    overview += "\n| Model | Analysis (seconds) | Summary (seconds) |\n"
-    overview += "|-------|-------------------|------------------|\n"
+    overview += "\n| Model | Analysis (seconds) | Summary (seconds) | Analysis Size (KB) | Summary Size (KB) |\n"
+    overview += "|-------|-------------------|------------------|------------------|------------------|\n"
     
-    # Sort by total time (analysis + summary) descending
-    def total_time(result):
-        summary_time = result.summary_duration.total_seconds() if result.summary_duration else 0
-        return result.duration.total_seconds() + summary_time
-    
+    # Sort by model name
     sorted_results = sorted(analysis_body.artifacts, 
-                          key=total_time,
-                          reverse=True)
+                          key=lambda x: langchain_helper.get_model_name(x.llm).lower())
 
     for result in sorted_results:
         model_name = langchain_helper.get_model_name(result.llm)
         safe_name = sanitize_filename(model_name).lower().replace('.', '-')
         model_link = f"[{model_name}](#file-summary_{safe_name}-md)"
+        
+        # Calculate sizes in KB
+        analysis_size = len(result.analysis) / 1024
+        summary_size = len(result.summary_duration.content if hasattr(result.summary_duration, 'content') else str(result.summary_duration)) / 1024 if result.summary_duration else 0
+        
+        # Format durations and sizes
         analysis_duration = f"{result.duration.total_seconds():.2f}"
         summary_duration = f"{result.summary_duration.total_seconds():.2f}" if result.summary_duration else "N/A"
-        overview += f"| {model_link} | {analysis_duration} | {summary_duration} |\n"
+        analysis_kb = f"{analysis_size:.1f}"
+        summary_kb = f"{summary_size:.1f}"
+        
+        overview += f"| {model_link} | {analysis_duration} | {summary_duration} | {analysis_kb} | {summary_kb} |\n"
     
     if analysis_body.exa_results:
         overview += "\n| Source | Content |\n"
