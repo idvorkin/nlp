@@ -3,6 +3,7 @@
 
 import asyncio
 import subprocess
+import requests
 
 from langchain_core import messages
 from typing import List, Tuple
@@ -13,6 +14,20 @@ import typer
 from icecream import ic
 from langchain.prompts import ChatPromptTemplate
 from datetime import datetime, timedelta
+
+
+def get_latest_github_commit_url() -> str:
+    try:
+        api_url = "https://api.github.com/repos/idvorkin/nlp/commits?path=changes.py&page=1&per_page=1"
+        response = requests.get(api_url)
+        response.raise_for_status()
+
+        latest_commit = response.json()[0]
+        commit_sha = latest_commit["sha"]
+        return f"https://github.com/idvorkin/nlp/blob/{commit_sha}/changes.py"
+    except Exception as e:
+        ic("Failed to get latest GitHub commit URL:", e)
+        return "https://github.com/idvorkin/nlp/blob/main/changes.py"  # Fallback
 from langchain_core.language_models.chat_models import (
     BaseChatModel,
 )
@@ -501,8 +516,11 @@ ___
     overview_filename = f"a_{repo_name.split('/')[-1]}--overview"
     overview_path = Path(".") / f"{overview_filename}.md"
     
+    today = datetime.now().strftime("%Y-%m-%d")
     github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
-    overview_content = f"""Changes to {github_repo_diff_link} From [{after}] To [{before}]
+    overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url()}) - {today}*
+
+Changes to {github_repo_diff_link} From [{after}] To [{before}]
 
 | Model | Analysis Duration (seconds) | Output Size (KB) |
 |-------|---------------------------|-----------------|
