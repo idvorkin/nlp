@@ -345,7 +345,7 @@ async def a_think(
     gist: bool, writer: bool, path: str, core_problems: bool, interests: bool
 ):
     output_dir = Path("~/tmp").expanduser()
-    repo_url, repo_name = get_repo_info()
+    repo_info = get_repo_info()
     output_dir.mkdir(parents=True, exist_ok=True)
     llms = langchain_helper.get_models(openai=True, claude=True, google=True, google_think=True)
 
@@ -377,7 +377,7 @@ async def a_think(
 
     today = datetime.now().strftime("%Y-%m-%d")
     header = f"""
-*🧠 via [think.py]({get_latest_github_commit_url(repo_name, "think.py")}) - {today} - using {category_info.description}* <br/>
+*🧠 via [think.py]({get_latest_github_commit_url(repo_info.name, "think.py")}) - {today} - using {category_info.description}* <br/>
 {thinking_about}
 """
 

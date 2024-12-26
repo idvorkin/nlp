@@ -399,7 +399,7 @@ def DirectoryContext(directory: Path):
 async def achanges(llms: List[BaseChatModel], before, after, gist):
     ic("v 0.0.4")
     start = datetime.now()
-    repo_url, repo_name = get_repo_info()
+    repo_info = get_repo_info()
 
     # Run first_last_commit and get_changed_files in parallel
     first_last, _ = await asyncio.gather(
@@ -464,7 +464,7 @@ async def achanges(llms: List[BaseChatModel], before, after, gist):
         model_name = result["model_name"]
         safe_model_name = model_name.lower().replace(".", "-")
         
-        github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
+        github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
         model_output = f"""
 ### Changes to {github_repo_diff_link} From [{after}] To [{before}]
 * Model: {model_name}
@@ -488,11 +488,11 @@ ___
     )
 
     # Create and write overview file
-    overview_filename = f"a_{repo_name.split('/')[-1]}--overview"
+    overview_filename = f"a_{repo_info.name.split('/')[-1]}--overview"
     overview_path = Path(".") / f"{overview_filename}.md"
     
     today = datetime.now().strftime("%Y-%m-%d")
-    github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
+    github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
     overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url(repo_name, "changes.py")}) - {today}*
 
 Changes to {github_repo_diff_link} From [{after}] To [{before}]

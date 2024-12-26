@@ -2,7 +2,12 @@
 
 import requests
 from icecream import ic
-from typing import Tuple
+from pydantic import BaseModel
+
+class RepoInfo(BaseModel):
+    """Information about a GitHub repository"""
+    url: str
+    name: str
 
 def get_latest_github_commit_url(repo: str, file_path: str) -> str:
     """Get the URL to the latest commit version of a file in a GitHub repo.
@@ -26,11 +31,11 @@ def get_latest_github_commit_url(repo: str, file_path: str) -> str:
         ic(f"Failed to get latest GitHub commit URL for {file_path}:", e)
         return f"https://github.com/{repo}/blob/main/{file_path}"  # Fallback
 
-def get_repo_info() -> Tuple[str, str]:
+def get_repo_info() -> RepoInfo:
     """Get the repository URL and name from git remote.
     
     Returns:
-        Tuple of (repo_url, repo_path) where repo_path is in format 'owner/repo'
+        RepoInfo containing the repo URL and name in format 'owner/repo'
     """
     import subprocess
     
@@ -45,4 +50,4 @@ def get_repo_info() -> Tuple[str, str]:
     elif repo_url.startswith("git@"):
         base_path = repo_url.split(":")[1]
         base_path = base_path.replace(".git", "")
-    return repo_url, base_path
+    return RepoInfo(url=repo_url, name=base_path)
