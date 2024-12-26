@@ -500,7 +500,7 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
 | Model | Analysis Duration (seconds) | Output Size (KB) |
 |-------|---------------------------|-----------------|
 """
-    
+
     for result in sorted(analysis_results, key=lambda x: x["analysis_duration"].total_seconds(), reverse=True):
         model_name = result["model_name"]
         safe_name = model_name.lower().replace(".", "-")
