@@ -38,6 +38,7 @@ def get_latest_github_commit_url(repo: str, file_path: str) -> str:
 
 def get_repo_info() -> RepoInfo:
     """Get the repository URL and name from git remote.
+    Uses the current working directory to determine the repo info.
     If not in a git repo or can't determine repo info, defaults to idvorkin/nlp.
     
     Returns:
@@ -45,11 +46,16 @@ def get_repo_info() -> RepoInfo:
     """
     try:
         import subprocess
+        import os
+        
+        # Use the current working directory
+        cwd = os.getcwd()
         
         result = subprocess.run(
-            ["git", "remote", "get-url", "origin"], 
-            capture_output=True, 
-            text=True
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            cwd=cwd  # Specify the working directory for git command
         )
         
         if result.returncode != 0:
@@ -66,6 +72,10 @@ def get_repo_info() -> RepoInfo:
         elif repo_url.startswith("git@"):
             base_path = repo_url.split(":")[1]
             base_path = base_path.replace(".git", "")
+        
+        # Clean up the repo URL to always return https format
+        if repo_url.startswith("git@"):
+            repo_url = f"https://github.com/{base_path}"
             
         return RepoInfo(url=repo_url, name=base_path)
         
