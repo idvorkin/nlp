@@ -36,10 +36,13 @@ def get_latest_github_commit_url(repo: str, file_path: str) -> str:
         ic(f"Failed to get latest GitHub commit URL for {file_path}:", e)
         return f"https://github.com/{repo}/blob/main/{file_path}"  # Fallback
 
-def get_repo_info() -> RepoInfo:
+def get_repo_info(for_file_changes: bool = False) -> RepoInfo:
     """Get the repository URL and name from git remote.
-    Uses the current working directory to determine the repo info.
-    If not in a git repo or can't determine repo info, defaults to idvorkin/nlp.
+    
+    Args:
+        for_file_changes: If True, always use current directory.
+                         If False, try current directory first, then fall back to idvorkin/nlp
+                         Used when getting URLs to source files like think.py or changes.py
     
     Returns:
         RepoInfo containing the repo URL and name in format 'owner/repo'
@@ -55,17 +58,18 @@ def get_repo_info() -> RepoInfo:
             ["git", "remote", "get-url", "origin"],
             capture_output=True,
             text=True,
-            cwd=cwd  # Specify the working directory for git command
+            cwd=cwd
         )
         
         if result.returncode != 0:
+            if for_file_changes:
+                raise Exception("Not in a git repository")
             return RepoInfo(
                 url="https://github.com/idvorkin/nlp",
                 name="idvorkin/nlp"
             )
 
         repo_url = result.stdout.strip()
-        base_path = "idvorkin/nlp"  # Default fallback
         
         if repo_url.startswith("https"):
             base_path = repo_url.split("/")[-2] + "/" + repo_url.split("/")[-1]
@@ -77,11 +81,20 @@ def get_repo_info() -> RepoInfo:
         if repo_url.startswith("git@"):
             repo_url = f"https://github.com/{base_path}"
             
+        # If not for file changes and not in nlp repo, default to nlp repo
+        if not for_file_changes and "idvorkin/nlp" not in base_path:
+            return RepoInfo(
+                url="https://github.com/idvorkin/nlp",
+                name="idvorkin/nlp"
+            )
+            
         return RepoInfo(url=repo_url, name=base_path)
         
     except Exception as e:
         ic(f"Failed to get repo info: {e}")
-        # Default to idvorkin/nlp repo
+        if for_file_changes:
+            raise  # Re-raise for file changes as we need a valid repo
+        # Default to idvorkin/nlp repo for source file URLs
         return RepoInfo(
             url="https://github.com/idvorkin/nlp",
             name="idvorkin/nlp"

@@ -399,7 +399,7 @@ def DirectoryContext(directory: Path):
 async def achanges(llms: List[BaseChatModel], before, after, gist):
     ic("v 0.0.4")
     start = datetime.now()
-    repo_info = get_repo_info()
+    repo_info = get_repo_info(for_file_changes=True)
 
     # Run first_last_commit and get_changed_files in parallel
     first_last, _ = await asyncio.gather(
@@ -493,7 +493,7 @@ ___
     
     today = datetime.now().strftime("%Y-%m-%d")
     github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
-    overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url(repo_info.name, "changes.py")}) - {today}*
+    overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url(get_repo_info().name, "changes.py")}) - {today}*
 
 Changes to {github_repo_diff_link} From [{after}] To [{before}]
 
