@@ -38,21 +38,41 @@ def get_latest_github_commit_url(repo: str, file_path: str) -> str:
 
 def get_repo_info() -> RepoInfo:
     """Get the repository URL and name from git remote.
+    If not in a git repo or can't determine repo info, defaults to idvorkin/nlp.
     
     Returns:
         RepoInfo containing the repo URL and name in format 'owner/repo'
     """
-    import subprocess
-    
-    result = subprocess.run(
-        ["git", "remote", "get-url", "origin"], capture_output=True, text=True
-    )
+    try:
+        import subprocess
+        
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"], 
+            capture_output=True, 
+            text=True
+        )
+        
+        if result.returncode != 0:
+            return RepoInfo(
+                url="https://github.com/idvorkin/nlp",
+                name="idvorkin/nlp"
+            )
 
-    repo_url = result.stdout.strip()
-    base_path = "Unknown"
-    if repo_url.startswith("https"):
-        base_path = repo_url.split("/")[-2] + "/" + repo_url.split("/")[-1]
-    elif repo_url.startswith("git@"):
-        base_path = repo_url.split(":")[1]
-        base_path = base_path.replace(".git", "")
-    return RepoInfo(url=repo_url, name=base_path)
+        repo_url = result.stdout.strip()
+        base_path = "idvorkin/nlp"  # Default fallback
+        
+        if repo_url.startswith("https"):
+            base_path = repo_url.split("/")[-2] + "/" + repo_url.split("/")[-1]
+        elif repo_url.startswith("git@"):
+            base_path = repo_url.split(":")[1]
+            base_path = base_path.replace(".git", "")
+            
+        return RepoInfo(url=repo_url, name=base_path)
+        
+    except Exception as e:
+        ic(f"Failed to get repo info: {e}")
+        # Default to idvorkin/nlp repo
+        return RepoInfo(
+            url="https://github.com/idvorkin/nlp",
+            name="idvorkin/nlp"
+        )
