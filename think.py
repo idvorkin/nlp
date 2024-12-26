@@ -325,14 +325,22 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     sorted_results = sorted(analysis_body.artifacts, 
                           key=lambda x: langchain_helper.get_model_name(x.llm).lower())
 
+    # Initialize totals
+    total_analysis_size = 0
+    total_summary_size = 0
+    
     for result in sorted_results:
         model_name = langchain_helper.get_model_name(result.llm)
         safe_name = sanitize_filename(model_name).lower().replace('.', '-')
         model_link = f"[{model_name}](#file-summary_{safe_name}-md)"
         
-        # Calculate sizes in KB using actual content
+        # Calculate sizes in KB
         analysis_size = len(result.analysis) / 1024
         summary_size = len(result.summary_content) / 1024 if result.summary_content else 0
+        
+        # Add to totals
+        total_analysis_size += analysis_size
+        total_summary_size += summary_size
         
         # Format durations and sizes
         analysis_duration = f"{result.duration.total_seconds():.2f}"
@@ -341,6 +349,10 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
         summary_kb = f"{summary_size:.1f}"
         
         overview += f"| {model_link} | {analysis_duration} | {summary_duration} | {analysis_kb} | {summary_kb} |\n"
+    
+    # Add totals row with a separator line
+    overview += "|---------|-------------------|------------------|------------------|------------------|\n"
+    overview += f"| **Total** | | | **{total_analysis_size:.1f}** | **{total_summary_size:.1f}** |\n"
     
     if analysis_body.exa_results:
         overview += "\n| Source | Content |\n"
