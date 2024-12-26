@@ -438,9 +438,11 @@ async def a_think(
     # Get title from the soup if available
     overview_filename = "overview"
     if title:
-        # Clean the title for filename use
-        clean_title = sanitize_filename(title).lower().replace(' ', '-')
-        overview_filename = f"overview-{clean_title}"
+        # Clean the title by removing parentheses and extra spaces
+        clean_title = title.strip('() ')
+        # Convert to filename-safe format
+        clean_title = sanitize_filename(clean_title).lower().replace(' ', '-')
+        overview_filename = f"{clean_title}--overview"
     
     overview_path = output_dir / f"{overview_filename}.md"
     overview_content = create_overview_content(header, analysis_body, model_summaries)
