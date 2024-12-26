@@ -144,7 +144,7 @@ def changes(
     openai: bool = True,
     claude: bool = True,
     google: bool = True,
-    llama: bool = False,
+    llama: bool = True,
 ):
     llms = langchain_helper.get_models(openai=openai, claude=claude, google=google)
     
