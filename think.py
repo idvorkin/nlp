@@ -436,10 +436,10 @@ async def a_think(
         result.summary_content = content
 
     # Calculate total summary time and update analysis results
-    total_summary_time = sum((duration for _, duration in summary_results), timedelta())
+    total_summary_time = sum((duration for _, duration, _ in summary_results), timedelta())
     
     # Update the analysis results with summary durations
-    for result, (_, duration) in zip(analysis_body.artifacts, summary_results):
+    for result, (_, duration, _) in zip(analysis_body.artifacts, summary_results):
         result.summary_duration = duration
     
     analysis_body.total_analysis_time = sum((r.duration for r in analysis_body.artifacts), timedelta())
