@@ -24,7 +24,12 @@ def get_latest_github_commit_url(repo: str, file_path: str) -> str:
         response = requests.get(api_url)
         response.raise_for_status()
 
-        latest_commit = response.json()[0]
+        commits = response.json()
+        if not commits:  # Handle empty response
+            ic(f"No commits found for {file_path}")
+            return f"https://github.com/{repo}/blob/main/{file_path}"
+
+        latest_commit = commits[0]
         commit_sha = latest_commit["sha"]
         return f"https://github.com/{repo}/blob/{commit_sha}/{file_path}"
     except Exception as e:
