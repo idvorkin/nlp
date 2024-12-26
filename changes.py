@@ -502,19 +502,18 @@ ___
     overview_path = Path(".") / f"{overview_filename}.md"
     
     github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
-    overview_content = f"""### Changes to {github_repo_diff_link} From [{after}] To [{before}]
+    overview_content = f"""Changes to {github_repo_diff_link} From [{after}] To [{before}]
 
-### Analysis Overview
-
-| Model | Analysis Duration (seconds) |
-|-------|---------------------------|
+| Model | Analysis Duration (seconds) | Output Size (KB) |
+|-------|---------------------------|-----------------|
 """
     
     for result in sorted(analysis_results, key=lambda x: x["analysis_duration"].total_seconds(), reverse=True):
         model_name = result["model_name"]
         safe_name = model_name.lower().replace(".", "-")
         duration = int(result["analysis_duration"].total_seconds())
-        overview_content += f"| [{model_name}](#file-summary_{safe_name}-md) | {duration} |\n"
+        output_size = len(result["diff_report"] + result["summary"]) / 1024  # Convert to KB
+        overview_content += f"| [{model_name}](#file-summary_{safe_name}-md) | {duration} | {output_size:.1f} |\n"
 
     # Write overview file
     await asyncio.to_thread(overview_path.write_text, overview_content)
