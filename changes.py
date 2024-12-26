@@ -14,20 +14,9 @@ import typer
 from icecream import ic
 from langchain.prompts import ChatPromptTemplate
 from datetime import datetime, timedelta
+from github_helper import get_latest_github_commit_url, get_repo_info
 
 
-def get_latest_github_commit_url() -> str:
-    try:
-        api_url = "https://api.github.com/repos/idvorkin/nlp/commits?path=changes.py&page=1&per_page=1"
-        response = requests.get(api_url)
-        response.raise_for_status()
-
-        latest_commit = response.json()[0]
-        commit_sha = latest_commit["sha"]
-        return f"https://github.com/idvorkin/nlp/blob/{commit_sha}/changes.py"
-    except Exception as e:
-        ic("Failed to get latest GitHub commit URL:", e)
-        return "https://github.com/idvorkin/nlp/blob/main/changes.py"  # Fallback
 from langchain_core.language_models.chat_models import (
     BaseChatModel,
 )
@@ -87,20 +76,6 @@ def is_skip_file(file):
     return False
 
 
-def get_repo_path():
-    result = subprocess.run(
-        ["git", "remote", "get-url", "origin"], capture_output=True, text=True
-    )
-
-    # Assuming the URL is in the form: https://github.com/idvorkin/bob or git@github.com:idvorkin/bob
-    repo_url = result.stdout.strip()
-    base_path = "Unknown"
-    if repo_url.startswith("https"):
-        base_path = repo_url.split("/")[-2] + "/" + repo_url.split("/")[-1]
-    elif repo_url.startswith("git@"):
-        base_path = repo_url.split(":")[1]
-        base_path = base_path.replace(".git", "")
-    return repo_url, base_path
 
 
 async def get_file_diff(file, first_commit_hash, last_commit_hash) -> Tuple[str, str]:
@@ -424,7 +399,7 @@ def DirectoryContext(directory: Path):
 async def achanges(llms: List[BaseChatModel], before, after, gist):
     ic("v 0.0.4")
     start = datetime.now()
-    repo_url, repo_name = get_repo_path()
+    repo_url, repo_name = get_repo_info()
 
     # Run first_last_commit and get_changed_files in parallel
     first_last, _ = await asyncio.gather(
@@ -518,7 +493,7 @@ ___
     
     today = datetime.now().strftime("%Y-%m-%d")
     github_repo_diff_link = f"[{repo_name}]({repo_url}/compare/{first}...{last})"
-    overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url()}) - {today}*
+    overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url(repo_name, "changes.py")}) - {today}*
 
 Changes to {github_repo_diff_link} From [{after}] To [{before}]
 

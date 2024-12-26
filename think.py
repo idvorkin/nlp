@@ -7,6 +7,7 @@ import asyncio
 from typing import List
 from datetime import datetime, timedelta
 from langchain_core import messages
+from github_helper import get_latest_github_commit_url, get_repo_info
 from typing import List
 from langchain_core.language_models import BaseChatModel
 from langchain.schema.output_parser import StrOutputParser
@@ -28,18 +29,6 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def get_latest_github_commit_url() -> str:
-    try:
-        api_url = "https://api.github.com/repos/idvorkin/nlp/commits?path=think.py&page=1&per_page=1"
-        response = requests.get(api_url)
-        response.raise_for_status()
-
-        latest_commit = response.json()[0]
-        commit_sha = latest_commit["sha"]
-        return f"https://github.com/idvorkin/nlp/blob/{commit_sha}/think.py"
-    except Exception as e:
-        ic("Failed to get latest GitHub commit URL:", e)
-        return "https://github.com/idvorkin/nlp/blob/main/think.py"  # Fallback
 
 
 class ModelTiming(BaseModel):
@@ -387,7 +376,7 @@ async def a_think(
 
     today = datetime.now().strftime("%Y-%m-%d")
     header = f"""
-*🧠 via [think.py]({get_latest_github_commit_url()}) - {today} - using {category_info.description}* <br/>
+*🧠 via [think.py]({get_latest_github_commit_url(repo_name, "think.py")}) - {today} - using {category_info.description}* <br/>
 {thinking_about}
 """
 
