@@ -315,7 +315,7 @@ def ask(
     print(response)
 
 
-async def iask_where(topic: str):
+async def iask_where(topic: str, debug: bool = False):
     prompt = ChatPromptTemplate.from_template(
         """
 You are an expert blog organization consultant. You help Igor organize his blog content effectively.
@@ -357,9 +357,10 @@ File paths should always start with either "_d/" or "_posts/".
     docs_and_scores = await g_blog_content_db.asimilarity_search_with_relevance_scores(
         topic, k=8
     )
-    ic("Retrieved documents and scores:")
-    for doc, score in docs_and_scores:
-        ic(doc.metadata, score)
+    if debug:
+        ic("Retrieved documents and scores:")
+        for doc, score in docs_and_scores:
+            ic(doc.metadata, score)
         
     facts_to_inject = [doc for doc, _ in docs_and_scores]
     context = docs_to_prompt(facts_to_inject)
@@ -369,7 +370,8 @@ File paths should always start with either "_d/" or "_posts/".
     
     chain = prompt | llm | parser
     result = await chain.ainvoke({"topic": topic, "context": context})
-    ic("LLM Response:", result)
+    if debug:
+        ic("LLM Response:", result)
     
     response = f"""
 RECOMMENDED LOCATIONS:
@@ -658,9 +660,10 @@ def app_wrap_loguru():
 @app.command()
 def where(
     topic: Annotated[str, typer.Argument(help="Topic to find placement for")],
+    debug: Annotated[bool, typer.Option(help="Show debugging information")] = False,
 ):
     """Suggest where to add new blog content about a topic"""
-    response = asyncio.run(iask_where(topic))
+    response = asyncio.run(iask_where(topic, debug))
     print(response)
 
 if __name__ == "__main__":
