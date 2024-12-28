@@ -4,6 +4,7 @@
 import asyncio
 import subprocess
 import requests
+import tempfile
 
 from langchain_core import messages
 from typing import List, Tuple
@@ -395,6 +396,12 @@ def DirectoryContext(directory: Path):
     finally:
         os.chdir(original_directory)
 
+@contextmanager
+def TempDirectoryContext():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        yield temp_path
+
 
 async def achanges(llms: List[BaseChatModel], before, after, gist):
     ic("v 0.0.4")
@@ -460,7 +467,7 @@ async def achanges(llms: List[BaseChatModel], before, after, gist):
     analysis_results = await asyncio.gather(*(process_model(llm) for llm in llms))
 
     # Create all output files in parallel
-    async def write_model_summary(result):
+    async def write_model_summary(result, temp_dir: Path):
         model_name = result["model_name"]
         safe_model_name = model_name.lower().replace(".", "-")
         
@@ -478,18 +485,19 @@ ___
 ___
 {result["diff_report"]}
 """
-        summary_path = Path(".") / f"summary_{safe_model_name}.md"
+        summary_path = temp_dir / f"summary_{safe_model_name}.md"
         await asyncio.to_thread(summary_path.write_text, model_output)
         return summary_path
 
-    # Write all summary files in parallel
-    summary_paths = await asyncio.gather(
-        *(write_model_summary(result) for result in analysis_results)
-    )
+    with TempDirectoryContext() as temp_dir:
+        # Write all summary files in parallel
+        summary_paths = await asyncio.gather(
+            *(write_model_summary(result, temp_dir) for result in analysis_results)
+        )
 
-    # Create and write overview file
-    overview_filename = f"a_{repo_info.name.split('/')[-1]}--overview"
-    overview_path = Path(".") / f"{overview_filename}.md"
+        # Create and write overview file
+        overview_filename = f"a_{repo_info.name.split('/')[-1]}--overview"
+        overview_path = temp_dir / f"{overview_filename}.md"
     
     today = datetime.now().strftime("%Y-%m-%d")
     github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
