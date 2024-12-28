@@ -310,13 +310,16 @@ Think through this step by step:
 
 Provide your recommendations in this format:
 
-**Recommended Locations:**
-1. [Primary Location] - Reasoning
-2. [Alternative Location] - Reasoning 
+RECOMMENDED LOCATIONS:
+1. Primary Location: [description]
+   Reasoning: [explanation]
 
-**Additional Suggestions:**
-- Any tips about structuring/organizing the content
-- Whether to create new sections/tags
+2. Alternative Location: [description]
+   Reasoning: [explanation]
+
+ADDITIONAL SUGGESTIONS:
+• Structuring tips: [your suggestions]
+• Organization tips: [your suggestions]
     """
     )
     llm = langchain_helper.get_model(claude=True)
