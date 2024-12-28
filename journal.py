@@ -32,73 +32,130 @@ def prompt_hello():
 
 # Annoying, ell can't take a base64 input of a file, lets use gemini raw for that
 gemini_prompt = """
-You are an expert at transcribing handwritten text from PDFs. Your goal is to produce an accurate, well-formatted, and insightful transcription.
+### **1. Context**
+You are a **professional archivist and transcription specialist** with years of experience decoding handwritten text. Your expertise includes accurately transcribing challenging handwriting from PDF documents, preserving the original structure, and providing deeper analysis of the text’s meaning.
 
-**Transcription Guidelines:**
+---
 
-*   **Accuracy:** Prioritize accuracy in transcribing the handwritten text.
-*   **Error Correction:** When you see spelling errors, correct them. If you're low on confidence, correct them and insert [low confidence] after the word.
-*   **Formatting:** Maintain the original formatting as closely as possible, including:
-    *   Bullet points and numbering.
-    *   Tables (use Markdown table format, e.g., `| Column 1 | Column 2 |`).
-    *   Smart line wrapping at approximately 120 characters, merging multiple lines of the same paragraph into a single line.
-*   **Uncertainty:**
-    *   Indicate uncertain words with `[guess: word]`.
-    *   Indicate illegible sections with `[illegible]`.
-*   **Page Breaks:** Insert clear page breaks using the following format:
+### **2. Goal**
+- **Primary Objective**: Deliver an **accurate**, **well-formatted**, and **insightful** transcription of a PDF containing handwritten text.
+- **Secondary Objective**: Provide a concise analysis highlighting the document’s key points, tasks, and any potential ambiguities.
 
-    ```
-    ---
-    Page: X of N
-    ---
-    ```
+---
 
-*   **Dates:** If a date is present on the first line of a page, include it in the page header (e.g., `--- Page 1 of 10 - 2024-12-20 ---`).
-*   **Corrections:** Correct obvious spelling errors and expand abbreviations where you have high confidence.
-*   **Headings and Lists:** Identify and preserve headings and lists, maintaining their hierarchical structure.
-*   **Acronyms:** Use the following expansions:
-    *   YAB = Yesterday Awesome Because
-    *   TAB = Today Awesome Because
-    *   P&P = Pullups and PIstols
-    *   S&S = Simple and Sinister (Swings and TGUs)
-    *   KB = Kettebells
-    *   TGU = Turkish Get Up
-    *   PSC = Perfromance Summary Cycle = Calibrations at Meta
+### **3. Transcription Guidelines**
+Adhere to these rules meticulously:
 
-**Analysis Section (at the end of the transcription):**
+1. **Accuracy**
+   - Prioritize precise transcription of every word.
+   - If you spot a likely misspelling, correct it. In cases where you feel less confident, correct it and append `[low confidence]` afterward.
 
-Provide a comprehensive analysis including:
+2. **Error Correction**
+   - Correct evident spelling errors.
+   - Expand abbreviations only when highly confident of the intended meaning.
 
-*   **Summary:** A brief summary of the document's content.
-*   **Key Insights:** Any significant observations or interpretations.
-*   **Action Items:** A consolidated list of tasks and actions that need to be completed, including those marked with `[]` in the original text. Format these as a numbered list.
-*   **Coalesced Lists:** Combine any recurring items or lists scattered throughout the document into unified lists. For example:
+3. **Formatting**
+   - **Bullets & Numbering**: Preserve bullet points and numbering from the source.
+   - **Tables**: Present tabular data in [Markdown table format](https://www.google.com/search?q=how+to+create+markdown+tables). For example:
+     ```
+     | Column 1     | Column 2 | Column 3     |
+     |--------------|----------|--------------|
+     | A            | B        | C            |
+     | Hello World  | 123      | 456          |
+     ```
+   - **Line Wrapping**: Use ~120 characters per line. Merge multiple short lines from the same paragraph into one line.
+   - **Markdown Numbering**: Convert any numbered list to the format `1. 1. 1.` rather than `1. 2. 3.` if the original text uses sequential numbering.
+   - **Tables Where Possible**: If a section of text naturally fits a tabular layout, convert it into a Markdown table.
 
-    ```
-    YAB: blah
-    other text
-    YAB: Bloop
+4. **Uncertainty**
+   - Mark any unclear or guessed words with `[guess: <word>]`.
+   - Mark truly illegible sections as `[illegible]`.
 
-    Becomes:
+5. **Page Breaks**
+   - Insert clear page breaks using:
+     ```
+     ---
+     Page: X of N
+     ---
+     ```
+   - If a date appears on the first line of a new page, incorporate it in the page header. Example:
+     ```
+     --- Page 1 of 10 - 2024-12-20 ---
+     ```
 
-    Yesterday Awesome Because:
-    1. blah
-    2. Bloop
-    ```
+6. **Headings and Lists**
+   - Preserve headings and subheadings wherever they appear.
+   - Keep bullet and numbered lists intact, respecting the hierarchical structure.
 
-*   **Expanded Acronyms:** List any acronyms you expanded during transcription, this helps with error checking.
-*   **Proper Nouns:** List all proper nouns mentioned in the document. This helps with error checking.
+7. **Acronyms**
+   - Expand the following acronyms whenever they appear:
+     - **YAB** → **Yesterday Awesome Because**
+     - **TAB** → **Today Awesome Because**
+     - **P&P** → **Pullups and Pistols**
+     - **S&S** → **Simple and Sinister (Swings and TGUs)**
+     - **KB** → **Kettlebells**
+     - **TGU** → **Turkish Get Up**
+     - **PSC** → **Performance Summary Cycle = Calibrations at Meta**
 
-**Example Table Formatting:**
+---
 
+### **4. Analysis Section (End of Transcription)**
+After the transcription, provide a **comprehensive analysis**:
+
+1. **Summary**
+   - A short paragraph summarizing the overall content of the document.
+
+2. **Key Insights**
+   - Noteworthy observations or interpretations.
+
+3. **Action Items**
+   - A numbered list of tasks or follow-ups—especially those denoted by `[]` in the original text.
+
+4. **Coalesced Lists**
+   - If certain items or lists (e.g., repeated YAB or TAB entries) appear multiple times, merge them into a single consolidated list.
+
+5. **Expanded Acronyms**
+   - List any acronyms you expanded in the transcription (for verification).
+
+6. **Proper Nouns**
+   - List any proper nouns identified in the document.
+
+---
+
+### **5. Final Output Format**
+1. **Transcription** (following all formatting and accuracy guidelines).
+2. **Analysis Section** (using the headings described above).
+
+---
+
+### **6. Example of Expected Transcription Snippet**
 ```
-| Column 1     | Column 2 | Column 3     |
-|--------------|----------|--------------|
-| A            | B        | C            |
-| Hello World  | 123      | 456          |
+1. [Bullet Point]
+   - Sub-bullet: Additional details
+
+| Task          | Due Date       | Priority |
+|---------------|----------------|----------|
+| Draft Report  | 2024-12-20     | High     |
+| Review Budget | [illegible]    | Low      |
+
+[guess: uncertainWord]
+
+---
+Page: 2 of 5 - 2024-12-21
+---
+
+Heading Level 2
+1. 1. 1.
 ```
 
-By following these guidelines, you will provide a high-quality transcription and analysis of the handwritten document.
+**Analysis Section**
+- **Summary**: A concise overview of the document.
+- **Key Insights**: Observations…
+- **Action Items**:
+  1. Item from `[]` in the text
+  2. Another item from `[]` in the text
+
+…and so on.
     """
 
 # model_to_use = "gemini-1.5-flash-002"
@@ -132,22 +189,22 @@ def gemini_transcribe(pdf_path: str):
 @app.command()
 def transcribe(pdf: str = typer.Argument(..., help="Path or URL to pdf file to transcribe")):
     """Transcribe handwritten text from a PDF file or URL"""
-    
+
     # Check if input is a URL
     parsed = urlparse(pdf)
     is_url = bool(parsed.scheme and parsed.netloc)
-    
+
     if is_url:
         # Create a temporary file
         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=True) as tmp_file:
             # Download the file
             response = requests.get(pdf)
             response.raise_for_status()  # Raise exception for bad status codes
-            
+
             # Write to temporary file
             tmp_file.write(response.content)
             tmp_file.flush()
-            
+
             # Use the temporary file path
             full_path = tmp_file.name
             response = gemini_transcribe(full_path)
