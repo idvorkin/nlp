@@ -58,3 +58,14 @@ When adding new scripts, be sure to add them to the scripts section in pyproject
 ### When running python,
 
 use python3
+
+### Tracking specification changes
+
+Lets add enduser_specs.md to track specifications
+
+Every time you make changes to expected user behavior, update the specs
+
+If the user changes the specifications change the specifications.
+This will be mostly tracking business logic
+When the specs aren't clear ask user to clarify
+
