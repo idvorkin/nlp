@@ -498,10 +498,10 @@ ___
         # Create and write overview file
         overview_filename = f"a_{repo_info.name.split('/')[-1]}--overview"
         overview_path = temp_dir / f"{overview_filename}.md"
-    
-    today = datetime.now().strftime("%Y-%m-%d")
-    github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
-    overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url(get_repo_info().name, "changes.py")}) - {today}*
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
+        overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url(get_repo_info().name, "changes.py")}) - {today}*
 
 Changes to {github_repo_diff_link} From [{after}] To [{before}]
 
@@ -509,26 +509,26 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
 |-------|---------------------------|-----------------|
 """
 
-    for result in sorted(analysis_results, key=lambda x: x["analysis_duration"].total_seconds(), reverse=True):
-        model_name = result["model_name"]
-        safe_name = model_name.lower().replace(".", "-")
-        duration = int(result["analysis_duration"].total_seconds())
-        output_size = len(result["diff_report"] + result["summary"]) / 1024  # Convert to KB
-        overview_content += f"| [{model_name}](#file-summary_{safe_name}-md) | {duration} | {output_size:.1f} |\n"
-
-    # Write overview file
-    await asyncio.to_thread(overview_path.write_text, overview_content)
-
-    files_to_gist = [overview_path] + list(summary_paths)
-
-    if gist:
-        await asyncio.to_thread(langchain_helper.to_gist_multiple, files_to_gist)
-    else:
-        print(overview_content)
-        for result in analysis_results:
+        for result in sorted(analysis_results, key=lambda x: x["analysis_duration"].total_seconds(), reverse=True):
             model_name = result["model_name"]
-            print(f"\n=== Analysis by {model_name} ===\n")
-            print(result["diff_report"])
+            safe_name = model_name.lower().replace(".", "-")
+            duration = int(result["analysis_duration"].total_seconds())
+            output_size = len(result["diff_report"] + result["summary"]) / 1024  # Convert to KB
+            overview_content += f"| [{model_name}](#file-summary_{safe_name}-md) | {duration} | {output_size:.1f} |\n"
+
+        # Write overview file
+        await asyncio.to_thread(overview_path.write_text, overview_content)
+
+        files_to_gist = [overview_path] + list(summary_paths)
+
+        if gist:
+            await asyncio.to_thread(langchain_helper.to_gist_multiple, files_to_gist)
+        else:
+            print(overview_content)
+            for result in analysis_results:
+                model_name = result["model_name"]
+                print(f"\n=== Analysis by {model_name} ===\n")
+                print(result["diff_report"])
 
 
 if __name__ == "__main__":
