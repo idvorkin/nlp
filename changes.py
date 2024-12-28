@@ -470,6 +470,8 @@ async def achanges(llms: List[BaseChatModel], before, after, gist):
     async def write_model_summary(result, temp_dir: Path):
         model_name = result["model_name"]
         safe_model_name = model_name.lower().replace(".", "-")
+        # Prefix with z_ to sort after the overview file
+        summary_path = temp_dir / f"z_summary_{safe_model_name}.md"
         
         github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
         model_output = f"""
@@ -514,7 +516,7 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
             safe_name = model_name.lower().replace(".", "-")
             duration = int(result["analysis_duration"].total_seconds())
             output_size = len(result["diff_report"] + result["summary"]) / 1024  # Convert to KB
-            overview_content += f"| [{model_name}](#file-summary_{safe_name}-md) | {duration} | {output_size:.1f} |\n"
+            overview_content += f"| [{model_name}](#file-z_summary_{safe_name}-md) | {duration} | {output_size:.1f} |\n"
 
         # Write overview file
         await asyncio.to_thread(overview_path.write_text, overview_content)
