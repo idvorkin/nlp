@@ -33,6 +33,7 @@ from pydantic import BaseModel
 
 class LocationRecommendation(BaseModel):
     location: str
+    markdown_path: str  # The markdown file path to edit
     reasoning: str
 
 
@@ -335,7 +336,8 @@ Return your response as a JSON object matching this Pydantic model:
 
 ```python
 class LocationRecommendation:
-    location: str      # Where to put the content
+    location: str      # Where to put the content (section name/header)
+    markdown_path: str # The markdown file path to edit (e.g. "_d/something.md")
     reasoning: str     # Why this location makes sense
 
 class BlogPlacementSuggestion:
@@ -346,6 +348,7 @@ class BlogPlacementSuggestion:
 ```
 
 Ensure your response is valid JSON that matches this schema exactly.
+When suggesting locations, always include both the section within the file and the markdown file path.
     """
     )
     
@@ -366,10 +369,11 @@ Ensure your response is valid JSON that matches this schema exactly.
 RECOMMENDED LOCATIONS:
 
 1. Primary Location: {result.primary_location.location}
+   File: {result.primary_location.markdown_path}
    Reasoning: {result.primary_location.reasoning}
 
 Alternative Locations:
-{chr(10).join(f'{i+1}. {loc.location}\\n   Reasoning: {loc.reasoning}' for i, loc in enumerate(result.alternative_locations))}
+{chr(10).join(f'{i+1}. {loc.location}\\n   File: {loc.markdown_path}\\n   Reasoning: {loc.reasoning}' for i, loc in enumerate(result.alternative_locations))}
 
 ADDITIONAL SUGGESTIONS:
 
