@@ -337,7 +337,7 @@ Return your response as a JSON object matching this Pydantic model:
 ```python
 class LocationRecommendation:
     location: str      # Where to put the content (section name/header)
-    markdown_path: str # The markdown file path to edit (e.g. "_d/something.md")
+    markdown_path: str # The full markdown file path (e.g. "_d/joy.md" or "_posts/something.md")
     reasoning: str     # Why this location makes sense
 
 class BlogPlacementSuggestion:
@@ -348,7 +348,8 @@ class BlogPlacementSuggestion:
 ```
 
 Ensure your response is valid JSON that matches this schema exactly.
-When suggesting locations, always include both the section within the file and the markdown file path.
+When suggesting locations, always include both the section within the file and the complete markdown file path relative to the blog root.
+File paths should always start with either "_d/" or "_posts/".
     """
     )
     
