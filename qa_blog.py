@@ -356,6 +356,10 @@ When suggesting locations, always include both the section within the file and t
     docs_and_scores = await g_blog_content_db.asimilarity_search_with_relevance_scores(
         topic, k=8
     )
+    ic("Retrieved documents and scores:")
+    for doc, score in docs_and_scores:
+        ic(doc.metadata, score)
+        
     facts_to_inject = [doc for doc, _ in docs_and_scores]
     context = docs_to_prompt(facts_to_inject)
     
@@ -364,16 +368,17 @@ When suggesting locations, always include both the section within the file and t
     
     chain = prompt | llm | parser
     result = await chain.ainvoke({"topic": topic, "context": context})
+    ic("LLM Response:", result)
     
     response = f"""
 RECOMMENDED LOCATIONS:
 
 1. Primary Location: {result.primary_location.location}
-   File: {result.primary_location.markdown_path}
+   File Path: {result.primary_location.markdown_path}
    Reasoning: {result.primary_location.reasoning}
 
 Alternative Locations:
-{chr(10).join(f'{i+1}. {loc.location}\\n   File: {loc.markdown_path}\\n   Reasoning: {loc.reasoning}' for i, loc in enumerate(result.alternative_locations))}
+{chr(10).join(f'{i+1}. {loc.location}\\n   File Path: {loc.markdown_path}\\n   Reasoning: {loc.reasoning}' for i, loc in enumerate(result.alternative_locations))}
 
 ADDITIONAL SUGGESTIONS:
 
