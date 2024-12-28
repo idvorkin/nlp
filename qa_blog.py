@@ -291,6 +291,43 @@ def ask(
     print(response)
 
 
+async def iask_where(topic: str):
+    prompt = ChatPromptTemplate.from_template(
+        """
+You are an expert blog organization consultant. You help Igor organize his blog content effectively.
+Use chain of thought reasoning to suggest where new content about a topic should be added.
+
+Topic to add: {topic}
+
+Here is the current blog structure and content for reference:
+{context}
+
+Think through this step by step:
+1. What is the main theme/purpose of this content?
+2. What existing categories/sections might be relevant?
+3. Are there similar topics already covered somewhere?
+4. Should this be its own post or part of existing content?
+
+Provide your recommendations in this format:
+
+**Recommended Locations:**
+1. [Primary Location] - Reasoning
+2. [Alternative Location] - Reasoning 
+
+**Additional Suggestions:**
+- Any tips about structuring/organizing the content
+- Whether to create new sections/tags
+    """
+    )
+    llm = langchain_helper.get_model(claude=True)
+    docs_and_scores = await g_blog_content_db.asimilarity_search_with_relevance_scores(
+        topic, k=8
+    )
+    facts_to_inject = [doc for doc, _ in docs_and_scores]
+    context = docs_to_prompt(facts_to_inject)
+    chain = prompt | llm | StrOutputParser()
+    return await chain.ainvoke({"topic": topic, "context": context})
+
 async def iask(
     question: str,
     facts: int,
@@ -515,6 +552,15 @@ Igor will enjoy this because ..
     await ctx.respond(".")
 
 
+@bot.command(name="where", description="Suggest where to add new blog content")
+async def where_to_add(ctx, topic: str):
+    await ctx.defer()
+    progress_bar_task = await draw_progress_bar(ctx, f"Analyzing where to add content about: {topic}")
+    response = await iask_where(topic)
+    progress_bar_task.cancel()
+    await send(ctx, response)
+    await ctx.respond(".")
+
 @bot.command(name="debug", description="Debug info the last call")
 async def debug(ctx):
     await ctx.defer()
@@ -545,6 +591,14 @@ Last documents:
 def app_wrap_loguru():
     app()
 
+
+@app.command()
+def where(
+    topic: Annotated[str, typer.Argument(help="Topic to find placement for")],
+):
+    """Suggest where to add new blog content about a topic"""
+    response = asyncio.run(iask_where(topic))
+    print(response)
 
 if __name__ == "__main__":
     app_wrap_loguru()
