@@ -376,12 +376,18 @@ File paths should always start with either "_d/" or "_posts/".
     response = f"""
 RECOMMENDED LOCATIONS:
 
-1. Primary Location: {result.primary_location.location}
-   File Path: {result.primary_location.markdown_path}
-   Reasoning: {result.primary_location.reasoning}
+PRIMARY LOCATION:
+File Path: {result.primary_location.markdown_path}
+Location: {result.primary_location.location}
+Reasoning: {result.primary_location.reasoning}
 
-Alternative Locations:
-{chr(10).join(f'{i+1}. {loc.location}\\n   File Path: {loc.markdown_path}\\n   Reasoning: {loc.reasoning}' for i, loc in enumerate(result.alternative_locations))}
+ALTERNATIVE LOCATIONS:
+
+{chr(10).join(f'''Location {i+1}:
+File Path: {loc.markdown_path}
+Location: {loc.location}
+Reasoning: {loc.reasoning}
+''' for i, loc in enumerate(result.alternative_locations))}
 
 ADDITIONAL SUGGESTIONS:
 
