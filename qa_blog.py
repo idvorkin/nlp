@@ -31,6 +31,18 @@ import discord_helper
 from pydantic import BaseModel
 
 
+class LocationRecommendation(BaseModel):
+    location: str
+    reasoning: str
+
+
+class BlogPlacementSuggestion(BaseModel):
+    primary_location: LocationRecommendation
+    alternative_locations: List[LocationRecommendation]
+    structuring_tips: List[str]
+    organization_tips: List[str]
+
+
 gpt_model = setup_gpt()
 server = FastAPI()
 
