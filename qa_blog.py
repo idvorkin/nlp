@@ -308,28 +308,55 @@ Think through this step by step:
 3. Are there similar topics already covered somewhere?
 4. Should this be its own post or part of existing content?
 
-Provide your recommendations in this format:
+Return your response as a JSON object matching this Pydantic model:
 
-RECOMMENDED LOCATIONS:
-1. Primary Location: [description]
-   Reasoning: [explanation]
+```python
+class LocationRecommendation:
+    location: str      # Where to put the content
+    reasoning: str     # Why this location makes sense
 
-2. Alternative Location: [description]
-   Reasoning: [explanation]
+class BlogPlacementSuggestion:
+    primary_location: LocationRecommendation
+    alternative_locations: List[LocationRecommendation]
+    structuring_tips: List[str]    # List of tips for content structure
+    organization_tips: List[str]    # List of tips for organization
+```
 
-ADDITIONAL SUGGESTIONS:
-• Structuring tips: [your suggestions]
-• Organization tips: [your suggestions]
+Ensure your response is valid JSON that matches this schema exactly.
     """
     )
+    
     llm = langchain_helper.get_model(claude=True)
     docs_and_scores = await g_blog_content_db.asimilarity_search_with_relevance_scores(
         topic, k=8
     )
     facts_to_inject = [doc for doc, _ in docs_and_scores]
     context = docs_to_prompt(facts_to_inject)
-    chain = prompt | llm | StrOutputParser()
-    return await chain.ainvoke({"topic": topic, "context": context})
+    
+    from langchain.output_parsers import PydanticOutputParser
+    parser = PydanticOutputParser(pydantic_object=BlogPlacementSuggestion)
+    
+    chain = prompt | llm | parser
+    result = await chain.ainvoke({"topic": topic, "context": context})
+    
+    response = f"""
+RECOMMENDED LOCATIONS:
+
+1. Primary Location: {result.primary_location.location}
+   Reasoning: {result.primary_location.reasoning}
+
+Alternative Locations:
+{chr(10).join(f'{i+1}. {loc.location}\\n   Reasoning: {loc.reasoning}' for i, loc in enumerate(result.alternative_locations))}
+
+ADDITIONAL SUGGESTIONS:
+
+Structuring Tips:
+{chr(10).join(f'• {tip}' for tip in result.structuring_tips)}
+
+Organization Tips:
+{chr(10).join(f'• {tip}' for tip in result.organization_tips)}
+"""
+    return response
 
 async def iask(
     question: str,
