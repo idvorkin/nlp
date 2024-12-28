@@ -50,10 +50,24 @@ app = typer.Typer(no_args_is_help=True)
 console = Console()
 
 bot = discord.Bot()
-chroma_db_dir = "blog.chroma.db"
+CHROMA_DB_NAME = "blog.chroma.db"
+DEFAULT_CHROMA_DB_DIR = CHROMA_DB_NAME
+ALTERNATE_CHROMA_DB_DIR = os.path.expanduser(f"~/gits/nlp/{CHROMA_DB_NAME}")
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 g_tracer: Optional[LangChainTracer] = None
 # embeddings = OpenAIEmbeddings()
+
+def get_chroma_db():
+    if os.path.exists(DEFAULT_CHROMA_DB_DIR):
+        db_dir = DEFAULT_CHROMA_DB_DIR
+    else:
+        ic(f"Using alternate blog database location: {ALTERNATE_CHROMA_DB_DIR}")
+        db_dir = ALTERNATE_CHROMA_DB_DIR
+        
+    if not os.path.exists(db_dir):
+        raise Exception(f"Blog database not found in {DEFAULT_CHROMA_DB_DIR} or {ALTERNATE_CHROMA_DB_DIR}")
+        
+    return Chroma(persist_directory=db_dir, embedding_function=embeddings)
 
 
 class DebugInfo(BaseModel):
@@ -205,7 +219,7 @@ def build():
 
     # Build the index and persist it
     # Weird, used to have a .save, now covered by persistant_directory
-    Chroma.from_documents(deduped_chunks, embeddings, persist_directory=chroma_db_dir)
+    Chroma.from_documents(deduped_chunks, embeddings, persist_directory=DEFAULT_CHROMA_DB_DIR)
 
 
 @app.command()
@@ -239,10 +253,7 @@ def fixup_markdown_path(src):
     return fixup_ig66_path_to_url(fixup_markdown_path_to_url(src))
 
 
-ic(chroma_db_dir)
-g_blog_content_db = Chroma(
-    persist_directory=chroma_db_dir, embedding_function=embeddings
-)
+g_blog_content_db = get_chroma_db()
 g_all_documents = g_blog_content_db.get()
 
 
