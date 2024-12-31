@@ -9,7 +9,7 @@ requires-python = "==3.12.*"
 dependencies = [
     "icecream",
     "ipython",
-    "ell-ai",
+    "ell-ai[sqlite]",
     "alembic", # Missing dependany in ell-ai
     "rich",
     "pydantic",

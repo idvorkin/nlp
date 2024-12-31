@@ -189,6 +189,7 @@ def gen_igor(
     ic(image)
     show(image)
     ic(image)
+    print (str(image))
 
 
 def make_grid_of_images(images):
