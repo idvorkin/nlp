@@ -350,8 +350,7 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
         
         overview += f"| {model_link} | {analysis_duration} | {summary_duration} | {analysis_kb} | {summary_kb} |\n"
     
-    # Add totals row with a separator line
-    overview += "|---------|-------------------|------------------|------------------|------------------|\n"
+    # Add totals row without separator
     overview += f"| **Total** | | | **{total_analysis_size:.1f}** | **{total_summary_size:.1f}** |\n"
     
     if analysis_body.exa_results:
