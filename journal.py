@@ -110,9 +110,11 @@ After the transcription, provide a **comprehensive analysis**:
 
 3. **Action Items**
    - A numbered list of tasks or follow-ups—especially those denoted by `[]` in the original text.
+   - When listing them, list them out with a ☐ if they need to be done, or a ☑ if completed
 
 4. **Coalesced Lists**
    - If certain items or lists (e.g., repeated YAB or TAB entries) appear multiple times, merge them into a single consolidated list.
+   - YAB lists shoudl be listed as 1. 1. 1.
 
 5. **Expanded Acronyms**
    - List any acronyms you expanded in the transcription (for verification).
