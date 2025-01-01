@@ -55,9 +55,17 @@ def app_wrap_loguru():
     app()
 
 
-def is_skip_file(file):
+def is_skip_file(file, only_pattern=None):
     if file.strip() == "":
         return True
+
+    # If only_pattern is specified, skip files that don't match the pattern
+    if only_pattern:
+        from fnmatch import fnmatch
+        if not fnmatch(file, only_pattern):
+            ic(f"Skip {file} as it doesn't match pattern {only_pattern}")
+            return True
+
     file_path = Path(file)
     # Verify the file exists before proceeding.
     if not file_path.exists():
@@ -89,6 +97,22 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash) -> Tuple[str,
         ic(f"File {file} does not exist or has been deleted.")
         return file, ""
 
+    # Get file size before and after to provide context
+    file_size_before = 0
+    file_size_after = Path(file).stat().st_size if Path(file).exists() else 0
+    
+    try:
+        # Try to get size of file in previous commit
+        size_cmd = await asyncio.create_subprocess_exec(
+            "git", "cat-file", "-s", f"{first_commit_hash}:{file}",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        stdout, _ = await size_cmd.communicate()
+        file_size_before = int(stdout.decode().strip()) if stdout else 0
+    except:
+        pass
+
     # Use nbdiff for Jupyter notebooks to ignore outputs
     if file.endswith(".ipynb"):
         diff_process = await asyncio.create_subprocess_exec(
@@ -117,10 +141,13 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash) -> Tuple[str,
 
     diff_content = stdout_diff.decode()
 
-    if len(diff_content) > 30_000:
+    if len(diff_content) > 100_000:
+        size_before_kb = file_size_before / 1024
+        size_after_kb = file_size_after / 1024
         return (
             file,
-            f"Diff skipped: size exceeds 30,000 characters (actual size: {len(diff_content)} characters)",
+            f"Diff skipped: size exceeds 100,000 characters (actual size: {len(diff_content):,} characters)\n"
+            f"File size changed from {size_before_kb:.1f}KB to {size_after_kb:.1f}KB"
         )
 
     return file, diff_content
@@ -146,6 +173,7 @@ def changes(
     claude: bool = True,
     google: bool = True,
     llama: bool = True,
+    only: str = None,
 ):
     llms = langchain_helper.get_models(openai=openai, claude=claude, google=google)
     
@@ -153,7 +181,7 @@ def changes(
     if llama:
         llms.append(langchain_helper.get_model(llama=True))
         
-    achanges_params = llms, before, after, gist
+    achanges_params = llms, before, after, gist, only
 
     # check if direcotry is in a git repo, if so go to the root of the repo
     is_git_repo = subprocess.run(
@@ -403,7 +431,7 @@ def TempDirectoryContext():
         yield temp_path
 
 
-async def achanges(llms: List[BaseChatModel], before, after, gist):
+async def achanges(llms: List[BaseChatModel], before, after, gist, only: str = None):
     ic("v 0.0.4")
     start = datetime.now()
     repo_info = get_repo_info(for_file_changes=True)
@@ -417,7 +445,7 @@ async def achanges(llms: List[BaseChatModel], before, after, gist):
     
     # Get updated changed files with correct commit hashes
     changed_files = await get_changed_files(first, last)
-    changed_files = [file for file in changed_files if not is_skip_file(file)]
+    changed_files = [file for file in changed_files if not is_skip_file(file, only)]
 
     # Get all file diffs in parallel
     file_diffs = await asyncio.gather(
