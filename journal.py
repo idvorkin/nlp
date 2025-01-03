@@ -96,6 +96,10 @@ Adhere to these rules meticulously:
      - **KB** → **Kettlebells**
      - **TGU** → **Turkish Get Up**
      - **PSC** → **Performance Summary Cycle = Calibrations at Meta**
+   - Do not expand the following acronyms:
+     - **CHOP** → Chat Oriented Programming
+     - **CHOW** → Chat Oriented Writing
+     - **CHOLI** → Chat Oriented Life Insights
 
 ---
 
