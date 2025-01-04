@@ -44,7 +44,7 @@ def fix(
         None, help="Port to run the ELL Studio on (only used with --studio)"
     ),
     file: Path = Option(None, help="Path to the file to be fixed"),
-    file: Path = Option(None, help="Path to the file to be fixed"),
+):
     """
     Fix text or launch the ELL Studio interface.
 
