@@ -33,7 +33,7 @@ def prompt_fix(user_text: str):
     Don't change any meanings
     Fix all the supplied text
     Do not change wrapping
-    """
+):
     return user_text  # This will be the user prompt
 
 
@@ -42,7 +42,9 @@ def fix(
     studio: bool = Option(False, help="Launch the ELL Studio interface"),
     port: int = Option(
         None, help="Port to run the ELL Studio on (only used with --studio)"
-    ),
+    port: int = Option(
+        None, help="Port to run the ELL Studio on (only used with --studio)"
+    file: Path = Option(None, help="Path to the file to be fixed"),
     ),
     file: Path = Option(None, help="Path to the file to be fixed"),
     """
