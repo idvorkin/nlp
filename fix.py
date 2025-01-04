@@ -33,7 +33,7 @@ def prompt_fix(user_text: str):
     Don't change any meanings
     Fix all the supplied text
     Do not change wrapping
-):
+    """
     return user_text  # This will be the user prompt
 
 
