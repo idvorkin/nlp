@@ -55,7 +55,7 @@ Adhere to these rules meticulously:
    - Expand abbreviations only when highly confident of the intended meaning.
 
 3. **Formatting**
-   - **Bullets & Numbering**: Preserve bullet points and numbering from the source.
+   - **Bullets & Numbering**: Preserve bullet points and use sequential numbering (1, 2, 3, etc.) for numbered lists.
    - **Tables**: Present tabular data in [Markdown table format](https://www.google.com/search?q=how+to+create+markdown+tables). For example:
      ```
      | Column 1     | Column 2 | Column 3     |
@@ -64,7 +64,6 @@ Adhere to these rules meticulously:
      | Hello World  | 123      | 456          |
      ```
    - **Line Wrapping**: Use ~120 characters per line. Merge multiple short lines from the same paragraph into one line.
-   - **Markdown Numbering**: Convert any numbered list to the format `1. 1. 1.` rather than `1. 2. 3.` if the original text uses sequential numbering.
    - **Tables Where Possible**: If a section of text naturally fits a tabular layout, convert it into a Markdown table.
 
 4. **Uncertainty**
@@ -96,6 +95,7 @@ Adhere to these rules meticulously:
      - **KB** → **Kettlebells**
      - **TGU** → **Turkish Get Up**
      - **PSC** → **Performance Summary Cycle = Calibrations at Meta**
+     - **PW** → **Psychic Weight**
    - Do not expand the following acronyms:
      - **CHOP** → Chat Oriented Programming
      - **CHOW** → Chat Oriented Writing
@@ -111,19 +111,27 @@ After the transcription, provide a **comprehensive analysis**:
 
 2. **Key Insights**
    - Noteworthy observations or interpretations.
+   - If any Psychic Weight (PW) items are mentioned, highlight these specifically as they represent mental burdens or tasks weighing on the mind.
 
 3. **Action Items**
    - A numbered list of tasks or follow-ups—especially those denoted by `[]` in the original text.
    - When listing them, list them out with a ☐ if they need to be done, or a ☑ if completed
 
-4. **Coalesced Lists**
-   - If certain items or lists (e.g., repeated YAB or TAB entries) appear multiple times, merge them into a single consolidated list.
-   - YAB lists shoudl be listed as 1. 1. 1.
+4. **Psychic Weight Items**
+   - List all Psychic Weight (PW) items mentioned in the document
+   - For each PW item, include:
+     - The context it was mentioned in
+     - Current status or resolution (if mentioned)
+     - Any related action items or dependencies
 
-5. **Expanded Acronyms**
+5. **Coalesced Lists**
+   - If certain items or lists (e.g., repeated YAB or TAB entries) appear multiple times, merge them into a single consolidated list.
+   - Use sequential numbering (1, 2, 3, etc.) for all numbered lists.
+
+6. **Expanded Acronyms**
    - List any acronyms you expanded in the transcription (for verification).
 
-6. **Proper Nouns**
+7. **Proper Nouns**
    - List any proper nouns identified in the document.
 
 ---
@@ -193,7 +201,9 @@ def gemini_transcribe(pdf_path: str):
 
 
 @app.command()
-def transcribe(pdf: str = typer.Argument(..., help="Path or URL to pdf file to transcribe")):
+def transcribe(
+    pdf: str = typer.Argument(..., help="Path or URL to pdf file to transcribe"),
+):
     """Transcribe handwritten text from a PDF file or URL"""
 
     # Check if input is a URL
@@ -202,7 +212,7 @@ def transcribe(pdf: str = typer.Argument(..., help="Path or URL to pdf file to t
 
     if is_url:
         # Create a temporary file
-        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=True) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as tmp_file:
             # Download the file
             response = requests.get(pdf)
             response.raise_for_status()  # Raise exception for bad status codes
