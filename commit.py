@@ -19,13 +19,16 @@ from openai_wrapper import num_tokens_from_string
 
 def prompt_summarize_diff(diff_output):
     instructions = """
-You are an expert programmer, write a descriptive and informative commit message for a recent code change, which is presented as the output of git diff --staged.
+You are an expert programmer, write a descriptive and informative commit message following the Conventional Commits format for a recent code change, which is presented as the output of git diff --staged.
 
 ## Instructions
-* Start with a commit 1 line summary. Be concise, but informative.
-* Then add details,
+* Start with a commit summary following Conventional Commits format: type(scope): description
+    * Type must be one of: feat, fix, docs, style, refactor, perf, test, build, ci, chore
+    * Scope is optional and should be the main component being changed
+    * Description should be concise but informative, using imperative mood
+* Then add details in the body, separated by a blank line
 * If you see bugs, start at the top of the file with
-* When listing  changes,
+* When listing changes,
     * Put them in the order of importance
     * Use unnumbered lists as the user will want to reorder them
 * If you see any of the following, skip them, or at most list them last as a single line
@@ -34,13 +37,17 @@ You are an expert programmer, write a descriptive and informative commit message
     * Changes to comments
 
 Example:
-Descriptive message
+feat(auth): add OAuth2 authentication flow
+
 ### BUGS: (Only include if bugs are seen)
     * List bugs
 ### Reason for change
     * reason
 ### Details
     * details
+
+BREAKING CHANGE: (include only for breaking changes)
+    * List breaking changes
 """
     return ChatPromptTemplate.from_messages(
         [
