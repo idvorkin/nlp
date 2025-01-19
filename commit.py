@@ -17,8 +17,23 @@ import langchain_helper
 from openai_wrapper import num_tokens_from_string
 
 
-def prompt_summarize_diff(diff_output):
-    instructions = """
+def prompt_summarize_diff(diff_output, oneline=False):
+    if oneline:
+        instructions = """
+You are an expert programmer, write a single-line commit message following the Conventional Commits format for a recent code change, which is presented as the output of git diff --staged.
+
+The commit message should follow this format exactly:
+type(scope): description
+
+Where:
+* Type must be one of: feat, fix, docs, style, refactor, perf, test, build, ci, chore
+* Scope is optional and should be the main component being changed
+* Description should be concise but informative, using imperative mood
+
+Do not include any additional details, line breaks, or explanations. Just the single line.
+"""
+    else:
+        instructions = """
 You are an expert programmer, write a descriptive and informative commit message following the Conventional Commits format for a recent code change, which is presented as the output of git diff --staged.
 
 ## Instructions
@@ -57,27 +72,30 @@ BREAKING CHANGE: (include only for breaking changes)
     )
 
 
-async def a_build_commit():
-    llms = langchain_helper.get_models(openai=True, claude=True)
-
+async def a_build_commit(oneline: bool = False):
     user_text = "".join(sys.stdin.readlines())
-    tokens = num_tokens_from_string(user_text)
-
-    if tokens < 8000:
-        llms += [langchain_helper.get_model(llama=True)]
-
-    if tokens < 4000:
-        llms += [langchain_helper.get_model(llama=True)]
+    
+    if oneline:
+        # For oneline, just use Llama
+        llms = [langchain_helper.get_model(llama=True)]
+    else:
+        llms = langchain_helper.get_models(openai=True, claude=True)
+        tokens = num_tokens_from_string(user_text)
+        if tokens < 8000:
+            llms += [langchain_helper.get_model(llama=True)]
+        if tokens < 4000:
+            llms += [langchain_helper.get_model(llama=True)]
 
     def describe_diff(llm: BaseChatModel):
-        return prompt_summarize_diff(user_text) | llm
+        return prompt_summarize_diff(user_text, oneline) | llm
 
     describe_diffs = await langchain_helper.async_run_on_llms(describe_diff, llms)
 
     for description, llm, duration in describe_diffs:
-        print(
-            f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
-        )
+        if not oneline:
+            print(
+                f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
+            )
         print(description.content)
 
 
@@ -93,9 +111,10 @@ def app_wrap_loguru():
 @app.command()
 def build_commit(
     trace: bool = False,
+    oneline: bool = typer.Option(False, "--oneline", help="Generate a single-line commit message using Llama only"),
 ):
     langchain_helper.langsmith_trace_if_requested(
-        trace, lambda: asyncio.run(a_build_commit())
+        trace, lambda: asyncio.run(a_build_commit(oneline))
     )
 
 
