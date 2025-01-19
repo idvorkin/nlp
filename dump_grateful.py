@@ -17,12 +17,24 @@ app = typer.Typer(no_args_is_help=True)
 
 
 def extractListItem(listItem):
-    # find numbered lists
-    matches = re.findall("\\d\\.\\s*(.*)", listItem)
+    if not listItem or not isinstance(listItem, str):
+        return []
 
-    # only find the first - item
-    matches += re.findall("^\\s*-\\s*(.*)", listItem)
-    return matches
+    listItem = listItem.strip()
+    if not listItem:
+        return []
+
+    matches = []
+
+    # find items starting with a number followed by a period and whitespace (e.g., "1. item")
+    numbered_matches = re.findall(r"^\d+\.\s*(.*?)$", listItem)
+    matches.extend(m for m in numbered_matches if m)
+
+    # find items starting with a dash and optional whitespace (e.g., "- item" or " - item")
+    dash_matches = re.findall(r"^\s*[-•*]\s*(.*?)$", listItem)
+    matches.extend(m for m in dash_matches if m)
+
+    return [m.strip() for m in matches if m.strip()]
 
 
 def isSectionStart(line, section):
