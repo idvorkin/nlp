@@ -29,6 +29,7 @@ import discord
 from discord_helper import draw_progress_bar, get_bot_token, send
 import discord_helper
 from pydantic import BaseModel
+from pathlib import Path
 
 
 class LocationRecommendation(BaseModel):
@@ -58,16 +59,19 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 g_tracer: Optional[LangChainTracer] = None
 # embeddings = OpenAIEmbeddings()
 
+
 def get_chroma_db():
     if os.path.exists(DEFAULT_CHROMA_DB_DIR):
         db_dir = DEFAULT_CHROMA_DB_DIR
     else:
         ic(f"Using alternate blog database location: {ALTERNATE_CHROMA_DB_DIR}")
         db_dir = ALTERNATE_CHROMA_DB_DIR
-        
+
     if not os.path.exists(db_dir):
-        raise Exception(f"Blog database not found in {DEFAULT_CHROMA_DB_DIR} or {ALTERNATE_CHROMA_DB_DIR}")
-        
+        raise Exception(
+            f"Blog database not found in {DEFAULT_CHROMA_DB_DIR} or {ALTERNATE_CHROMA_DB_DIR}"
+        )
+
     return Chroma(persist_directory=db_dir, embedding_function=embeddings)
 
 
@@ -220,7 +224,9 @@ def build():
 
     # Build the index and persist it
     # Weird, used to have a .save, now covered by persistant_directory
-    Chroma.from_documents(deduped_chunks, embeddings, persist_directory=DEFAULT_CHROMA_DB_DIR)
+    Chroma.from_documents(
+        deduped_chunks, embeddings, persist_directory=DEFAULT_CHROMA_DB_DIR
+    )
 
 
 @app.command()
@@ -323,8 +329,16 @@ Use chain of thought reasoning to suggest where new content about a topic should
 
 Topic to add: {topic}
 
+Here is the current layout of the blog
+<blog_information>
+    {backlinks}
+</blog_information>
+
 Here is the current blog structure and content for reference:
+
+<blog_chunks>
 {context}
+</blog_chunks>
 
 Think through this step by step:
 1. What is the main theme/purpose of this content?
@@ -352,7 +366,7 @@ When suggesting locations, always include both the section within the file and t
 File paths should always start with either "_d/" or "_posts/".
     """
     )
-    
+
     llm = langchain_helper.get_model(claude=True)
     docs_and_scores = await g_blog_content_db.asimilarity_search_with_relevance_scores(
         topic, k=8
@@ -361,18 +375,24 @@ File paths should always start with either "_d/" or "_posts/".
         ic("Retrieved documents and scores:")
         for doc, score in docs_and_scores:
             ic(doc.metadata, score)
-        
+
     facts_to_inject = [doc for doc, _ in docs_and_scores]
     context = docs_to_prompt(facts_to_inject)
-    
+
     from langchain.output_parsers import PydanticOutputParser
+
     parser = PydanticOutputParser(pydantic_object=BlogPlacementSuggestion)
-    
+
     chain = prompt | llm | parser
-    result = await chain.ainvoke({"topic": topic, "context": context})
+    backlinks_content = (
+        Path.home() / "gits/idvorkin.github.io/back-links.json"
+    ).read_text()
+    result = await chain.ainvoke(
+        {"topic": topic, "context": context, "backlinks": backlinks_content}
+    )
     if debug:
         ic("LLM Response:", result)
-    
+
     response = f"""
 RECOMMENDED LOCATIONS:
 
@@ -398,6 +418,7 @@ Organization Tips:
 {chr(10).join(f'• {tip}' for tip in result.organization_tips)}
 """
     return response
+
 
 async def iask(
     question: str,
@@ -626,11 +647,14 @@ Igor will enjoy this because ..
 @bot.command(name="where", description="Suggest where to add new blog content")
 async def where_to_add(ctx, topic: str):
     await ctx.defer()
-    progress_bar_task = await draw_progress_bar(ctx, f"Analyzing where to add content about: {topic}")
+    progress_bar_task = await draw_progress_bar(
+        ctx, f"Analyzing where to add content about: {topic}"
+    )
     response = await iask_where(topic)
     progress_bar_task.cancel()
     await send(ctx, response)
     await ctx.respond(".")
+
 
 @bot.command(name="debug", description="Debug info the last call")
 async def debug(ctx):
@@ -671,6 +695,7 @@ def where(
     """Suggest where to add new blog content about a topic"""
     response = asyncio.run(iask_where(topic, debug))
     print(response)
+
 
 if __name__ == "__main__":
     app_wrap_loguru()
