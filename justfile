@@ -24,7 +24,11 @@ twillio-dev:
 
 # Install locally and globally
 install:
+    uv venv
+    . .venv/bin/activate
     uv pip install --editable .
+
+
 
 global-install: install
     @just install
