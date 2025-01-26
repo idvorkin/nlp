@@ -27,4 +27,4 @@ install:
     uv pip install --editable .
 
 global-install: install
-    pipxu install -f . --editable --python $(which python3.12)
+    uv pip install -f . --editable --python $(which python3.12)
