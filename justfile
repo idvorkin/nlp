@@ -28,4 +28,4 @@ install:
 
 global-install: install
     @just install
-    uv pip install -f . --editable . --python $(which python3.12)
+    uv tool install -f . --editable . --python $(which python3.12)
