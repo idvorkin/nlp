@@ -20,11 +20,11 @@ def get_model_name(model: BaseChatModel):
         model_name = model.model  # type: ignore
     else:
         model_name = str(model)
-    
+
     # Remove "models/" prefix if present
     if model_name.startswith("models/"):
         model_name = model_name[7:]  # Skip "models/"
-        
+
     return model_name
 
 
@@ -61,12 +61,13 @@ def get_model(
     claude: bool = False,
     llama: bool = False,
     google_think: bool = False,
+    deepseek: bool = False,
 ) -> BaseChatModel:
     """
     See changes in diff
     """
     # if more then one is true, exit and fail
-    count_true = sum([openai, google, claude, llama, google_think])
+    count_true = sum([openai, google, claude, llama, google_think, deepseek])
     if count_true > 1:
         print("Only one model can be selected")
         exit(1)
@@ -76,9 +77,11 @@ def get_model(
 
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
+
         model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp")
     elif google_think:
         from langchain_google_genai import ChatGoogleGenerativeAI
+
         model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-1219")
     elif claude:
         from langchain_anthropic import ChatAnthropic
@@ -88,6 +91,10 @@ def get_model(
         from langchain_groq import ChatGroq
 
         model = ChatGroq(model_name="llama-3.3-70b-versatile")
+    elif deepseek:
+        from langchain_groq import ChatGroq
+
+        model = ChatGroq(model_name="deepseek-r1-distill-llama-70b")
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
