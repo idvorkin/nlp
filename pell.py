@@ -58,6 +58,12 @@ def prompt_hello_groq(world: str):
     name = world.capitalize()
     return f"Say hello to {name}!"  # User prompt
 
+@ell.simple(model="deepseek-r1-distill-llama-70b")
+def prompt_hello_deepseek(world: str):
+    """You are a helpful assistant, make your answers insightful"""  # System prompt
+    name = world.capitalize()
+    return f"Say hello to {name}!"  # User prompt
+
 
 @ell.complex(model=get_ell_model(llama_vision=True))  # type: ignore
 def prompt_recognize_groq_image(image: Image.Image):
@@ -84,6 +90,12 @@ def prompt_hello_claude(name: str):
 def claude(name=typer.Argument("Claude", help="Name to greet")):
     # Call prompt_hello_claude function with the provided name and print the response
     response = prompt_hello_claude(name)
+    console.print(response)
+
+@app.command()
+def deepseek(name: str = typer.Argument("DeepSeek", help="Name to greet")):
+    # Call prompt_hello_deepseek function with the provided name and print the response
+    response = prompt_hello_deepseek(name)
     console.print(response)
 
 
