@@ -485,6 +485,8 @@ async def a_think(
     if gist:
         # Get the title to use in gist description
         gist_description = f"think - {title.strip('() ')}" if title else "think"
+        # Clean up description by removing any newlines and truncating if too long
+        gist_description = gist_description.replace('\n', ' ')[:100]
         # Use to_gist_multiple with description
         langchain_helper.to_gist_multiple(files_to_gist, description=gist_description)
     else:
