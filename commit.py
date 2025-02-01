@@ -56,8 +56,10 @@ feat(auth): add OAuth2 authentication flow
 
 **BUGS:** (Only include if bugs are seen)
     * List bugs
-BREAKING CHANGE:** (include only for breaking changes)
+
+**BREAKING CHANGE:** (include only for breaking changes)
     * List breaking changes
+
 **Reason for change**
     * reason 1
     * reason 2
@@ -115,8 +117,14 @@ def app_wrap_loguru():
 @app.command()
 def build_commit(
     trace: bool = False,
-    oneline: bool = typer.Option(False, "--oneline", help="Generate a single-line commit message using Llama only"),
-    fast: bool = typer.Option(False, "--fast", help="Use Llama only once for faster processing"),
+    oneline: bool = typer.Option(
+        False,
+        "--oneline",
+        help="Generate a single-line commit message using Llama only",
+    ),
+    fast: bool = typer.Option(
+        False, "--fast", help="Use Llama only once for faster processing"
+    ),
 ):
     langchain_helper.langsmith_trace_if_requested(
         trace, lambda: asyncio.run(a_build_commit(oneline, fast))
