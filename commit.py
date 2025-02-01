@@ -98,11 +98,15 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
     describe_diffs = await langchain_helper.async_run_on_llms(describe_diff, llms)
 
     for description, llm, duration in describe_diffs:
-        if not oneline:
+        print(description.content)
+        if not oneline and not fast:
             print(
                 f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
             )
-        print(description.content)
+        elif fast:
+            print(
+                f"\n# Generated using {langchain_helper.get_model_name(llm)} in {duration.total_seconds():.2f} seconds"
+            )
 
 
 console = Console()
