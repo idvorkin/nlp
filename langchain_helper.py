@@ -178,10 +178,15 @@ def langsmith_trace(the_call):
     wait_for_all_tracers()
 
 
-def to_gist_multiple(paths: List[Path]):
+def to_gist_multiple(paths: List[Path], description: str = ""):
     # Convert all paths to absolute paths and pass them as arguments
+    cmd = ["gh", "gist", "create"]
+    if description:
+        cmd.extend(["-d", description])
+    cmd.extend([str(path.absolute()) for path in paths])
+    
     gist = subprocess.run(
-        ["gh", "gist", "create"] + [str(path.absolute()) for path in paths],
+        cmd,
         check=True,
         stdout=subprocess.PIPE,
         text=True,

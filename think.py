@@ -483,8 +483,10 @@ async def a_think(
     files_to_gist = [overview_path, output_path] + model_summaries
 
     if gist:
-        # Use to_gist_multiple instead of to_gist
-        langchain_helper.to_gist_multiple(files_to_gist)
+        # Get the title to use in gist description
+        gist_description = f"think - {title.strip('() ')}" if title else "think"
+        # Use to_gist_multiple with description
+        langchain_helper.to_gist_multiple(files_to_gist, description=gist_description)
     else:
         print(overview_content)
         print(output_text)
