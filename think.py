@@ -228,8 +228,18 @@ Summary Duration: {summary_duration.total_seconds():.2f} seconds
         summary_path.write_text(summary_text)
         return summary_path, summary_duration, summary_content  # Return the summary content
     except Exception as e:
-        ic(f"Error generating summary for", model_name, e)
-        return None
+        ic(f"Error generating summary for {model_name}: {e}")
+        error_content = f"Error generating summary for {model_name}: {e}"
+        summary_path = output_dir / f"summary_{sanitize_filename(model_name)}_error.md"
+        summary_text = f"""# Model Summary by {model_name}
+{header}
+Analysis Duration: {analysis_duration.total_seconds():.2f} seconds
+Summary Duration: N/A
+
+{error_content}
+"""
+        summary_path.write_text(summary_text)
+        return summary_path, None, error_content
 
 
 
@@ -257,7 +267,14 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
             | StrOutputParser()
         )
 
-    analyzed_artifacts = await langchain_helper.async_run_on_llms(do_llm_think, llms)
+    analyzed_artifacts = []
+    for llm in llms:
+        try:
+            result = await langchain_helper.async_run_on_llms(do_llm_think, [llm])
+            analyzed_artifacts.append(result[0])  # Unpack the single result
+        except Exception as e:
+            ic(f"Error analyzing with {langchain_helper.get_model_name(llm)}: {e}")
+            analyzed_artifacts.append((f"Error analyzing with {langchain_helper.get_model_name(llm)}: {e}", llm, timedelta()))
 
     results = [
         AnalysisResult(analysis=analysis, llm=llm, duration=duration)
@@ -286,7 +303,11 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
     # Add Exa results if path exists
     exa_content = ""
     if path:
-        exa_content = exa_search(path)
+        try:
+            exa_content = exa_search(path)
+        except Exception as e:
+            ic(f"Error fetching Exa results: {e}")
+            exa_content = f"Error fetching Exa results: {e}"
         if exa_content:
             body += f"""
 <details>
@@ -510,21 +531,25 @@ def exa_search(query: str, num_results: int = 20) -> str:
     if not isinstance(query, str) or not query.startswith(("http://", "https://")):
         return ""
 
-    results = exa.find_similar_and_contents(
-        query,
-        num_results=num_results,
-        summary=True,
-        highlights={"num_sentance": 3, "highlights_per_url": 2},
-    )
+    try:
+        results = exa.find_similar_and_contents(
+            query,
+            num_results=num_results,
+            summary=True,
+            highlights={"num_sentance": 3, "highlights_per_url": 2},
+        )
 
-    search_results = ""
-    for result in results.results:
-        search_results += f"- [{result.title}]({result.url})\n"
-        search_results += f"  - {result.summary}\n"
-        for highlight in result.highlights:
-            search_results += f"      - {highlight}\n"
+        search_results = ""
+        for result in results.results:
+            search_results += f"- [{result.title}]({result.url})\n"
+            search_results += f"  - {result.summary}\n"
+            for highlight in result.highlights:
+                search_results += f"      - {highlight}\n"
 
-    return search_results
+        return search_results
+    except Exception as e:
+        ic(f"Error during Exa search: {e}")
+        return f"Error during Exa search: {e}"
 
 
 if __name__ == "__main__":
