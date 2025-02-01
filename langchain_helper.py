@@ -34,6 +34,7 @@ def get_models(
     claude: bool = False,
     llama: bool = False,
     google_think: bool = False,
+    deepseek: bool = False,
 ) -> List[BaseChatModel]:
     ret = []
 
@@ -48,6 +49,9 @@ def get_models(
 
     if llama:
         ret.append(get_model(llama=True))
+        
+    if deepseek:
+        ret.append(get_model(deepseek=True))
 
     if openai:
         ret.append(get_model(openai=True))
