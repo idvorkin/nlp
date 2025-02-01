@@ -149,6 +149,41 @@ def deepseek():
     print()  # Add final newline
 
 
+@app.command()
+def stdin(
+    o3: bool = typer.Option(False, "--o3", help="Use O3-mini model"),
+    deepseek: bool = typer.Option(False, "--deepseek", help="Use DeepSeek model"),
+    claude: bool = typer.Option(False, "--claude", help="Use Claude model"),
+    llama: bool = typer.Option(False, "--llama", help="Use Llama model"),
+    google: bool = typer.Option(False, "--google", help="Use Google model"),
+):
+    """Process stdin through the selected model and stream the output."""
+    user_text = "".join(sys.stdin.readlines())
+
+    # Get the appropriate model based on flags
+    model = langchain_helper.get_model(
+        o3_mini=o3,
+        deepseek=deepseek,
+        claude=claude,
+        llama=llama,
+        google=google,
+    )
+
+    # Create a simple prompt template
+    prompt = ChatPromptTemplate.from_messages(
+        [("system", "You are a helpful AI assistant."), ("human", "{input}")]
+    )
+
+    # Create chain with streaming
+    chain = prompt | model
+
+    # Stream the response
+    response = chain.stream({"input": user_text})
+    for chunk in response:
+        print(chunk.content, end="", flush=True)
+    print()  # Add final newline
+
+
 if __name__ == "__main__":
     ic("main")
     app_wrap_loguru()
