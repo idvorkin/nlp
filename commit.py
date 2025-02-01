@@ -101,11 +101,11 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
         print(description.content)
         if not oneline and not fast:
             print(
-                f"# -- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --"
+                f"*-- model: {langchain_helper.get_model_name(llm)} | {duration.total_seconds():.2f} seconds --*"
             )
         elif fast:
             print(
-                f"\n# Generated using {langchain_helper.get_model_name(llm)} in {duration.total_seconds():.2f} seconds"
+                f"\n*Generated using {langchain_helper.get_model_name(llm)} in {duration.total_seconds():.2f} seconds*"
             )
 
 
