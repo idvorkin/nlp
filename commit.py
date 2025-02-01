@@ -39,7 +39,7 @@ You are an expert programmer, write a descriptive and informative commit message
 ## Instructions
 * Start with a commit summary following Conventional Commits format: type(scope): description
     * Type must be one of: feat, fix, docs, style, refactor, perf, test, build, ci, chore
-    * Scope is optional and should be the main component being changed
+    * Scope is optional and should be the main component being changed, skip if only one file changed
     * Description should be concise but informative, using imperative mood
 * Then add details in the body, separated by a blank line
 * If you see bugs, start at the top of the file with
@@ -54,15 +54,16 @@ You are an expert programmer, write a descriptive and informative commit message
 Example:
 feat(auth): add OAuth2 authentication flow
 
-### BUGS: (Only include if bugs are seen)
+**BUGS:** (Only include if bugs are seen)
     * List bugs
-### Reason for change
-    * reason
-### Details
-    * details
-
-BREAKING CHANGE: (include only for breaking changes)
+BREAKING CHANGE:** (include only for breaking changes)
     * List breaking changes
+**Reason for change**
+    * reason 1
+    * reason 2
+**Details**
+    * details 1
+    * details 2
 """
     return ChatPromptTemplate.from_messages(
         [
@@ -74,7 +75,7 @@ BREAKING CHANGE: (include only for breaking changes)
 
 async def a_build_commit(oneline: bool = False):
     user_text = "".join(sys.stdin.readlines())
-    
+
     if oneline:
         # For oneline, just use Llama
         llms = [langchain_helper.get_model(llama=True)]
