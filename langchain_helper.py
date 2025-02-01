@@ -107,7 +107,7 @@ def get_model(
     elif o3_mini:
         from langchain_openai.chat_models import ChatOpenAI
 
-        model = ChatOpenAI(model="o3-mini-2025-01-31")
+        model = ChatOpenAI(model="o3-mini-2025-01-31", temperature=None)
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
