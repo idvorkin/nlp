@@ -107,7 +107,11 @@ def get_model(
     elif o3_mini:
         from langchain_openai.chat_models import ChatOpenAI
 
-        model = ChatOpenAI(model="o3-mini-2025-01-31", temperature=None)
+        model = ChatOpenAI(
+            model="o3-mini-2025-01-31",
+            temperature=None,
+            model_kwargs={"temperature": None}  # Ensure temperature is not passed at all
+        )
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
