@@ -367,7 +367,7 @@ File paths should always start with either "_d/" or "_posts/".
     """
     )
 
-    llm = langchain_helper.get_model(claude=True)
+    llm = langchain_helper.get_model(openai=True)
     docs_and_scores = await g_blog_content_db.asimilarity_search_with_relevance_scores(
         topic, k=8
     )
