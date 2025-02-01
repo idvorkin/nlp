@@ -387,7 +387,7 @@ async def a_think(
     output_dir = Path("~/tmp").expanduser()
     repo_info = get_repo_info()  # Default False for getting source file URL
     output_dir.mkdir(parents=True, exist_ok=True)
-    llms = langchain_helper.get_models(openai=True, claude=True, google=True, google_think=True)
+    llms = langchain_helper.get_models(openai=True, claude=True, google=True, google_think=True, deepseek=True, o3_mini=True)
 
     user_text = openai_wrapper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)
