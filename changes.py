@@ -723,7 +723,11 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
         files_to_gist = [overview_path] + list(summary_paths)
 
         if gist:
-            await asyncio.to_thread(langchain_helper.to_gist_multiple, files_to_gist)
+            # Create description using repo name and date range
+            gist_description = f"changes - {repo_info.name} ({after} to {before})"
+            # Clean up description by removing newlines and truncating if too long
+            gist_description = gist_description.replace('\n', ' ')[:100]
+            await asyncio.to_thread(langchain_helper.to_gist_multiple, files_to_gist, description=gist_description)
         else:
             print(overview_content)
             for result in analysis_results:
