@@ -35,6 +35,7 @@ def get_models(
     llama: bool = False,
     google_think: bool = False,
     deepseek: bool = False,
+    o3_mini: bool = False,
 ) -> List[BaseChatModel]:
     ret = []
 
@@ -53,6 +54,9 @@ def get_models(
     if deepseek:
         ret.append(get_model(deepseek=True))
 
+    if o3_mini:
+        ret.append(get_model(o3_mini=True))
+
     if openai:
         ret.append(get_model(openai=True))
 
@@ -66,12 +70,13 @@ def get_model(
     llama: bool = False,
     google_think: bool = False,
     deepseek: bool = False,
+    o3_mini: bool = False,
 ) -> BaseChatModel:
     """
     See changes in diff
     """
     # if more then one is true, exit and fail
-    count_true = sum([openai, google, claude, llama, google_think, deepseek])
+    count_true = sum([openai, google, claude, llama, google_think, deepseek, o3_mini])
     if count_true > 1:
         print("Only one model can be selected")
         exit(1)
@@ -99,6 +104,10 @@ def get_model(
         from langchain_groq import ChatGroq
 
         model = ChatGroq(model_name="deepseek-r1-distill-llama-70b")
+    elif o3_mini:
+        from langchain_openai.chat_models import ChatOpenAI
+
+        model = ChatOpenAI(model="o3-mini-2025-01-31")
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
