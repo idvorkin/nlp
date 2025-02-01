@@ -21,6 +21,7 @@ from github_helper import get_latest_github_commit_url, get_repo_info
 from langchain_core.language_models.chat_models import (
     BaseChatModel,
 )
+from langchain_community.chat_models import ChatOpenAI
 
 from loguru import logger
 from pydantic import BaseModel
@@ -287,16 +288,21 @@ def changes(
     gist: bool = True,
     openai: bool = True,
     claude: bool = True,
-    google: bool = True,
+    google: bool = False,
     llama: bool = True,
+    deepseek: bool = True,
+    o3_mini: bool = True,
     only: str = None,
     verbose: bool = False,
 ):
-    llms = langchain_helper.get_models(openai=openai, claude=claude, google=google)
-    
-    # Add llama only if requested
-    if llama:
-        llms.append(langchain_helper.get_model(llama=True))
+    llms = langchain_helper.get_models(
+        openai=openai,
+        claude=claude,
+        google=google,
+        deepseek=deepseek,
+        o3_mini=o3_mini,
+        llama=llama
+    )
         
     achanges_params = llms, before, after, gist, only, verbose
 
@@ -603,6 +609,14 @@ async def achanges(
     async def process_model(llm):
         model_start = datetime.now()
         max_parallel = asyncio.Semaphore(100)
+
+        # Remove temperature parameter for o3-mini model
+        if isinstance(llm, ChatOpenAI) and llm.model_name == 'o3-mini-2025-01-31':
+            llm.model_kwargs = {}  # Clear any default parameters like temperature
+
+        # Remove temperature parameter for o3-mini model
+        if isinstance(llm, ChatOpenAI) and llm.model_name == 'o3-mini-2025-01-31':
+            llm.model_kwargs = {}  # Clear any default parameters like temperature
 
         async def concurrent_llm_call(file, diff_content):
             if verbose:

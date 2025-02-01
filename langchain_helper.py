@@ -109,7 +109,7 @@ def get_model(
 
         model = ChatOpenAI(
             model="o3-mini-2025-01-31",
-            model_kwargs={}  # Initialize with empty model_kwargs
+            model_kwargs={}
         )
     else:
         from langchain_openai.chat_models import ChatOpenAI
