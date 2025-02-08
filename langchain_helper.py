@@ -36,11 +36,15 @@ def get_models(
     google_think: bool = False,
     deepseek: bool = False,
     o3_mini: bool = False,
+    google_flash: bool = False,
 ) -> List[BaseChatModel]:
     ret = []
 
     if google:
         ret.append(get_model(google=True))
+
+    if google_flash:
+        ret.append(get_model(google_flash=True))
 
     if google_think:
         ret.append(get_model(google_think=True))
@@ -71,12 +75,15 @@ def get_model(
     google_think: bool = False,
     deepseek: bool = False,
     o3_mini: bool = False,
+    google_flash: bool = False,
 ) -> BaseChatModel:
     """
     See changes in diff
     """
     # if more then one is true, exit and fail
-    count_true = sum([openai, google, claude, llama, google_think, deepseek, o3_mini])
+    count_true = sum(
+        [openai, google, claude, llama, google_think, deepseek, o3_mini, google_flash]
+    )
     if count_true > 1:
         print("Only one model can be selected")
         exit(1)
@@ -87,11 +94,15 @@ def get_model(
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
+        model = ChatGoogleGenerativeAI(model="gemini-2.0-pro-exp-02-05")
+    elif google_flash:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
         model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
     elif google_think:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-1219")
+        model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-01-21")
     elif claude:
         from langchain_anthropic import ChatAnthropic
 

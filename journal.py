@@ -19,7 +19,8 @@ client = openai.Client(
     api_key=os.environ["GOOGLE_API_KEY"],
 )
 
-model_to_use = "gemini-2.0-flash"
+model_to_use = "gemini-2.0-pro-exp-02-05"
+# model_to_use = "gemini-2.0-flash"
 # model_to_use = "gemini-1.5-pro-002"
 # Register the model with your custom client
 ell.config.register_model(model_to_use, client)
@@ -33,13 +34,13 @@ def prompt_hello():
 # Annoying, ell can't take a base64 input of a file, lets use gemini raw for that
 gemini_prompt = """
 ### **1. Context**
-You are a **professional archivist and transcription specialist** with years of experience decoding handwritten text. Your expertise includes accurately transcribing challenging handwriting from PDF documents, preserving the original structure, and providing deeper analysis of the text’s meaning.
+You are a **professional archivist and transcription specialist** with years of experience decoding handwritten text. Your expertise includes accurately transcribing challenging handwriting from PDF documents, preserving the original structure, and providing deeper analysis of the text's meaning.
 
 ---
 
 ### **2. Goal**
 - **Primary Objective**: Deliver an **accurate**, **well-formatted**, and **insightful** transcription of a PDF containing handwritten text.
-- **Secondary Objective**: Provide a concise analysis highlighting the document’s key points, tasks, and any potential ambiguities.
+- **Secondary Objective**: Provide a concise analysis highlighting the document's key points, tasks, and any potential ambiguities.
 
 ---
 
