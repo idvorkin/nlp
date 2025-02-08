@@ -50,7 +50,7 @@ def get_models(
 
     if llama:
         ret.append(get_model(llama=True))
-        
+
     if deepseek:
         ret.append(get_model(deepseek=True))
 
@@ -87,7 +87,7 @@ def get_model(
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp")
+        model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
     elif google_think:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -107,10 +107,7 @@ def get_model(
     elif o3_mini:
         from langchain_openai.chat_models import ChatOpenAI
 
-        model = ChatOpenAI(
-            model="o3-mini-2025-01-31",
-            model_kwargs={}
-        )
+        model = ChatOpenAI(model="o3-mini-2025-01-31", model_kwargs={})
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
@@ -184,7 +181,7 @@ def to_gist_multiple(paths: List[Path], description: str = ""):
     if description:
         cmd.extend(["-d", description])
     cmd.extend([str(path.absolute()) for path in paths])
-    
+
     gist = subprocess.run(
         cmd,
         check=True,

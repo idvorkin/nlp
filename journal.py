@@ -19,7 +19,7 @@ client = openai.Client(
     api_key=os.environ["GOOGLE_API_KEY"],
 )
 
-model_to_use = "gemini-2.0-flash-exp"
+model_to_use = "gemini-2.0-flash"
 # model_to_use = "gemini-1.5-pro-002"
 # Register the model with your custom client
 ell.config.register_model(model_to_use, client)
