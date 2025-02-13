@@ -10,6 +10,7 @@ import requests
 from pathlib import Path
 from icecream import ic
 from urllib.parse import urlparse
+import langchain_helper
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -19,9 +20,12 @@ client = openai.Client(
     api_key=os.environ["GOOGLE_API_KEY"],
 )
 
-model_to_use = "gemini-2.0-pro-exp-02-05"
-# model_to_use = "gemini-2.0-flash"
-# model_to_use = "gemini-1.5-pro-002"
+# Get model from langchain_helper
+model = langchain_helper.get_model(google=True)  # Use google=True for Gemini Pro
+model_to_use = langchain_helper.get_model_name(
+    model
+)  # Get model name using the helper function
+
 # Register the model with your custom client
 ell.config.register_model(model_to_use, client)
 
@@ -56,32 +60,35 @@ Adhere to these rules meticulously:
    - Expand abbreviations only when highly confident of the intended meaning.
 
 3. **Formatting**
+   - **Lists**: Pay special attention to YAB (Yesterday Awesome Because) and Grateful lists
+     - Format each YAB entry on a new line with a bullet point
+     - Format each Grateful entry on a new line with a bullet point
+     - Preserve the exact wording of each entry
    - **Bullets & Numbering**: Preserve bullet points and use sequential numbering (1, 2, 3, etc.) for numbered lists.
-   - **Tables**: Present tabular data in [Markdown table format](https://www.google.com/search?q=how+to+create+markdown+tables). For example:
-     ```
-     | Column 1     | Column 2 | Column 3     |
-     |--------------|----------|--------------|
-     | A            | B        | C            |
-     | Hello World  | 123      | 456          |
-     ```
+   - **Tables**: Present tabular data in [Markdown table format].
    - **Line Wrapping**: Use ~120 characters per line. Merge multiple short lines from the same paragraph into one line.
-   - **Tables Where Possible**: If a section of text naturally fits a tabular layout, convert it into a Markdown table.
 
 4. **Uncertainty**
    - Mark any unclear or guessed words with `[guess: <word>]`.
    - Mark truly illegible sections as `[illegible]`.
 
 5. **Page Breaks**
-   - Insert clear page breaks using:
-     ```
-     ---
-     Page: X of N
-     ---
-     ```
-   - If a date appears on the first line of a new page, incorporate it in the page header. Example:
-     ```
-     --- Page 1 of 10 - 2024-12-20 ---
-     ```
+   - Check PAGE_BREAKS parameter at start of transcription
+   - If PAGE_BREAKS is true:
+     - Insert clear page breaks using:
+       ```
+       ---
+       Page: X of N
+       ---
+       ```
+     - If a date appears on the first line of a new page, incorporate it in the page header. Example:
+       ```
+       --- Page 1 of 10 - 2024-12-20 ---
+       ```
+   - If PAGE_BREAKS is false:
+     - Do not include any page break markers
+     - Keep content as continuous text
+     - Still preserve paragraph breaks and section structure
 
 6. **Headings and Lists**
    - Preserve headings and subheadings wherever they appear.
@@ -112,27 +119,34 @@ After the transcription, provide a **comprehensive analysis**:
 
 2. **Key Insights**
    - Noteworthy observations or interpretations.
-   - If any Psychic Weight (PW) items are mentioned, highlight these specifically as they represent mental burdens or tasks weighing on the mind.
+   - If any Psychic Weight (PW) items are mentioned, highlight these specifically.
 
-3. **Action Items**
+3. **YAB and Grateful Analysis**
+   - List all YAB (Yesterday Awesome Because) entries in their original order
+   - List all Grateful entries in their original order
+   - Preserve the exact wording and sequence of each entry
+   - Do not group or categorize the entries
+   - Include any context or dates associated with the entries
+
+4. **Action Items**
    - A numbered list of tasks or follow-ups—especially those denoted by `[]` in the original text.
    - When listing them, list them out with a ☐ if they need to be done, or a ☑ if completed
 
-4. **Psychic Weight Items**
+5. **Psychic Weight Items**
    - List all Psychic Weight (PW) items mentioned in the document
    - For each PW item, include:
      - The context it was mentioned in
      - Current status or resolution (if mentioned)
      - Any related action items or dependencies
 
-5. **Coalesced Lists**
+6. **Coalesced Lists**
    - If certain items or lists (e.g., repeated YAB or TAB entries) appear multiple times, merge them into a single consolidated list.
    - Use sequential numbering (1, 2, 3, etc.) for all numbered lists.
 
-6. **Expanded Acronyms**
+7. **Expanded Acronyms**
    - List any acronyms you expanded in the transcription (for verification).
 
-7. **Proper Nouns**
+8. **Proper Nouns**
    - List any proper nouns identified in the document.
 
 ---
@@ -177,13 +191,16 @@ Heading Level 2
 # model_to_use = "gemini-1.5-pro-002"
 
 
-def gemini_transcribe(pdf_path: str):
+def gemini_transcribe(pdf_path: str, page_breaks: bool = False):
     import vertexai
     from vertexai.generative_models import GenerativeModel, Part
 
     pdf_data = Part.from_data(
         mime_type="application/pdf", data=Path(pdf_path).read_bytes()
     )
+
+    # Add page_breaks parameter to prompt
+    prompt = gemini_prompt + f"\nPAGE_BREAKS: {'true' if page_breaks else 'false'}"
 
     generation_config = {
         "max_output_tokens": 8192,
@@ -195,7 +212,7 @@ def gemini_transcribe(pdf_path: str):
     chat = model.start_chat()
     ic("starting", model_to_use)
     response = chat.send_message(
-        [gemini_prompt, pdf_data], generation_config=generation_config
+        [prompt, pdf_data], generation_config=generation_config
     )
     ic(response.usage_metadata)
     return response.text
@@ -204,6 +221,9 @@ def gemini_transcribe(pdf_path: str):
 @app.command()
 def transcribe(
     pdf: str = typer.Argument(..., help="Path or URL to pdf file to transcribe"),
+    page_breaks: bool = typer.Option(
+        False, "--page-breaks", help="Include page breaks in output"
+    ),
 ):
     """Transcribe handwritten text from a PDF file or URL"""
 
@@ -224,7 +244,7 @@ def transcribe(
 
             # Use the temporary file path
             full_path = tmp_file.name
-            response = gemini_transcribe(full_path)
+            response = gemini_transcribe(full_path, page_breaks)
             # File will be automatically deleted when the with block exits
     else:
         # Handle local file as before
@@ -232,7 +252,7 @@ def transcribe(
         if not os.path.exists(full_path):
             rich.print(f"[red]Error: File not found: {full_path}")
             raise typer.Exit(1)
-        response = gemini_transcribe(full_path)
+        response = gemini_transcribe(full_path, page_breaks)
 
     rich.print(response)
 
