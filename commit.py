@@ -88,7 +88,7 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
         # For oneline, just use Llama
         llms = [langchain_helper.get_model(llama=True)]
     else:
-        llms = langchain_helper.get_models(openai=True, claude=True, goole=True)
+        llms = langchain_helper.get_models(openai=True, claude=True, google=True)
         tokens = num_tokens_from_string(user_text)
         if tokens < 8000:
             llms += [langchain_helper.get_model(llama=True)]
