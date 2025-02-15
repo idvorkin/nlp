@@ -336,7 +336,7 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     overview = f"{header}\n\n"
     
     # Add analysis files link
-    overview += "- [Complete Analysis](#file-think-md)\n"
+    overview += "- [Complete Analysis](#file-b_think-md)\n"
     
     # Add timing breakdown table without a header
     overview += "\n| Model | Analysis (seconds) | Summary (seconds) | Analysis Size (KB) | Summary Size (KB) |\n"
@@ -377,7 +377,7 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
     if analysis_body.exa_results:
         overview += "\n| Source | Content |\n"
         overview += "|--------|----------|\n"
-        overview += "| Exa Search | See [Complete Analysis](#file-think-md) |\n"
+        overview += "| Exa Search | See [Complete Analysis](#file-b_think-md) |\n"
     
     return overview
 
@@ -426,7 +426,7 @@ async def a_think(
     output_text = header + "\n" + analysis_body.body
 
     # Create the main analysis file
-    output_path = output_dir / "think.md"
+    output_path = output_dir / "b_think.md"
     output_path.write_text(output_text)
 
     # Run all model summaries in parallel
