@@ -15,7 +15,6 @@ from rich import print
 from rich.console import Console
 import langchain_helper
 from openai_wrapper import num_tokens_from_string
-from pathlib import Path
 
 # Disable Rich's line wrapping
 console = Console(width=10000)
@@ -33,17 +32,17 @@ def filter_diff_content(diff_output: str) -> str:
     lines = diff_output.splitlines()
     filtered_lines = []
     skip_current_file = False
-    
+
     for line in lines:
-        if line.startswith('diff --git'):
+        if line.startswith("diff --git"):
             # Extract file path from diff header
-            file_path = line.split(' b/')[-1]
+            file_path = line.split(" b/")[-1]
             skip_current_file = should_skip_file(file_path)
-        
+
         if not skip_current_file:
             filtered_lines.append(line)
-    
-    return '\n'.join(filtered_lines)
+
+    return "\n".join(filtered_lines)
 
 
 def prompt_summarize_diff(diff_output, oneline=False):
@@ -110,8 +109,8 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
     filtered_text = filter_diff_content(user_text)
 
     if fast:
-        # Use Llama only once for fast mode
-        llms = [langchain_helper.get_model(llama=True)]
+        # Use R1 (deepseek) only once for fast mode
+        llms = [langchain_helper.get_model(deepseek=True)]
     elif oneline:
         # For oneline, just use Llama
         llms = [langchain_helper.get_model(llama=True)]
