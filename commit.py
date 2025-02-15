@@ -110,16 +110,16 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
 
     if fast:
         # Use R1 (deepseek) only once for fast mode
-        llms = [langchain_helper.get_model(deepseek=True)]
+        llms = [langchain_helper.get_model(llama=True)]
     elif oneline:
         # For oneline, just use Llama
         llms = [langchain_helper.get_model(llama=True)]
     else:
-        llms = langchain_helper.get_models(openai=True, claude=True, google=True)
+        llms = langchain_helper.get_models(
+            openai=True, claude=True, google=True, o3_mini=True
+        )
         tokens = num_tokens_from_string(filtered_text)
         if tokens < 8000:
-            llms += [langchain_helper.get_model(llama=True)]
-        if tokens < 4000:
             llms += [langchain_helper.get_model(llama=True)]
 
     def describe_diff(llm: BaseChatModel):
