@@ -119,7 +119,7 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
             openai=True, claude=True, google=True, o3_mini=True
         )
         tokens = num_tokens_from_string(filtered_text)
-        if tokens < 8000:
+        if tokens < 32_000:
             llms += [langchain_helper.get_model(llama=True)]
 
     def describe_diff(llm: BaseChatModel):
