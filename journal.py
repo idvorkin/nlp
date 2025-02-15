@@ -254,7 +254,12 @@ def transcribe(
             raise typer.Exit(1)
         response = gemini_transcribe(full_path, page_breaks)
 
-    rich.print(response)
+    # Print to console
+    print(response)
+
+    # Also write to ~/tmp/journal.md
+    output_path = Path.home() / "tmp" / "journal.md"
+    output_path.write_text(response)
 
 
 if __name__ == "__main__":
