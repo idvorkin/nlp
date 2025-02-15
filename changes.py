@@ -577,6 +577,7 @@ async def achanges(
         ic("v 0.0.4")
     start = datetime.now()
     repo_info = get_repo_info(for_file_changes=True)
+    repo_path = Path.cwd()
     
     # Add file operation semaphore
     file_semaphore = asyncio.Semaphore(50)  # Limit concurrent file operations
