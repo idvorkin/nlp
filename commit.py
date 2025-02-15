@@ -15,9 +15,35 @@ from rich import print
 from rich.console import Console
 import langchain_helper
 from openai_wrapper import num_tokens_from_string
+from pathlib import Path
 
 # Disable Rich's line wrapping
 console = Console(width=10000)
+
+
+def should_skip_file(file_path: str) -> bool:
+    """Check if a file should be skipped in the diff processing."""
+    if "cursor-logs" in file_path:
+        return True
+    return False
+
+
+def filter_diff_content(diff_output: str) -> str:
+    """Filter out diffs from files that should be skipped."""
+    lines = diff_output.splitlines()
+    filtered_lines = []
+    skip_current_file = False
+    
+    for line in lines:
+        if line.startswith('diff --git'):
+            # Extract file path from diff header
+            file_path = line.split(' b/')[-1]
+            skip_current_file = should_skip_file(file_path)
+        
+        if not skip_current_file:
+            filtered_lines.append(line)
+    
+    return '\n'.join(filtered_lines)
 
 
 def prompt_summarize_diff(diff_output, oneline=False):
@@ -80,6 +106,8 @@ feat(auth): add OAuth2 authentication flow
 
 async def a_build_commit(oneline: bool = False, fast: bool = False):
     user_text = "".join(sys.stdin.readlines())
+    # Filter out diffs from files that should be skipped
+    filtered_text = filter_diff_content(user_text)
 
     if fast:
         # Use Llama only once for fast mode
@@ -89,14 +117,14 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
         llms = [langchain_helper.get_model(llama=True)]
     else:
         llms = langchain_helper.get_models(openai=True, claude=True, google=True)
-        tokens = num_tokens_from_string(user_text)
+        tokens = num_tokens_from_string(filtered_text)
         if tokens < 8000:
             llms += [langchain_helper.get_model(llama=True)]
         if tokens < 4000:
             llms += [langchain_helper.get_model(llama=True)]
 
     def describe_diff(llm: BaseChatModel):
-        return prompt_summarize_diff(user_text, oneline) | llm
+        return prompt_summarize_diff(filtered_text, oneline) | llm
 
     describe_diffs = await langchain_helper.async_run_on_llms(describe_diff, llms)
 

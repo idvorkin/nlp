@@ -75,6 +75,12 @@ def is_skip_file(file, only_pattern=None, verbose=False):
             ic(f"File {file} does not exist or has been deleted.")
         return True
 
+    # Skip cursor-logs directory
+    if "cursor-logs" in str(file_path):
+        if verbose:
+            ic(f"Skip cursor-logs file: {file}")
+        return True
+
     # Skip binary and media files
     binary_extensions = {
         # Images
@@ -627,7 +633,7 @@ async def achanges(
                     ic(f"++ LLM call start: {file} with {langchain_helper.get_model_name(llm)}")
                 result = await (
                     prompt_summarize_diff(
-                        file, diff_content, repo_path=repo_info.url, end_rev=last
+                        file, diff_content, repo_path=repo_path, end_rev=last
                     )
                     | llm
                 ).ainvoke({})
