@@ -75,10 +75,10 @@ def is_skip_file(file, only_pattern=None, verbose=False):
             ic(f"File {file} does not exist or has been deleted.")
         return True
 
-    # Skip cursor-logs directory
-    if "cursor-logs" in str(file_path):
+    # Skip cursor-logs and chop-logs directories
+    if "cursor-logs" in str(file_path) or "chop-logs" in str(file_path):
         if verbose:
-            ic(f"Skip cursor-logs file: {file}")
+            ic(f"Skip logs file: {file}")
         return True
 
     # Skip binary and media files

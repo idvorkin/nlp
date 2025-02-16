@@ -22,7 +22,7 @@ console = Console(width=10000)
 
 def should_skip_file(file_path: str) -> bool:
     """Check if a file should be skipped in the diff processing."""
-    if "cursor-logs" in file_path:
+    if "cursor-logs" in file_path or "chop-logs" in file_path:
         return True
     return False
 
