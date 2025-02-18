@@ -97,3 +97,6 @@ tags
 .aider*
 .env
 .specstory/
+
+# Private individual user cursor rules
+.cursor/rules/_*.mdc
