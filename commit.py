@@ -74,6 +74,10 @@ You are an expert programmer, write a descriptive and informative commit message
 * When listing changes,
     * Put them in the order of importance
     * Use unnumbered lists as the user will want to reorder them
+* If any changes involve Cursor rules (files in .cursor/rules/ or with .mdc extension), include a special section:
+    **Cursor Rules Changes**
+    * List each rule change with its version update (if applicable)
+    * Include the impact of the rule change
 * If you see any of the following, skip them, or at most list them last as a single line
     * Changes to formatting/whitespace
     * Changes to imports
@@ -87,6 +91,9 @@ feat(auth): add OAuth2 authentication flow
 
 **BREAKING CHANGE:** (include only for breaking changes)
     * List breaking changes
+
+**Cursor Rules Changes:** (include only for cursor rule changes)
+    * Update rule-name (v1.2.0 -> v1.3.0): Brief description of change and impact
 
 **Reason for change**
     * reason 1
