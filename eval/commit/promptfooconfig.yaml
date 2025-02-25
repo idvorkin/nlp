@@ -1,16 +1,16 @@
 # This configuration compares LLM output of 2 prompts x 2 GPT models across 3 test cases.
 # Learn more: https://promptfoo.dev/docs/configuration/guide
-description: 'My first eval'
+description: "My first eval"
 
 prompts:
   - diff_commit.json
 
 providers:
   - openai:chat:gpt-4-0125-preview
-  - anthropic:messages:claude-3-5-sonnet-20241022
+  - anthropic:messages:claude-3-7-sonnet-20250219
   - openai:chat:gpt-3.5-turbo
 
 tests:
-    assert:
-      - type: llm-rubric
-        value: ensure the documents are merged well, and there is nothing beyond the merge documents included
+  assert:
+    - type: llm-rubric
+      value: ensure the documents are merged well, and there is nothing beyond the merge documents included

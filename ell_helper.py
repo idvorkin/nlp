@@ -31,7 +31,7 @@ def init_ell():
     anthropic = Anthropic()
     # Add the deepseek model registration
     ell.config.register_model("deepseek-r1-distill-llama-70b", default_client=groq)
-    ell.config.register_model("claude-3-5-sonnet-20241022", default_client=anthropic)
+    ell.config.register_model("claude-3-7-sonnet-20250219", default_client=anthropic)
 
 
 def get_ell_model(
@@ -57,7 +57,7 @@ def get_ell_model(
     if google:
         raise NotImplementedError("google")
     elif claude:
-        return "claude-3-5-sonnet-20241022"
+        return "claude-3-7-sonnet-20250219"
     elif llama_vision:
         return "llama-3.2-90b-vision-preview"
     elif llama:
@@ -117,7 +117,6 @@ def run_studio(port=None):
         ic(f"Error: {e}")
     except Exception as e:
         ic(f"An unexpected error occurred: {e}")
-
 
 
 #  Todo- dedup with the one in langhchain helper

@@ -106,7 +106,7 @@ def get_model(
     elif claude:
         from langchain_anthropic import ChatAnthropic
 
-        model = ChatAnthropic(model_name="claude-3-5-sonnet-20241022")
+        model = ChatAnthropic(model_name="claude-3-7-sonnet-20250219")
     elif llama:
         from langchain_groq import ChatGroq
 
