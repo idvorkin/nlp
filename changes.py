@@ -295,6 +295,7 @@ def changes(
     openai: bool = True,
     claude: bool = True,
     google: bool = False,
+    google_flash: bool = True,
     llama: bool = True,
     deepseek: bool = True,
     o3_mini: bool = True,
@@ -305,6 +306,7 @@ def changes(
         openai=openai,
         claude=claude,
         google=google,
+        google_flash=google_flash,
         deepseek=deepseek,
         o3_mini=o3_mini,
         llama=llama
