@@ -21,85 +21,85 @@ _\*\*\*\*_
         
 | File | Line | Match |
 |------|------|-------|
-| `file:///Users/idvorkin/gits/nlp/eval/eng-feedback/pf-eng-feedback.yaml` | L3 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/pf_markdown-merge.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/prompts.py` | L28 | `# super annoying, claude can't handle this pattern, must get translsated in LC somewhere.` |
-| `file:///Users/idvorkin/gits/nlp/words.txt` | L9231 | `claudette` |
-| `file:///Users/idvorkin/gits/nlp/words.txt` | L20527 | `claude` |
-| `file:///Users/idvorkin/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/qa_blog.py` | L611 | `llm = langchain_helper.get_model(claude=True)` |
-| `file:///Users/idvorkin/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/commit/diff_commit.json` | L6 | `⟪ 1572 characters skipped ⟫alse,\n+    google: bool = False,\n+    claude: bool = False,\n+        ):\n+    user_text = remove_trailing_spaces(\"\".join(sys.stdin.readlines()))\n+    system_prompt = \"\"\"\n+    \"\"\"\n+    llm = langchain_helper.get_model(openai=openai, google=google, claude=claude)\n+    prompt_summarize_diff(user_text)\n+    output = (llm | prompt_summarize_diff(user_text)).invoke({}).result\n+    print (output)\n+\n+\n+if __name__ == \"__main__\":\n+    ic(\"main\")\n+` |
-| `file:///Users/idvorkin/gits/nlp/eval/depressed_programmer/pf-depressed-programmer.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/life.py` | L205 | `claude: Annotated[` |
-| `file:///Users/idvorkin/gits/nlp/life.py` | L245 | `langchain_helper.get_model(claude=True)` |
-| `file:///Users/idvorkin/gits/nlp/life.py` | L246 | `if claude` |
-| `file:///Users/idvorkin/gits/nlp/play_langchain.py` | L155 | `claude: bool = typer.Option(False, "--claude", help="Use Claude model"),` |
-| `file:///Users/idvorkin/gits/nlp/play_langchain.py` | L166 | `claude=claude,` |
-| `file:///Users/idvorkin/gits/nlp/pell.py` | L81 | `@ell.simple(model=get_ell_model(claude=True), max_tokens=4000)  # type: ignore` |
-| `file:///Users/idvorkin/gits/nlp/pell.py` | L82 | `def prompt_hello_claude(name: str):` |
-| `file:///Users/idvorkin/gits/nlp/pell.py` | L89 | `def claude(name=typer.Argument("Claude", help="Name to greet")):` |
-| `file:///Users/idvorkin/gits/nlp/pell.py` | L90 | `# Call prompt_hello_claude function with the provided name and print the response` |
-| `file:///Users/idvorkin/gits/nlp/pell.py` | L91 | `response = prompt_hello_claude(name)` |
-| `file:///Users/idvorkin/gits/nlp/openai_wrapper.py` | L185 | `claude: bool = False,` |
-| `file:///Users/idvorkin/gits/nlp/openai_wrapper.py` | L192 | `count_true = sum([openai, google, claude, llama, openai_cheap])` |
-| `file:///Users/idvorkin/gits/nlp/openai_wrapper.py` | L202 | `elif claude:` |
-| `file:///Users/idvorkin/gits/nlp/openai_wrapper.py` | L203 | `return "claude-3-5-sonnet-20241022"` |
-| `file:///Users/idvorkin/gits/nlp/prompts.py` | L28 | `# super annoying, claude can't handle this pattern, must get translsated in LC somewhere.` |
-| `file:///Users/idvorkin/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L10 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/generate-chats/promptfooconfig.yaml` | L6 | `- anthropic:messages:claude-3-sonnet-20240229` |
-| `file:///Users/idvorkin/gits/nlp/1` | L185 | `claude: bool = False,` |
-| `file:///Users/idvorkin/gits/nlp/1` | L192 | `count_true = sum([openai, google, claude, llama, openai_cheap])` |
-| `file:///Users/idvorkin/gits/nlp/1` | L202 | `elif claude:` |
-| `file:///Users/idvorkin/gits/nlp/1` | L203 | `return "claude-3-5-sonnet-20240620"` |
-| `file:///Users/idvorkin/gits/nlp/think.py` | L389 | `llms = langchain_helper.get_models(openai=True, claude=True, google=True, google_think=True, deepseek=True, o3_mini=True, google_flash=True)` |
-| `file:///Users/idvorkin/gits/nlp/commit.py` | L125 | `openai=True, claude=True, google=True, o3_mini=True` |
-| `file:///Users/idvorkin/gits/nlp/pyproject.toml` | L29 | `"langchain_anthropic",` |
-| `file:///Users/idvorkin/gits/nlp/docker_qa_bot` | L3 | `-e "ANTHROPIC_API_KEY=$(jq -r '.ANTHROPIC_API_KEY' ~/gits/igor2/secretBox.json)"  \` |
-| `file:///Users/idvorkin/gits/nlp/pchanges.py` | L152 | `claude: bool = False,` |
-| `file:///Users/idvorkin/gits/nlp/pchanges.py` | L161 | `openai=openai, google=google, claude=claude, llama=llama` |
-| `file:///Users/idvorkin/gits/nlp/pchanges.py` | L234 | `@ell.simple(model=get_ell_model(claude=True))` |
-| `file:///Users/idvorkin/gits/nlp/pchanges.py` | L432 | `api_params=dict(max_tokens=8_000),  # anthropic needs max tokens ??` |
-| `file:///Users/idvorkin/gits/nlp/fabric.py` | L54 | `llms = langchain_helper.get_models(openai=True, claude=True)` |
-| `file:///Users/idvorkin/gits/nlp/podcast.py` | L25 | `@ell.simple(model=get_ell_model(claude=True), max_tokens=8000)` |
-| `file:///Users/idvorkin/gits/nlp/changes.py` | L295 | `claude: bool = True,` |
-| `file:///Users/idvorkin/gits/nlp/changes.py` | L305 | `claude=claude,` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/update-commit-and-skip-cursor-logs.md` | L122 | `llms = langchain_helper.get_models(openai=True, claude=True, google=True)` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L105 | `│ │                   │   │   ChatAnthropic(                                                             │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L106 | `│ │                   │   │   │   model='claude-3-5-sonnet-20241022',                                    │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L107 | `│ │                   │   │   │   anthropic_api_url='https://api.anthropic.com',                         │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L108 | `│ │                   │   │   │   anthropic_api_key=SecretStr('**********'),                             │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L160 | `│ │          claude = True                                                                               │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L168 | `│ │                   │   ChatAnthropic(                                                                 │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L169 | `│ │                   │   │   model='claude-3-5-sonnet-20241022',                                        │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L170 | `│ │                   │   │   anthropic_api_url='https://api.anthropic.com',                             │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L171 | `│ │                   │   │   anthropic_api_key=SecretStr('**********'),                                 │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L346 | `│ │                  │   ChatAnthropic(                                                                  │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L347 | `│ │                  │   │   model='claude-3-5-sonnet-20241022',                                         │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L348 | `│ │                  │   │   anthropic_api_url='https://api.anthropic.com',                              │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L349 | `│ │                  │   │   anthropic_api_key=SecretStr('**********'),                                  │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L455 | `│ │             llm = ChatAnthropic(                                                                     │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L456 | `│ │                   │   model='claude-3-5-sonnet-20241022',                                            │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L457 | `│ │                   │   anthropic_api_url='https://api.anthropic.com',                                 │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L458 | `│ │                   │   anthropic_api_key=SecretStr('**********'),                                     │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L481 | `│ │          llm = ChatAnthropic(                                                                        │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L482 | `│ │                │   model='claude-3-5-sonnet-20241022',                                               │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L483 | `│ │                │   anthropic_api_url='https://api.anthropic.com',                                    │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L484 | `│ │                │   anthropic_api_key=SecretStr('**********'),                                        │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L527 | `│ --claude                --no-claude            [default: claude]                                         │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L575 | `│ │                   │   │   ChatAnthropic(                                                             │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L576 | `│ │                   │   │   │   model='claude-3-5-sonnet-20241022',                                    │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L577 | `│ │                   │   │   │   anthropic_api_url='https://api.anthropic.com',                         │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L578 | `│ │                   │   │   │   anthropic_api_key=SecretStr('**********'),                             │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L630 | `│ │          claude = True                                                                               │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L638 | `│ │                   │   ChatAnthropic(                                                                 │ │` |
-| `file:///Users/idvorkin/gits/nlp/pell.py` | L81 | `@ell.simple(model=get_ell_model(claude=True), max_tokens=4000)  # type: ignore` |
-| `file:///Users/idvorkin/gits/nlp/pell.py` | L82 | `def prompt_hello_claude(name: str):` |
-| `file:///Users/idvorkin/gits/nlp/pell.py` | L89 | `def claude(name=typer.Argument("Claude", help="Name to greet")):` |
-| `file:///Users/idvorkin/gits/nlp/pell.py` | L90 | `# Call prompt_hello_claude function with the provided name and print the response` |
-| `file:///Users/idvorkin/gits/nlp/pell.py` | L91 | `response = prompt_hello_claude(name)` |
+| `file://$HOME/gits/nlp/eval/eng-feedback/pf-eng-feedback.yaml` | L3 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/pf_markdown-merge.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/prompts.py` | L28 | `# super annoying, claude can't handle this pattern, must get translsated in LC somewhere.` |
+| `file://$HOME/gits/nlp/words.txt` | L9231 | `claudette` |
+| `file://$HOME/gits/nlp/words.txt` | L20527 | `claude` |
+| `file://$HOME/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/qa_blog.py` | L611 | `llm = langchain_helper.get_model(claude=True)` |
+| `file://$HOME/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/commit/diff_commit.json` | L6 | `⟪ 1572 characters skipped ⟫alse,\n+    google: bool = False,\n+    claude: bool = False,\n+        ):\n+    user_text = remove_trailing_spaces(\"\".join(sys.stdin.readlines()))\n+    system_prompt = \"\"\"\n+    \"\"\"\n+    llm = langchain_helper.get_model(openai=openai, google=google, claude=claude)\n+    prompt_summarize_diff(user_text)\n+    output = (llm | prompt_summarize_diff(user_text)).invoke({}).result\n+    print (output)\n+\n+\n+if __name__ == \"__main__\":\n+    ic(\"main\")\n+` |
+| `file://$HOME/gits/nlp/eval/depressed_programmer/pf-depressed-programmer.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/life.py` | L205 | `claude: Annotated[` |
+| `file://$HOME/gits/nlp/life.py` | L245 | `langchain_helper.get_model(claude=True)` |
+| `file://$HOME/gits/nlp/life.py` | L246 | `if claude` |
+| `file://$HOME/gits/nlp/play_langchain.py` | L155 | `claude: bool = typer.Option(False, "--claude", help="Use Claude model"),` |
+| `file://$HOME/gits/nlp/play_langchain.py` | L166 | `claude=claude,` |
+| `file://$HOME/gits/nlp/pell.py` | L81 | `@ell.simple(model=get_ell_model(claude=True), max_tokens=4000)  # type: ignore` |
+| `file://$HOME/gits/nlp/pell.py` | L82 | `def prompt_hello_claude(name: str):` |
+| `file://$HOME/gits/nlp/pell.py` | L89 | `def claude(name=typer.Argument("Claude", help="Name to greet")):` |
+| `file://$HOME/gits/nlp/pell.py` | L90 | `# Call prompt_hello_claude function with the provided name and print the response` |
+| `file://$HOME/gits/nlp/pell.py` | L91 | `response = prompt_hello_claude(name)` |
+| `file://$HOME/gits/nlp/openai_wrapper.py` | L185 | `claude: bool = False,` |
+| `file://$HOME/gits/nlp/openai_wrapper.py` | L192 | `count_true = sum([openai, google, claude, llama, openai_cheap])` |
+| `file://$HOME/gits/nlp/openai_wrapper.py` | L202 | `elif claude:` |
+| `file://$HOME/gits/nlp/openai_wrapper.py` | L203 | `return "claude-3-5-sonnet-20241022"` |
+| `file://$HOME/gits/nlp/prompts.py` | L28 | `# super annoying, claude can't handle this pattern, must get translsated in LC somewhere.` |
+| `file://$HOME/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L10 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/generate-chats/promptfooconfig.yaml` | L6 | `- anthropic:messages:claude-3-sonnet-20240229` |
+| `file://$HOME/gits/nlp/1` | L185 | `claude: bool = False,` |
+| `file://$HOME/gits/nlp/1` | L192 | `count_true = sum([openai, google, claude, llama, openai_cheap])` |
+| `file://$HOME/gits/nlp/1` | L202 | `elif claude:` |
+| `file://$HOME/gits/nlp/1` | L203 | `return "claude-3-5-sonnet-20240620"` |
+| `file://$HOME/gits/nlp/think.py` | L389 | `llms = langchain_helper.get_models(openai=True, claude=True, google=True, google_think=True, deepseek=True, o3_mini=True, google_flash=True)` |
+| `file://$HOME/gits/nlp/commit.py` | L125 | `openai=True, claude=True, google=True, o3_mini=True` |
+| `file://$HOME/gits/nlp/pyproject.toml` | L29 | `"langchain_anthropic",` |
+| `file://$HOME/gits/nlp/docker_qa_bot` | L3 | `-e "ANTHROPIC_API_KEY=$(jq -r '.ANTHROPIC_API_KEY' ~/gits/igor2/secretBox.json)"  \` |
+| `file://$HOME/gits/nlp/pchanges.py` | L152 | `claude: bool = False,` |
+| `file://$HOME/gits/nlp/pchanges.py` | L161 | `openai=openai, google=google, claude=claude, llama=llama` |
+| `file://$HOME/gits/nlp/pchanges.py` | L234 | `@ell.simple(model=get_ell_model(claude=True))` |
+| `file://$HOME/gits/nlp/pchanges.py` | L432 | `api_params=dict(max_tokens=8_000),  # anthropic needs max tokens ??` |
+| `file://$HOME/gits/nlp/fabric.py` | L54 | `llms = langchain_helper.get_models(openai=True, claude=True)` |
+| `file://$HOME/gits/nlp/podcast.py` | L25 | `@ell.simple(model=get_ell_model(claude=True), max_tokens=8000)` |
+| `file://$HOME/gits/nlp/changes.py` | L295 | `claude: bool = True,` |
+| `file://$HOME/gits/nlp/changes.py` | L305 | `claude=claude,` |
+| `file://$HOME/gits/nlp/cursor-logs/update-commit-and-skip-cursor-logs.md` | L122 | `llms = langchain_helper.get_models(openai=True, claude=True, google=True)` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L105 | `│ │                   │   │   ChatAnthropic(                                                             │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L106 | `│ │                   │   │   │   model='claude-3-5-sonnet-20241022',                                    │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L107 | `│ │                   │   │   │   anthropic_api_url='https://api.anthropic.com',                         │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L108 | `│ │                   │   │   │   anthropic_api_key=SecretStr('**********'),                             │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L160 | `│ │          claude = True                                                                               │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L168 | `│ │                   │   ChatAnthropic(                                                                 │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L169 | `│ │                   │   │   model='claude-3-5-sonnet-20241022',                                        │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L170 | `│ │                   │   │   anthropic_api_url='https://api.anthropic.com',                             │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L171 | `│ │                   │   │   anthropic_api_key=SecretStr('**********'),                                 │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L346 | `│ │                  │   ChatAnthropic(                                                                  │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L347 | `│ │                  │   │   model='claude-3-5-sonnet-20241022',                                         │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L348 | `│ │                  │   │   anthropic_api_url='https://api.anthropic.com',                              │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L349 | `│ │                  │   │   anthropic_api_key=SecretStr('**********'),                                  │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L455 | `│ │             llm = ChatAnthropic(                                                                     │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L456 | `│ │                   │   model='claude-3-5-sonnet-20241022',                                            │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L457 | `│ │                   │   anthropic_api_url='https://api.anthropic.com',                                 │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L458 | `│ │                   │   anthropic_api_key=SecretStr('**********'),                                     │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L481 | `│ │          llm = ChatAnthropic(                                                                        │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L482 | `│ │                │   model='claude-3-5-sonnet-20241022',                                               │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L483 | `│ │                │   anthropic_api_url='https://api.anthropic.com',                                    │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L484 | `│ │                │   anthropic_api_key=SecretStr('**********'),                                        │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L527 | `│ --claude                --no-claude            [default: claude]                                         │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L575 | `│ │                   │   │   ChatAnthropic(                                                             │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L576 | `│ │                   │   │   │   model='claude-3-5-sonnet-20241022',                                    │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L577 | `│ │                   │   │   │   anthropic_api_url='https://api.anthropic.com',                         │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L578 | `│ │                   │   │   │   anthropic_api_key=SecretStr('**********'),                             │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L630 | `│ │          claude = True                                                                               │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L638 | `│ │                   │   ChatAnthropic(                                                                 │ │` |
+| `file://$HOME/gits/nlp/pell.py` | L81 | `@ell.simple(model=get_ell_model(claude=True), max_tokens=4000)  # type: ignore` |
+| `file://$HOME/gits/nlp/pell.py` | L82 | `def prompt_hello_claude(name: str):` |
+| `file://$HOME/gits/nlp/pell.py` | L89 | `def claude(name=typer.Argument("Claude", help="Name to greet")):` |
+| `file://$HOME/gits/nlp/pell.py` | L90 | `# Call prompt_hello_claude function with the provided name and print the response` |
+| `file://$HOME/gits/nlp/pell.py` | L91 | `response = prompt_hello_claude(name)` |
 
 </details>
 
@@ -161,11 +161,11 @@ _\*\*\*\*_
         
 | File | Line | Match |
 |------|------|-------|
-| `file:///Users/idvorkin/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L10 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L10 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
 
 </details>
 
@@ -184,14 +184,14 @@ _\*\*\*\*_
         
 | File | Line | Match |
 |------|------|-------|
-| `file:///Users/idvorkin/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L10 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/eng-feedback/pf-eng-feedback.yaml` | L3 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/pf_markdown-merge.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
-| `file:///Users/idvorkin/gits/nlp/eval/depressed_programmer/pf-depressed-programmer.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L10 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/eng-feedback/pf-eng-feedback.yaml` | L3 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/pf_markdown-merge.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
+| `file://$HOME/gits/nlp/eval/depressed_programmer/pf-depressed-programmer.yaml` | L9 | `- anthropic:messages:claude-3-5-sonnet-20241022` |
 
 </details>
 
@@ -332,35 +332,35 @@ _\*\*\*\*_
         
 | File | Line | Match |
 |------|------|-------|
-| `file:///Users/idvorkin/gits/nlp/ell_helper.py` | L33 | `ell.config.register_model("claude-3-5-sonnet-20241022", default_client=anthropic)` |
-| `file:///Users/idvorkin/gits/nlp/ell_helper.py` | L59 | `return "claude-3-5-sonnet-20241022"` |
-| `file:///Users/idvorkin/gits/nlp/langchain_helper.py` | L108 | `model = ChatAnthropic(model_name="claude-3-5-sonnet-20241022")` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L106 | `│ │                   │   │   │   model='claude-3-5-sonnet-20241022',                                    │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L169 | `│ │                   │   │   model='claude-3-5-sonnet-20241022',                                        │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L347 | `│ │                  │   │   model='claude-3-5-sonnet-20241022',                                         │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L456 | `│ │                   │   model='claude-3-5-sonnet-20241022',                                            │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L482 | `│ │                │   model='claude-3-5-sonnet-20241022',                                               │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L576 | `│ │                   │   │   │   model='claude-3-5-sonnet-20241022',                                    │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L639 | `│ │                   │   │   model='claude-3-5-sonnet-20241022',                                        │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L817 | `│ │                  │   │   model='claude-3-5-sonnet-20241022',                                         │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L926 | `│ │                   │   model='claude-3-5-sonnet-20241022',                                            │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L952 | `│ │                │   model='claude-3-5-sonnet-20241022',                                               │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1078 | `_parallel semaphore for .gitignore with claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1080 | `with claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1086 | `_parallel semaphore for changes.py with claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1088 | `with claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1094 | `_parallel semaphore for commit.py with claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1096 | `with claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1102 | `_parallel semaphore for journal.py with claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1104 | `with claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1114 | `helper.py with claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1120 | `_parallel semaphore for think.py with claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1122 | `ith claude-3-5-sonnet-20241022'` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1316 | `│ │                   │   │   │   model='claude-3-5-sonnet-20241022',                                    │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1379 | `│ │                   │   │   model='claude-3-5-sonnet-20241022',                                        │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1557 | `│ │                  │   │   model='claude-3-5-sonnet-20241022',                                         │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1666 | `│ │                   │   model='claude-3-5-sonnet-20241022',                                            │ │` |
-| `file:///Users/idvorkin/gits/nlp/cursor-logs/fix-changes-command.md` | L1692 | `│ │                │   model='claude-3-5-sonnet-20241022',                                               │ │` |
+| `file://$HOME/gits/nlp/ell_helper.py` | L33 | `ell.config.register_model("claude-3-5-sonnet-20241022", default_client=anthropic)` |
+| `file://$HOME/gits/nlp/ell_helper.py` | L59 | `return "claude-3-5-sonnet-20241022"` |
+| `file://$HOME/gits/nlp/langchain_helper.py` | L108 | `model = ChatAnthropic(model_name="claude-3-5-sonnet-20241022")` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L106 | `│ │                   │   │   │   model='claude-3-5-sonnet-20241022',                                    │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L169 | `│ │                   │   │   model='claude-3-5-sonnet-20241022',                                        │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L347 | `│ │                  │   │   model='claude-3-5-sonnet-20241022',                                         │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L456 | `│ │                   │   model='claude-3-5-sonnet-20241022',                                            │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L482 | `│ │                │   model='claude-3-5-sonnet-20241022',                                               │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L576 | `│ │                   │   │   │   model='claude-3-5-sonnet-20241022',                                    │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L639 | `│ │                   │   │   model='claude-3-5-sonnet-20241022',                                        │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L817 | `│ │                  │   │   model='claude-3-5-sonnet-20241022',                                         │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L926 | `│ │                   │   model='claude-3-5-sonnet-20241022',                                            │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L952 | `│ │                │   model='claude-3-5-sonnet-20241022',                                               │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1078 | `_parallel semaphore for .gitignore with claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1080 | `with claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1086 | `_parallel semaphore for changes.py with claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1088 | `with claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1094 | `_parallel semaphore for commit.py with claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1096 | `with claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1102 | `_parallel semaphore for journal.py with claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1104 | `with claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1114 | `helper.py with claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1120 | `_parallel semaphore for think.py with claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1122 | `ith claude-3-5-sonnet-20241022'` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1316 | `│ │                   │   │   │   model='claude-3-5-sonnet-20241022',                                    │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1379 | `│ │                   │   │   model='claude-3-5-sonnet-20241022',                                        │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1557 | `│ │                  │   │   model='claude-3-5-sonnet-20241022',                                         │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1666 | `│ │                   │   model='claude-3-5-sonnet-20241022',                                            │ │` |
+| `file://$HOME/gits/nlp/cursor-logs/fix-changes-command.md` | L1692 | `│ │                │   model='claude-3-5-sonnet-20241022',                                               │ │` |
 
 </details>
 
@@ -439,7 +439,7 @@ _\*\*\*\*_
         
 | File | Line | Match |
 |------|------|-------|
-| `file:///Users/idvorkin/gits/nlp/1` | L203 | `return "claude-3-5-sonnet-20240620"` |
+| `file://$HOME/gits/nlp/1` | L203 | `return "claude-3-5-sonnet-20240620"` |
 
 </details>
 
@@ -482,7 +482,7 @@ _\*\*\*\*_
         
 | File | Line | Match |
 |------|------|-------|
-| `file:///Users/idvorkin/gits/nlp/ghmd` | L36 | `⟪ 321 characters skipped ⟫ writing her books. She faced rejection from 12 publishers before one finally agreed to publish her work. Her story is a testament to the power of persistence and the value of learning from failure.` |
+| `file://$HOME/gits/nlp/ghmd` | L36 | `⟪ 321 characters skipped ⟫ writing her books. She faced rejection from 12 publishers before one finally agreed to publish her work. Her story is a testament to the power of persistence and the value of learning from failure.` |
 
 </details>
 
@@ -501,29 +501,29 @@ _\*\*\*\*_
         
 | File | Line | Match |
 |------|------|-------|
-| `file:///Users/idvorkin/gits/nlp/generate-chats/promptfooconfig.yaml` | L6 | `- anthropic:messages:claude-3-sonnet-20240229` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/pf_markdown-merge.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/depressed_programmer/pf-depressed-programmer.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/eng-feedback/pf-eng-feedback.yaml` | L3 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/openai_wrapper.py` | L203 | `return "claude-3-7-sonnet-20250219"` |
-| `file:///Users/idvorkin/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L11 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/1` | L203 | `return "claude-3-5-sonnet-20240620"` |
-| `file:///Users/idvorkin/gits/nlp/langchain_helper.py` | L108 | `model = ChatAnthropic(model_name="claude-3-7-sonnet-20250219")` |
-| `file:///Users/idvorkin/gits/nlp/ell_helper.py` | L33 | `ell.config.register_model("claude-3-7-sonnet-20250219", default_client=anthropic)` |
-| `file:///Users/idvorkin/gits/nlp/ell_helper.py` | L59 | `return "claude-3-7-sonnet-20250219"` |
-| `file:///Users/idvorkin/gits/nlp/openai_wrapper.py` | L203 | `return "claude-3-7-sonnet-20250219"` |
-| `file:///Users/idvorkin/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L11 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/ell_helper.py` | L33 | `ell.config.register_model("claude-3-7-sonnet-20250219", default_client=anthropic)` |
-| `file:///Users/idvorkin/gits/nlp/ell_helper.py` | L59 | `return "claude-3-7-sonnet-20250219"` |
-| `file:///Users/idvorkin/gits/nlp/langchain_helper.py` | L108 | `model = ChatAnthropic(model_name="claude-3-7-sonnet-20250219")` |
+| `file://$HOME/gits/nlp/generate-chats/promptfooconfig.yaml` | L6 | `- anthropic:messages:claude-3-sonnet-20240229` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/pf_markdown-merge.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/depressed_programmer/pf-depressed-programmer.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/eng-feedback/pf-eng-feedback.yaml` | L3 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/openai_wrapper.py` | L203 | `return "claude-3-7-sonnet-20250219"` |
+| `file://$HOME/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L11 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/1` | L203 | `return "claude-3-5-sonnet-20240620"` |
+| `file://$HOME/gits/nlp/langchain_helper.py` | L108 | `model = ChatAnthropic(model_name="claude-3-7-sonnet-20250219")` |
+| `file://$HOME/gits/nlp/ell_helper.py` | L33 | `ell.config.register_model("claude-3-7-sonnet-20250219", default_client=anthropic)` |
+| `file://$HOME/gits/nlp/ell_helper.py` | L59 | `return "claude-3-7-sonnet-20250219"` |
+| `file://$HOME/gits/nlp/openai_wrapper.py` | L203 | `return "claude-3-7-sonnet-20250219"` |
+| `file://$HOME/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L11 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/ell_helper.py` | L33 | `ell.config.register_model("claude-3-7-sonnet-20250219", default_client=anthropic)` |
+| `file://$HOME/gits/nlp/ell_helper.py` | L59 | `return "claude-3-7-sonnet-20250219"` |
+| `file://$HOME/gits/nlp/langchain_helper.py` | L108 | `model = ChatAnthropic(model_name="claude-3-7-sonnet-20250219")` |
 
 </details>
 
@@ -571,7 +571,7 @@ _\*\*\*\*_
         
 | File | Line | Match |
 |------|------|-------|
-| `file:///Users/idvorkin/gits/nlp/1` | L203 | `return "claude-3-5-sonnet-20240620"` |
+| `file://$HOME/gits/nlp/1` | L203 | `return "claude-3-5-sonnet-20240620"` |
 
 </details>
 
@@ -590,20 +590,20 @@ _\*\*\*\*_
         
 | File | Line | Match |
 |------|------|-------|
-| `file:///Users/idvorkin/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/eng-feedback/pf-eng-feedback.yaml` | L3 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/markdown-merge/pf_markdown-merge.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/eval/depressed_programmer/pf-depressed-programmer.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/openai_wrapper.py` | L203 | `return "claude-3-7-sonnet-20250219"` |
-| `file:///Users/idvorkin/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L11 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/1` | L203 | `return "claude-3-5-sonnet-20240620"` |
-| `file:///Users/idvorkin/gits/nlp/generate-chats/promptfooconfig.yaml` | L6 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
-| `file:///Users/idvorkin/gits/nlp/langchain_helper.py` | L108 | `model = ChatAnthropic(model_name="claude-3-7-sonnet-20250219")` |
-| `file:///Users/idvorkin/gits/nlp/ell_helper.py` | L33 | `ell.config.register_model("claude-3-7-sonnet-20250219", default_client=anthropic)` |
-| `file:///Users/idvorkin/gits/nlp/ell_helper.py` | L59 | `return "claude-3-7-sonnet-20250219"` |
+| `file://$HOME/gits/nlp/eval/commit/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/eng-feedback/promptfooconfig.yaml` | L3 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/depressed_programmer/promptfooconfig.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/eng-feedback/pf-eng-feedback.yaml` | L3 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/markdown-merge/pf_markdown-merge.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/eval/depressed_programmer/pf-depressed-programmer.yaml` | L9 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/openai_wrapper.py` | L203 | `return "claude-3-7-sonnet-20250219"` |
+| `file://$HOME/gits/nlp/eval-improv-bot/promptfooconfig.yaml` | L11 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/1` | L203 | `return "claude-3-5-sonnet-20240620"` |
+| `file://$HOME/gits/nlp/generate-chats/promptfooconfig.yaml` | L6 | `- anthropic:messages:claude-3-7-sonnet-20250219` |
+| `file://$HOME/gits/nlp/langchain_helper.py` | L108 | `model = ChatAnthropic(model_name="claude-3-7-sonnet-20250219")` |
+| `file://$HOME/gits/nlp/ell_helper.py` | L33 | `ell.config.register_model("claude-3-7-sonnet-20250219", default_client=anthropic)` |
+| `file://$HOME/gits/nlp/ell_helper.py` | L59 | `return "claude-3-7-sonnet-20250219"` |
 
 </details>
 
