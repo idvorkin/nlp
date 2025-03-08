@@ -300,8 +300,21 @@ def changes(
     deepseek: bool = True,
     o3_mini: bool = True,
     only: str = None,
+    only_flash: bool = False,
     verbose: bool = False,
 ):
+    # If only_flash is True, override other model selections to use only flash models
+    if only_flash:
+        openai = False
+        claude = False
+        google = False
+        google_flash = True
+        llama = False
+        deepseek = False
+        o3_mini = False
+        if verbose:
+            print("Only using flash models as requested by only-flash parameter")
+    
     llms = langchain_helper.get_models(
         openai=openai,
         claude=claude,
@@ -311,6 +324,11 @@ def changes(
         o3_mini=o3_mini,
         llama=llama
     )
+    
+    # If no models are selected, provide a helpful error message
+    if not llms:
+        print("Error: No models selected. Please enable at least one model or disable only-flash.")
+        return
         
     achanges_params = llms, before, after, gist, only, verbose
 
