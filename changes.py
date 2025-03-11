@@ -76,11 +76,12 @@ def is_skip_file(file, only_pattern=None, verbose=False):
         return True
 
     # Skip cursor-logs and chop-logs directories
-    if "cursor-logs" in str(file_path) or "chop-logs" in str(file_path):
+    skip_paths = ["cursor-logs", "chop-logs", "alist", "back-links.json"]
+    if any(skip_path in str(file_path) for skip_path in skip_paths):
         if verbose:
             ic(f"Skip logs file: {file}")
         return True
-
+    
     # Skip binary and media files
     binary_extensions = {
         # Images
