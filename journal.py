@@ -94,11 +94,21 @@ Adhere to these rules meticulously:
    - Preserve headings and subheadings wherever they appear.
    - Keep bullet and numbered lists intact, respecting the hierarchical structure.
 
+7. **Gratefulness List**
+    - Sometimes a gratefulness line spans multiple lines.
+    - The format is a shorhand to be expanded, user denotes fields with ;'s e.g.
+        - Thing I'm grateful for; I'm grateful to god for this because; I'm grateful to this person; I'm grateful to them because; I'm Grateful to me because;
+        - E.g.
+            - It's Warm out; Makes it a sunny day; Mom; Giving birth to me; Enjoying it by going for a walk.
+        - Sometimes the line will span multiple lines
+
+
 7. **Acronyms**
    - Expand the following acronyms whenever they appear:
      - **YAB** → **Yesterday Awesome Because**
      - **TAB** → **Today Awesome Because**
      - **P&P** → **Pullups and Pistols**
+     - **GTG** → **Grease the groove**
      - **S&S** → **Simple and Sinister (Swings and TGUs)**
      - **KB** → **Kettlebells**
      - **TGU** → **Turkish Get Up**
