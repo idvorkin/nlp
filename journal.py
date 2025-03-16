@@ -124,6 +124,12 @@ Adhere to these rules meticulously:
 ### **4. Analysis Section (End of Transcription)**
 After the transcription, provide a **comprehensive analysis**:
 
+0. **Parts to ignore:**
+    - Affirmations
+    - YAB
+    - Gratefulness
+
+
 1. **Summary**
    - A short paragraph summarizing the overall content of the document.
 
