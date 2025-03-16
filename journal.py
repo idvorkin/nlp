@@ -124,18 +124,16 @@ Adhere to these rules meticulously:
 ### **4. Analysis Section (End of Transcription)**
 After the transcription, provide a **comprehensive analysis**:
 
-0. **Parts to ignore:**
-    - Affirmations
-    - YAB
-    - Gratefulness
 
 
 1. **Summary**
    - A short paragraph summarizing the overall content of the document.
+   - The summary should ignore the YAB, Grateful Analysis and Affirmations
 
 2. **Key Insights**
    - Noteworthy observations or interpretations.
    - If any Psychic Weight (PW) items are mentioned, highlight these specifically.
+   - The isights should ignore the YAB, Grateful Analysis and Affirmations
 
 3. **YAB and Grateful Analysis**
    - List all YAB (Yesterday Awesome Because) entries in their original order
@@ -150,6 +148,7 @@ After the transcription, provide a **comprehensive analysis**:
 
 5. **Psychic Weight Items**
    - List all Psychic Weight (PW) items mentioned in the document
+   - The isights should ignore the YAB, Grateful Analysis and Affirmations
    - For each PW item, include:
      - The context it was mentioned in
      - Current status or resolution (if mentioned)
