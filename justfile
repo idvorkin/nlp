@@ -31,4 +31,4 @@ install:
 
 
 global-install: install
-    uv tool install . --force --editable  --python $(which python3.12)
+    uv tool install . --force --editable

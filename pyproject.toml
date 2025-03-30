@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "idvorkin_nlp"
 version = "0.1.0"
-requires-python = "==3.12.*"
+requires-python = "==3.13.*"
 dependencies = [
     "icecream",
     "ipython",
@@ -16,7 +16,6 @@ dependencies = [
     "loguru",
     "langchain-core",
     "sparklines",
-    "langchain-chroma",
     "langchain_community",
     "langchain-openai",
     "langchain-groq",
@@ -34,6 +33,7 @@ dependencies = [
     "soundfile",
     "backoff",
     "httpx",
+    "numpy>=2.0.0",
     "typing-extensions",
     "assemblyai",
     "openai",
@@ -55,7 +55,6 @@ dependencies = [
     "matplotlib",
     "pydub",
     "yt-dlp",
-    "numpy",
     "exa-py",
     "google-cloud-texttospeech",
     "pytest",
