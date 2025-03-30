@@ -580,6 +580,9 @@ async def async_journal_report(journal_for, launch_fx, days, file=None):
             capture_output=True,
         )
         user_text = completed_process.stdout
+    
+    # Escape any curly braces in the user text to prevent f-string parsing errors
+    user_text = user_text.replace("{", "{{").replace("}", "}}")
 
     # remove_trailing_spaces("".join(sys.stdin.readlines()))
 
