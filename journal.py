@@ -202,9 +202,6 @@ Heading Level 2
 …and so on.
     """
 
-# model_to_use = "gemini-1.5-flash-002"
-# model_to_use = "gemini-1.5-pro-002"
-
 
 def gemini_transcribe(pdf_path: str, page_breaks: bool = False):
     import vertexai
