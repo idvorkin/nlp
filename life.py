@@ -338,6 +338,7 @@ class GetPychiatristReport(BaseModel):
     Date: datetime
     DoctorName: str
     PointFormSummaryOfEntry: List[str]
+    MentionedDays: List[str]  # New field to track all days mentioned in the journal entry
     Depression: AssessmentWithReason
     Anxiety: AssessmentWithReason
     Mania: AssessmentWithReason
@@ -597,6 +598,7 @@ You task it to write a report based on the journal entry that is going to be pas
 
 * Include 2-5 recommendations
 * Don't include Category Summaries for Categories where you have no data
+* Identify and list all dates mentioned in the journal entry (in YYYY-MM-DD format when possible)
 """
 
     start = time.time()
