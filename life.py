@@ -381,8 +381,11 @@ def journal_report(
     ),
     launch_fx: Annotated[bool, typer.Option()] = True,
     days: int = 1,
+    file: Annotated[
+        Path, typer.Option(help="Path to journal file to use instead of ij command")
+    ] = None,
 ):
-    asyncio.run(async_journal_report(journal_for, launch_fx, days))
+    asyncio.run(async_journal_report(journal_for, launch_fx, days, file))
 
 
 def spark_df(df):
@@ -561,18 +564,22 @@ async def async_journal_for_year():
             ic(entry_date, e)
 
 
-async def async_journal_report(journal_for, launch_fx, days):
+async def async_journal_report(journal_for, launch_fx, days, file=None):
     # Get my closest journal for the day:
-
-    # ij is the name for Igor Journal
-    completed_process = subprocess.run(
-        f"ij body {journal_for} --close --days={days}",
-        shell=True,
-        check=True,
-        text=True,
-        capture_output=True,
-    )
-    user_text = completed_process.stdout
+    
+    if file and file.exists():
+        # Read from the provided file
+        user_text = file.read_text()
+    else:
+        # ij is the name for Igor Journal
+        completed_process = subprocess.run(
+            f"ij body {journal_for} --close --days={days}",
+            shell=True,
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        user_text = completed_process.stdout
 
     # remove_trailing_spaces("".join(sys.stdin.readlines()))
 
