@@ -94,7 +94,7 @@ def get_model(
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        model = ChatGoogleGenerativeAI(model="gemini-2.0-pro-exp-02-05")
+        model = ChatGoogleGenerativeAI(model="gemini-2.5-pro-exp-03-25")
     elif google_flash:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
