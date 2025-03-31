@@ -1,4 +1,22 @@
-#!python3
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#     "typer",
+#     "icecream",
+#     "loguru",
+#     "rich",
+#     "requests",
+#     "ell-ai[sqlite]",
+#     "alembic",
+#     "groq",
+#     "anthropic",
+#     "openai",
+#     "langchain-core",
+#     "langchain-openai",
+#     "pydantic",
+# ]
+# ///
 
 import os
 import typer
