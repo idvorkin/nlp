@@ -49,8 +49,7 @@ def call_tony_server_as_vapi(api, **kwargs):
     """Call the Tony server as it would be called by VAPI"""
 
     auth_headers = {"x-vapi-secret": os.getenv("TONY_API_KEY")}
-    # url = f"https://idvorkin--modal-tony-server-{api}.modal.run"
-    url = f"https://idvorkin--modal-tony-server-{api}.modal.run"
+    url = f"https://idvorkin--modal-tony-server-fastapi-app.modal.run/{api}"
     response = requests.post(url, json=kwargs, headers=auth_headers).json()
     return str(response)
 
@@ -71,9 +70,9 @@ def prompt_to_llm(message_history: list[Message]):
 def get_tony_server_url(dev_server: bool) -> str:
     """Select the appropriate server URL based on the dev_server flag."""
     if dev_server:
-        return "https://idvorkin--modal-tony-server-assistant-dev.modal.run"
+        return "https://idvorkin--modal-tony-server-dev-fastapi-app.modal.run"
     else:
-        return "https://idvorkin--modal-tony-server-assistant.modal.run"
+        return "https://idvorkin--modal-tony-server-fastapi-app.modal.run"
 
 
 # @ell.complex(model="gpt-4o-
@@ -101,10 +100,10 @@ def tony(
     ic("v0.0.4")
 
     ic("++assistant.api")
-    payload = {"ignored": "ignored"}
+    payload = {"message": {"type": "assistant-request"}}
     url_tony = get_tony_server_url(dev_server)
     ic(url_tony)
-    assistant_response = requests.post(url_tony, json=payload)
+    assistant_response = requests.post(f"{url_tony}/assistant", json=payload)
     if assistant_response.status_code != 200:
         ic(assistant_response)
         return
