@@ -3,9 +3,12 @@
 
 import sys
 import asyncio
+from typing import List, Optional
 
 from langchain_core import messages
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.output_parsers import StrOutputParser
+from pydantic import BaseModel, Field
 
 import typer
 from langchain.prompts import ChatPromptTemplate
@@ -44,6 +47,24 @@ def filter_diff_content(diff_output: str) -> str:
     return "\n".join(filtered_lines)
 
 
+# Define the structure for commit messages
+class CommitMessage(BaseModel):
+    summary: str = Field(
+        ..., description="The commit summary line following Conventional Commits format"
+    )
+    bugs: Optional[List[str]] = Field(
+        None, description="List of bugs identified in the code"
+    )
+    breaking_changes: Optional[List[str]] = Field(
+        None, description="List of breaking changes"
+    )
+    cursor_rule_changes: Optional[List[str]] = Field(
+        None, description="Changes to Cursor rules"
+    )
+    reasons: Optional[List[str]] = Field(None, description="Reasons for the changes")
+    details: Optional[List[str]] = Field(None, description="Details about the changes")
+
+
 def prompt_summarize_diff(diff_output, oneline=False):
     if oneline:
         instructions = """
@@ -59,6 +80,13 @@ Where:
 
 Do not include any additional details, line breaks, or explanations. Just the single line.
 """
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                messages.SystemMessage(content=instructions),
+                messages.HumanMessage(content=diff_output),
+            ]
+        )
+        return prompt | StrOutputParser()
     else:
         instructions = """
 You are an expert programmer, write a descriptive and informative commit message following the Conventional Commits format for a recent code change, which is presented as the output of git diff --staged.
@@ -73,40 +101,19 @@ You are an expert programmer, write a descriptive and informative commit message
 * When listing changes,
     * Put them in the order of importance
     * Use unnumbered lists as the user will want to reorder them
-* If any changes involve Cursor rules (files in .cursor/rules/ or with .mdc extension), include a special section:
-    **Cursor Rules Changes**
-    * List each rule change with its version update (if applicable)
-    * Include the impact of the rule change
+* If any changes involve Cursor rules (files in .cursor/rules/ or with .mdc extension), include a special section for cursor_rule_changes
 * If you see any of the following, skip them, or at most list them last as a single line
     * Changes to formatting/whitespace
     * Changes to imports
     * Changes to comments
-
-Example:
-feat(auth): add OAuth2 authentication flow
-
-**BUGS:** (Only include if bugs are seen)
-    * List bugs
-
-**BREAKING CHANGE:** (include only for breaking changes)
-    * List breaking changes
-
-**Cursor Rules Changes:** (include only for cursor rule changes)
-    * Update rule-name (v1.2.0 -> v1.3.0): Brief description of change and impact
-
-**Reason for change**
-    * reason 1
-    * reason 2
-**Details**
-    * details 1
-    * details 2
 """
-    return ChatPromptTemplate.from_messages(
-        [
-            messages.SystemMessage(content=instructions),
-            messages.HumanMessage(content=diff_output),
-        ]
-    )
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                messages.SystemMessage(content=instructions),
+                messages.HumanMessage(content=diff_output),
+            ]
+        )
+        return prompt
 
 
 async def a_build_commit(oneline: bool = False, fast: bool = False):
@@ -122,19 +129,74 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
         llms = [langchain_helper.get_model(llama=True)]
     else:
         llms = langchain_helper.get_models(
-            openai=True, claude=True, google=True, o3_mini=True
+            openai=True, google=True, o3_mini=True, claude=True, structured=True
         )
         tokens = num_tokens_from_string(filtered_text)
         if tokens < 32_000:
             llms += [langchain_helper.get_model(llama=True)]
 
     def describe_diff(llm: BaseChatModel):
-        return prompt_summarize_diff(filtered_text, oneline) | llm
+        if oneline:
+            chain = prompt_summarize_diff(filtered_text, oneline)
+            return chain | llm
+        else:
+            # Use the standard with_structured_output method for all models
+            structured_llm = llm.with_structured_output(CommitMessage, include_raw=True)
+            chain = prompt_summarize_diff(filtered_text, oneline) | structured_llm
+            return chain
 
     describe_diffs = await langchain_helper.async_run_on_llms(describe_diff, llms)
 
-    for description, llm, duration in describe_diffs:
-        print(description.content)
+    for result, llm, duration in describe_diffs:
+        if oneline:
+            # For oneline, result is just a string
+            print(result)
+        else:
+            # For structured output, result contains raw, parsed, and parsing_error
+            model_name = langchain_helper.get_model_name(llm)
+
+            if result.get("parsing_error"):
+                # Handle parsing error
+                print(f"[bold red]Error parsing output from {model_name}:[/bold red]")
+                print(f"[red]{result['parsing_error']}[/red]")
+                print("\nRaw output:")
+                print(
+                    result["raw"].content
+                    if hasattr(result["raw"], "content") and result["raw"].content
+                    else result["raw"]
+                )
+                print("\n---\n")
+                continue
+
+            # Successfully parsed result
+            commit = result["parsed"]
+            print(commit.summary)
+
+            if commit.bugs:
+                print("\n**BUGS:**")
+                for bug in commit.bugs:
+                    print(f"* {bug}")
+
+            if commit.breaking_changes:
+                print("\n**BREAKING CHANGE:**")
+                for change in commit.breaking_changes:
+                    print(f"* {change}")
+
+            if commit.cursor_rule_changes:
+                print("\n**Cursor Rules Changes:**")
+                for change in commit.cursor_rule_changes:
+                    print(f"* {change}")
+
+            if commit.reasons:
+                print("\n**Reason for change**")
+                for reason in commit.reasons:
+                    print(f"* {reason}")
+
+            if commit.details:
+                print("\n**Details**")
+                for detail in commit.details:
+                    print(f"* {detail}")
+
         print(
             f"\ncommit message generated by {langchain_helper.get_model_name(llm)} in {duration.total_seconds():.2f} seconds"
         )

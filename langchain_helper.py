@@ -37,6 +37,7 @@ def get_models(
     deepseek: bool = False,
     o3_mini: bool = False,
     google_flash: bool = False,
+    structured: bool = False,
 ) -> List[BaseChatModel]:
     ret = []
 
@@ -76,6 +77,7 @@ def get_model(
     deepseek: bool = False,
     o3_mini: bool = False,
     google_flash: bool = False,
+    structured: bool = False,
 ) -> BaseChatModel:
     """
     See changes in diff
@@ -106,7 +108,10 @@ def get_model(
     elif claude:
         from langchain_anthropic import ChatAnthropic
 
-        model = ChatAnthropic(model_name="claude-3-7-sonnet-20250219")
+        model = ChatAnthropic(
+            model_name="claude-3-7-sonnet-20250219",
+            model_kwargs={"format": "json"} if structured else {},
+        )
     elif llama:
         from langchain_groq import ChatGroq
 
