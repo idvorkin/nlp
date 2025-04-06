@@ -26,7 +26,7 @@ def get_ell_logdir():
 def init_ell():
     ell.init(store=get_ell_logdir(), autocommit=True)
     groq = Groq()
-    ell.config.register_model("llama-3.3-70b-versatile", default_client=groq)
+    ell.config.register_model("meta-llama/llama-4-scout-17b-16e-instruct", default_client=groq)
     ell.config.register_model("llama-3.2-90b-vision-preview", default_client=groq)
     anthropic = Anthropic()
     # Add the deepseek model registration
@@ -61,7 +61,7 @@ def get_ell_model(
     elif llama_vision:
         return "llama-3.2-90b-vision-preview"
     elif llama:
-        return "llama-3.3-70b-versatile"
+        return "meta-llama/llama-4-scout-17b-16e-instruct"
     elif openai_cheap:
         return "gpt-4o-mini"
     else:

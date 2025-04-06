@@ -10,7 +10,7 @@ providers:
   - anthropic:messages:claude-3-7-sonnet-20250219
   # - google:gemini-pro
   # - id: openai:chat:meta/llama-3.1-405b-instruct
-  - id: groq:llama-3.3-70b-versatile
+  - id: groq:meta-llama/llama-4-scout-17b-16e-instruct
   # This is too slow to be included (12s vs 4s for frontier models and 2s for it running on groq)
   # - id: replicate:meta/meta-llama-3.1-405b-instruct
 

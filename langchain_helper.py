@@ -110,7 +110,7 @@ def get_model(
     elif llama:
         from langchain_groq import ChatGroq
 
-        model = ChatGroq(model_name="llama-3.3-70b-versatile")
+        model = ChatGroq(model_name="meta-llama/llama-4-scout-17b-16e-instruct")
     elif deepseek:
         from langchain_groq import ChatGroq
 
