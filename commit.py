@@ -3,12 +3,12 @@
 
 import sys
 import asyncio
-from typing import List, Optional
+from typing import List, Optional, Union, Callable
 
 from langchain_core import messages
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 import typer
 from langchain.prompts import ChatPromptTemplate
@@ -52,17 +52,39 @@ class CommitMessage(BaseModel):
     summary: str = Field(
         ..., description="The commit summary line following Conventional Commits format"
     )
-    bugs: Optional[List[str]] = Field(
-        None, description="List of bugs identified in the code"
+    bugs: Optional[Union[List[str], str]] = Field(
+        None, 
+        description="List of bugs identified in the code",
+        items={"type": "string"}
     )
-    breaking_changes: Optional[List[str]] = Field(
-        None, description="List of breaking changes"
+    breaking_changes: Optional[Union[List[str], str]] = Field(
+        None, 
+        description="List of breaking changes",
+        items={"type": "string"}
     )
-    cursor_rule_changes: Optional[List[str]] = Field(
-        None, description="Changes to Cursor rules"
+    cursor_rule_changes: Optional[Union[List[str], str]] = Field(
+        None, 
+        description="Changes to Cursor rules",
+        items={"type": "string"}
     )
-    reasons: Optional[List[str]] = Field(None, description="Reasons for the changes")
-    details: Optional[List[str]] = Field(None, description="Details about the changes")
+    reasons: Optional[Union[List[str], str]] = Field(
+        None, 
+        description="Reasons for the changes",
+        items={"type": "string"}
+    )
+    details: Optional[Union[List[str], str]] = Field(
+        None, 
+        description="Details about the changes",
+        items={"type": "string"}
+    )
+    
+    @field_validator('bugs', 'breaking_changes', 'cursor_rule_changes', 'reasons', 'details', mode='before')
+    @classmethod
+    def convert_string_to_list(cls, v):
+        """Convert string values to list containing the string"""
+        if isinstance(v, str) and v:
+            return [v]
+        return v
 
 
 def prompt_summarize_diff(diff_output, oneline=False):
@@ -136,70 +158,125 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
             llms += [langchain_helper.get_model(llama=True)]
 
     def describe_diff(llm: BaseChatModel):
-        if oneline:
-            chain = prompt_summarize_diff(filtered_text, oneline)
-            return chain | llm
-        else:
-            # Use the standard with_structured_output method for all models
-            structured_llm = llm.with_structured_output(CommitMessage, include_raw=True)
-            chain = prompt_summarize_diff(filtered_text, oneline) | structured_llm
-            return chain
+        try:
+            if oneline:
+                chain = prompt_summarize_diff(filtered_text, oneline)
+                return chain | llm
+            else:
+                # Use the standard with_structured_output method for all models
+                structured_llm = llm.with_structured_output(CommitMessage, include_raw=True)
+                chain = prompt_summarize_diff(filtered_text, oneline) | structured_llm
+                return chain
+        except Exception as e:
+            logger.error(f"Error with model {langchain_helper.get_model_name(llm)}: {e}")
+            return {"error": str(e)}
 
     describe_diffs = await langchain_helper.async_run_on_llms(describe_diff, llms)
-
+    
+    successful_results = 0
+    
     for result, llm, duration in describe_diffs:
-        if oneline:
-            # For oneline, result is just a string
-            print(result)
-        else:
-            # For structured output, result contains raw, parsed, and parsing_error
-            model_name = langchain_helper.get_model_name(llm)
-
-            if result.get("parsing_error"):
-                # Handle parsing error
-                print(f"[bold red]Error parsing output from {model_name}:[/bold red]")
-                print(f"[red]{result['parsing_error']}[/red]")
-                print("\nRaw output:")
-                print(
-                    result["raw"].content
-                    if hasattr(result["raw"], "content") and result["raw"].content
-                    else result["raw"]
-                )
+        model_name = langchain_helper.get_model_name(llm)
+        
+        try:
+            if isinstance(result, dict) and "error" in result:
+                # Handle case where the model function itself failed
+                print(f"[bold red]Error with {model_name}:[/bold red]")
+                print(f"[red]{result['error']}[/red]")
                 print("\n---\n")
                 continue
+                
+            if oneline:
+                # For oneline, result is just a string
+                print(result)
+                successful_results += 1
+            else:
+                # For structured output, result contains raw, parsed, and parsing_error
+                if result.get("parsing_error"):
+                    # Handle parsing error but don't break
+                    print(f"[bold red]Error parsing output from {model_name}:[/bold red]")
+                    print(f"[red]{result['parsing_error']}[/red]")
+                    
+                    # Try to extract useful information from raw output
+                    raw_content = (
+                        result["raw"].content
+                        if hasattr(result["raw"], "content") and result["raw"].content
+                        else str(result["raw"])
+                    )
+                    
+                    # If there's a tool_call in raw output, try to use that directly
+                    if hasattr(result["raw"], "tool_calls") and result["raw"].tool_calls:
+                        try:
+                            print("\n[yellow]Using raw tool call data instead:[/yellow]")
+                            tool_call = result["raw"].tool_calls[0]
+                            if hasattr(tool_call, "args"):
+                                args = tool_call.args
+                                print(f"[bold]{args.get('summary', 'No summary available')}[/bold]")
+                                
+                                if args.get("details"):
+                                    details = args["details"]
+                                    if isinstance(details, str):
+                                        print(f"\n**Details**\n* {details}")
+                                    elif isinstance(details, list):
+                                        print("\n**Details**")
+                                        for detail in details:
+                                            print(f"* {detail}")
+                                
+                                successful_results += 1
+                        except Exception as tc_error:
+                            print(f"[red]Could not extract tool call data: {tc_error}[/red]")
+                    else:
+                        print("\nRaw output:")
+                        print(raw_content)
+                        
+                    print("\n---\n")
+                    continue
 
-            # Successfully parsed result
-            commit = result["parsed"]
-            print(commit.summary)
+                # Successfully parsed result
+                commit = result["parsed"]
+                print(commit.summary)
+                successful_results += 1
 
-            if commit.bugs:
-                print("\n**BUGS:**")
-                for bug in commit.bugs:
-                    print(f"* {bug}")
+                if commit.bugs:
+                    print("\n**BUGS:**")
+                    for bug in commit.bugs:
+                        print(f"* {bug}")
 
-            if commit.breaking_changes:
-                print("\n**BREAKING CHANGE:**")
-                for change in commit.breaking_changes:
-                    print(f"* {change}")
+                if commit.breaking_changes:
+                    print("\n**BREAKING CHANGE:**")
+                    for change in commit.breaking_changes:
+                        print(f"* {change}")
 
-            if commit.cursor_rule_changes:
-                print("\n**Cursor Rules Changes:**")
-                for change in commit.cursor_rule_changes:
-                    print(f"* {change}")
+                if commit.cursor_rule_changes:
+                    print("\n**Cursor Rules Changes:**")
+                    for change in commit.cursor_rule_changes:
+                        print(f"* {change}")
 
-            if commit.reasons:
-                print("\n**Reason for change**")
-                for reason in commit.reasons:
-                    print(f"* {reason}")
+                if commit.reasons:
+                    print("\n**Reason for change**")
+                    for reason in commit.reasons:
+                        print(f"* {reason}")
 
-            if commit.details:
-                print("\n**Details**")
-                for detail in commit.details:
-                    print(f"* {detail}")
+                if commit.details:
+                    print("\n**Details**")
+                    for detail in commit.details:
+                        print(f"* {detail}")
 
-        print(
-            f"\ncommit message generated by {langchain_helper.get_model_name(llm)} in {duration.total_seconds():.2f} seconds"
-        )
+            print(
+                f"\ncommit message generated by {model_name} in {duration.total_seconds():.2f} seconds"
+            )
+            print("\n---\n")
+        except Exception as e:
+            # Catch any unexpected errors when processing results
+            print(f"[bold red]Error processing result from {model_name}:[/bold red]")
+            print(f"[red]{str(e)}[/red]")
+            print("\n---\n")
+    
+    if successful_results == 0:
+        print("[bold red]All models failed to generate commit messages.[/bold red]")
+        return 1
+    
+    return 0
 
 
 console = Console()
@@ -223,9 +300,12 @@ def build_commit(
         False, "--fast", help="Use Llama only once for faster processing"
     ),
 ):
-    langchain_helper.langsmith_trace_if_requested(
-        trace, lambda: asyncio.run(a_build_commit(oneline, fast))
-    )
+    def run_build():
+        result = asyncio.run(a_build_commit(oneline, fast))
+        if result != 0:
+            raise typer.Exit(code=result)
+            
+    langchain_helper.langsmith_trace_if_requested(trace, run_build)
 
 
 if __name__ == "__main__":
