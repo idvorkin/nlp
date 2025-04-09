@@ -698,7 +698,9 @@ async def achanges(
         model_name = result["model_name"]
         safe_model_name = model_name.lower().replace(".", "-")
         # Prefix with z_ to sort after the overview file
-        summary_path = temp_dir / f"z_summary_{safe_model_name}.md"
+        # Create a safe path without directory separators
+        safe_model_path = safe_model_name.replace("/", "-")
+        summary_path = temp_dir / f"z_{safe_model_path}.md"
         
         github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
         model_output = f"""
@@ -714,7 +716,8 @@ ___
 ___
 {result["diff_report"]}
 """
-        summary_path = temp_dir / f"z_{safe_model_name}.md"
+        # Ensure parent directory exists
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
         await asyncio.to_thread(summary_path.write_text, model_output)
         return summary_path
 
