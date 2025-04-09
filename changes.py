@@ -586,6 +586,11 @@ def TempDirectoryContext():
         yield temp_path
 
 
+def sanitize_model_name(model_name):
+    """Create a safe filename/ID from a model name by replacing problematic characters."""
+    return model_name.lower().replace(".", "-").replace("/", "-")
+
+
 async def achanges(
     llms: List[BaseChatModel], 
     before, 
@@ -638,21 +643,18 @@ async def achanges(
         model_start = datetime.now()
         max_parallel = asyncio.Semaphore(100)
 
-        # Remove temperature parameter for o3-mini model
-        if isinstance(llm, ChatOpenAI) and llm.model_name == 'o3-mini-2025-01-31':
-            llm.model_kwargs = {}  # Clear any default parameters like temperature
-
-        # Remove temperature parameter for o3-mini model
+        # Special handling for o3-mini model
         if isinstance(llm, ChatOpenAI) and llm.model_name == 'o3-mini-2025-01-31':
             llm.model_kwargs = {}  # Clear any default parameters like temperature
 
         async def concurrent_llm_call(file, diff_content):
+            model_name = langchain_helper.get_model_name(llm)
             if verbose:
-                ic(f"Waiting for max_parallel semaphore for {file} with {langchain_helper.get_model_name(llm)}")
+                ic(f"Waiting for max_parallel semaphore for {file} with {model_name}")
             async with max_parallel:
                 if verbose:
-                    ic(f"Acquired max_parallel semaphore for {file} with {langchain_helper.get_model_name(llm)}")
-                    ic(f"++ LLM call start: {file} with {langchain_helper.get_model_name(llm)}")
+                    ic(f"Acquired max_parallel semaphore for {file} with {model_name}")
+                    ic(f"++ LLM call start: {file} with {model_name}")
                 result = await (
                     prompt_summarize_diff(
                         file, diff_content, repo_path=repo_path, end_rev=last
@@ -660,8 +662,8 @@ async def achanges(
                     | llm
                 ).ainvoke({})
                 if verbose:
-                    ic(f"-- LLM call end: {file} with {langchain_helper.get_model_name(llm)}")
-                    ic(f"Released max_parallel semaphore for {file} with {langchain_helper.get_model_name(llm)}")
+                    ic(f"-- LLM call end: {file} with {model_name}")
+                    ic(f"Released max_parallel semaphore for {file} with {model_name}")
                 return result
 
         # Run all file analyses for this model in parallel
@@ -672,19 +674,22 @@ async def achanges(
         results.sort(key=lambda x: len(x), reverse=True)
         code_based_diff_report = "\n\n___\n\n".join(results)
         
+        model_name = langchain_helper.get_model_name(llm)
         # Get summary for this model
-        ic(f"++ LLM summary call start with {langchain_helper.get_model_name(llm)}")
+        if verbose:
+            ic(f"++ LLM summary call start with {model_name}")
         summary_all_diffs = await (
             (prompt_summarize_diff_summaries(code_based_diff_report) | llm)
             .ainvoke({})
         )
-        ic(f"-- LLM summary call end with {langchain_helper.get_model_name(llm)}")
+        if verbose:
+            ic(f"-- LLM summary call end with {model_name}")
         summary_content = summary_all_diffs.content if hasattr(summary_all_diffs, 'content') else summary_all_diffs
         
         model_end = datetime.now()
         return {
             "model": llm,
-            "model_name": langchain_helper.get_model_name(llm),
+            "model_name": model_name,
             "analysis_duration": model_end - model_start,
             "diff_report": code_based_diff_report,
             "summary": summary_content
@@ -696,11 +701,8 @@ async def achanges(
     # Create all output files in parallel
     async def write_model_summary(result, temp_dir: Path):
         model_name = result["model_name"]
-        safe_model_name = model_name.lower().replace(".", "-")
-        # Prefix with z_ to sort after the overview file
-        # Create a safe path without directory separators
-        safe_model_path = safe_model_name.replace("/", "-")
-        summary_path = temp_dir / f"z_{safe_model_path}.md"
+        safe_model_name = sanitize_model_name(model_name)
+        summary_path = temp_dir / f"z_{safe_model_name}.md"
         
         github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
         model_output = f"""
@@ -743,7 +745,7 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
 
         for result in sorted(analysis_results, key=lambda x: x["analysis_duration"].total_seconds(), reverse=True):
             model_name = result["model_name"]
-            safe_name = model_name.lower().replace(".", "-")
+            safe_name = sanitize_model_name(model_name)
             duration = int(result["analysis_duration"].total_seconds())
             output_size = len(result["diff_report"] + result["summary"]) / 1024  # Convert to KB
             overview_content += f"| [{model_name}](#file-z_{safe_name}-md) | {duration} | {output_size:.1f} |\n"
