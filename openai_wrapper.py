@@ -37,7 +37,7 @@ class CompletionModel(BaseModel):
 gpt4 = CompletionModel(
     max_input_only_tokens=100 * 1000,
     max_output_tokens=16 * 1000,
-    name="gpt-4o-2024-11-20",
+    name="gpt-4.1-2025-04-14",
 )
 gpt35 = CompletionModel(
     max_input_only_tokens=12 * 1000,
@@ -53,7 +53,7 @@ def get_model_type(u4: bool) -> CompletionModel:
         return gpt35
 
 
-text_model_gpt_4 = "gpt-4o-2024-05-13"
+text_model_gpt_4 = "gpt-4.1-2025-04-14"
 gpt_4_tokens = 100000
 gpt_4_input_tokens = 100 * 1000
 gpt_4_output_tokens = 100 * 1000

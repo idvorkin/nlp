@@ -67,7 +67,7 @@ def get_ell_model(
     elif openai_cheap:
         return "gpt-4o-mini"
     else:
-        return "gpt-4o-2024-08-06"  # Assuming this is the name for gpt4
+        return "gpt-4.1-2025-04-14"  # Using the new model version
 
 
 def is_port_in_use(port):
