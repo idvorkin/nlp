@@ -47,44 +47,6 @@ def filter_diff_content(diff_output: str) -> str:
     return "\n".join(filtered_lines)
 
 
-# Define the structure for commit messages
-class CommitMessage(BaseModel):
-    summary: str = Field(
-        ..., description="The commit summary line following Conventional Commits format"
-    )
-    bugs: Optional[Union[List[str], str]] = Field(
-        None, 
-        description="List of bugs identified in the code",
-        items={"type": "string"}
-    )
-    breaking_changes: Optional[Union[List[str], str]] = Field(
-        None, 
-        description="List of breaking changes",
-        items={"type": "string"}
-    )
-    cursor_rule_changes: Optional[Union[List[str], str]] = Field(
-        None, 
-        description="Changes to Cursor rules",
-        items={"type": "string"}
-    )
-    reasons: Optional[Union[List[str], str]] = Field(
-        None, 
-        description="Reasons for the changes",
-        items={"type": "string"}
-    )
-    details: Optional[Union[List[str], str]] = Field(
-        None, 
-        description="Details about the changes",
-        items={"type": "string"}
-    )
-    
-    @field_validator('bugs', 'breaking_changes', 'cursor_rule_changes', 'reasons', 'details', mode='before')
-    @classmethod
-    def convert_string_to_list(cls, v):
-        """Convert string values to list containing the string"""
-        if isinstance(v, str) and v:
-            return [v]
-        return v
 
 
 def prompt_summarize_diff(diff_output, oneline=False):
@@ -102,13 +64,6 @@ Where:
 
 Do not include any additional details, line breaks, or explanations. Just the single line.
 """
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                messages.SystemMessage(content=instructions),
-                messages.HumanMessage(content=diff_output),
-            ]
-        )
-        return prompt | StrOutputParser()
     else:
         instructions = """
 You are an expert programmer, write a descriptive and informative commit message following the Conventional Commits format for a recent code change, which is presented as the output of git diff --staged.
@@ -119,23 +74,27 @@ You are an expert programmer, write a descriptive and informative commit message
     * Scope is optional and should be the main component being changed, skip if only one file changed
     * Description should be concise but informative, using imperative mood
 * Then add details in the body, separated by a blank line
-* If you see bugs, start at the top of the file with
-* When listing changes,
+* If you see bugs, start at the top of the file with a section labeled "BUGS:"
+* When listing changes:
     * Put them in the order of importance
-    * Use unnumbered lists as the user will want to reorder them
-* If any changes involve Cursor rules (files in .cursor/rules/ or with .mdc extension), include a special section for cursor_rule_changes
-* If you see any of the following, skip them, or at most list them last as a single line
+    * Use unnumbered lists with asterisks (*)
+* If any changes involve Cursor rules (files in .cursor/rules/ or with .mdc extension), include a special section for "Cursor Rules Changes:"
+* If there are breaking changes, include a section labeled "BREAKING CHANGE:"
+* You may include a "Reason for change" section if appropriate
+* Include a "Details" section with bullet points about the specific changes
+* If you see any of the following, skip them, or at most list them last as a single line:
     * Changes to formatting/whitespace
     * Changes to imports
     * Changes to comments
 """
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                messages.SystemMessage(content=instructions),
-                messages.HumanMessage(content=diff_output),
-            ]
-        )
-        return prompt
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            messages.SystemMessage(content=instructions),
+            messages.HumanMessage(content=diff_output),
+        ]
+    )
+    return prompt
 
 
 async def a_build_commit(oneline: bool = False, fast: bool = False):
@@ -151,7 +110,7 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
         llms = [langchain_helper.get_model(llama=True)]
     else:
         llms = langchain_helper.get_models(
-            openai=True, google=True, o3_mini=True, claude=True, structured=True
+            openai=True, google=True, o3_mini=True, claude=True
         )
         tokens = num_tokens_from_string(filtered_text)
         if tokens < 32_000:
@@ -159,14 +118,8 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
 
     def describe_diff(llm: BaseChatModel):
         try:
-            if oneline:
-                chain = prompt_summarize_diff(filtered_text, oneline)
-                return chain | llm
-            else:
-                # Use the standard with_structured_output method for all models
-                structured_llm = llm.with_structured_output(CommitMessage, include_raw=True)
-                chain = prompt_summarize_diff(filtered_text, oneline) | structured_llm
-                return chain
+            chain = prompt_summarize_diff(filtered_text, oneline) | llm | StrOutputParser()
+            return chain
         except Exception as e:
             logger.error(f"Error with model {langchain_helper.get_model_name(llm)}: {e}")
             return {"error": str(e)}
@@ -186,82 +139,10 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
                 print("\n---\n")
                 continue
                 
-            if oneline:
-                # For oneline, result is just a string
-                print(result)
-                successful_results += 1
-            else:
-                # For structured output, result contains raw, parsed, and parsing_error
-                if result.get("parsing_error"):
-                    # Handle parsing error but don't break
-                    print(f"[bold red]Error parsing output from {model_name}:[/bold red]")
-                    print(f"[red]{result['parsing_error']}[/red]")
-                    
-                    # Try to extract useful information from raw output
-                    raw_content = (
-                        result["raw"].content
-                        if hasattr(result["raw"], "content") and result["raw"].content
-                        else str(result["raw"])
-                    )
-                    
-                    # If there's a tool_call in raw output, try to use that directly
-                    if hasattr(result["raw"], "tool_calls") and result["raw"].tool_calls:
-                        try:
-                            print("\n[yellow]Using raw tool call data instead:[/yellow]")
-                            tool_call = result["raw"].tool_calls[0]
-                            if hasattr(tool_call, "args"):
-                                args = tool_call.args
-                                print(f"[bold]{args.get('summary', 'No summary available')}[/bold]")
-                                
-                                if args.get("details"):
-                                    details = args["details"]
-                                    if isinstance(details, str):
-                                        print(f"\n**Details**\n* {details}")
-                                    elif isinstance(details, list):
-                                        print("\n**Details**")
-                                        for detail in details:
-                                            print(f"* {detail}")
-                                
-                                successful_results += 1
-                        except Exception as tc_error:
-                            print(f"[red]Could not extract tool call data: {tc_error}[/red]")
-                    else:
-                        print("\nRaw output:")
-                        print(raw_content)
-                        
-                    print("\n---\n")
-                    continue
-
-                # Successfully parsed result
-                commit = result["parsed"]
-                print(commit.summary)
-                successful_results += 1
-
-                if commit.bugs:
-                    print("\n**BUGS:**")
-                    for bug in commit.bugs:
-                        print(f"* {bug}")
-
-                if commit.breaking_changes:
-                    print("\n**BREAKING CHANGE:**")
-                    for change in commit.breaking_changes:
-                        print(f"* {change}")
-
-                if commit.cursor_rule_changes:
-                    print("\n**Cursor Rules Changes:**")
-                    for change in commit.cursor_rule_changes:
-                        print(f"* {change}")
-
-                if commit.reasons:
-                    print("\n**Reason for change**")
-                    for reason in commit.reasons:
-                        print(f"* {reason}")
-
-                if commit.details:
-                    print("\n**Details**")
-                    for detail in commit.details:
-                        print(f"* {detail}")
-
+            # Result is now just a string
+            print(result)
+            successful_results += 1
+            
             print(
                 f"\ncommit message generated by {model_name} in {duration.total_seconds():.2f} seconds"
             )
