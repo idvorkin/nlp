@@ -110,7 +110,7 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
         llms = [langchain_helper.get_model(llama=True)]
     else:
         llms = langchain_helper.get_models(
-            openai=True, google=True, o3_mini=True, claude=True
+            openai=True, google=True, o4_mini=True, claude=True, openai_mini=True
         )
         tokens = num_tokens_from_string(filtered_text)
         if tokens < 32_000:

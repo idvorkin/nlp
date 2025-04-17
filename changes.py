@@ -299,7 +299,7 @@ def changes(
     google_flash: bool = True,
     llama: bool = True,
     deepseek: bool = True,
-    o3_mini: bool = True,
+    o4_mini: bool = True,
     only: str = None,
     only_flash: bool = False,
     verbose: bool = False,
@@ -312,7 +312,7 @@ def changes(
         google_flash = True
         llama = False
         deepseek = False
-        o3_mini = False
+        o4_mini = False
         if verbose:
             print("Only using flash models as requested by only-flash parameter")
     
@@ -322,7 +322,7 @@ def changes(
         google=google,
         google_flash=google_flash,
         deepseek=deepseek,
-        o3_mini=o3_mini,
+        o4_mini=o4_mini,
         llama=llama
     )
     
@@ -643,8 +643,8 @@ async def achanges(
         model_start = datetime.now()
         max_parallel = asyncio.Semaphore(100)
 
-        # Special handling for o3-mini model
-        if isinstance(llm, ChatOpenAI) and llm.model_name == 'o3-mini-2025-01-31':
+        # Special handling for o4-mini model
+        if isinstance(llm, ChatOpenAI) and llm.model_name == 'o4-mini-2025-04-16':
             llm.model_kwargs = {}  # Clear any default parameters like temperature
 
         async def concurrent_llm_call(file, diff_content):

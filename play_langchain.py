@@ -151,22 +151,24 @@ def deepseek():
 
 @app.command()
 def stdin(
-    o3: bool = typer.Option(False, "--o3", help="Use O3-mini model"),
+    o4: bool = typer.Option(False, "--o4", help="Use O4-mini model"),
     deepseek: bool = typer.Option(False, "--deepseek", help="Use DeepSeek model"),
     claude: bool = typer.Option(False, "--claude", help="Use Claude model"),
     llama: bool = typer.Option(False, "--llama", help="Use Llama model"),
     google: bool = typer.Option(False, "--google", help="Use Google model"),
+    gpt_4_mini: bool = typer.Option(False, "--gpt-4-mini", help="Use GPT-4-mini model"),
 ):
     """Process stdin through the selected model and stream the output."""
     user_text = "".join(sys.stdin.readlines())
 
     # Get the appropriate model based on flags
     model = langchain_helper.get_model(
-        o3_mini=o3,
+        o4_mini=o4,
         deepseek=deepseek,
         claude=claude,
         llama=llama,
         google=google,
+        gpt_4_mini=gpt_4_mini,
     )
 
     # Create a simple prompt template
