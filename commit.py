@@ -63,6 +63,7 @@ Where:
 * Description should be concise but informative, using imperative mood
 
 Do not include any additional details, line breaks, or explanations. Just the single line.
+Do not use backticks (```) in your response.
 """
     else:
         instructions = """
@@ -86,6 +87,7 @@ You are an expert programmer, write a descriptive and informative commit message
     * Changes to formatting/whitespace
     * Changes to imports
     * Changes to comments
+* Do not use backticks (```) or code blocks in your response.
 """
 
     prompt = ChatPromptTemplate.from_messages(
