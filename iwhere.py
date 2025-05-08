@@ -47,11 +47,13 @@ from langchain.prompts.chat import (
     ChatPromptTemplate,
 )
 from langchain.schema.output_parser import StrOutputParser
+from langchain_core.language_models.chat_models import BaseChatModel
 import json
 from pydantic import BaseModel
 from pathlib import Path
 from loguru import logger
 import sys
+import time
 
 
 # Directories to exclude from indexing
@@ -83,6 +85,52 @@ class DebugInfo(BaseModel):
     question: str = ""
     count_tokens: int = 0
     model: str = ""
+
+
+class TimingStats:
+    """Class to track timing information for various stages of processing."""
+    
+    def __init__(self):
+        self.start_time = time.time()
+        self.rag_start = 0
+        self.rag_end = 0
+        self.llm_start = 0
+        self.llm_end = 0
+        self.end_time = 0
+        self.model_name = ""
+        self.token_count = 0
+        
+    def start_rag(self):
+        self.rag_start = time.time()
+        
+    def end_rag(self):
+        self.rag_end = time.time()
+        
+    def start_llm(self):
+        self.llm_start = time.time()
+        
+    def end_llm(self):
+        self.llm_end = time.time()
+        
+    def finish(self):
+        self.end_time = time.time()
+        
+    def print_stats(self):
+        """Print timing statistics to stderr."""
+        rag_time = self.rag_end - self.rag_start if self.rag_end > 0 else 0
+        llm_time = self.llm_end - self.llm_start if self.llm_end > 0 else 0
+        total_time = self.end_time - self.start_time
+        
+        stats = f"""
+=== Performance Statistics ===
+Model: {self.model_name}
+RAG retrieval time: {rag_time:.2f}s
+LLM inference time: {llm_time:.2f}s
+Total processing time: {total_time:.2f}s
+Token count: {self.token_count}
+============================
+"""
+        print(stats, file=sys.stderr)
 
 
 gpt_model = setup_gpt()
@@ -660,14 +708,40 @@ def ask(
     question: Annotated[
         str, typer.Argument()
     ] = "What are the roles from Igor's Eulogy, answer in bullet form",
-    facts: Annotated[int, typer.Option()] = 5,
+    facts: Annotated[int, typer.Option(help="Number of documents to use for context")] = 20,
     debug: bool = typer.Option(True),
+    model: Annotated[
+        str, 
+        typer.Option(
+            help="Model to use: openai, claude, llama, google, etc. See langchain_helper.py for all options"
+        )
+    ] = "openai",
 ):
-    response = asyncio.run(iask(question, facts, debug))
+    response = asyncio.run(iask(question, facts, debug, model))
     print(response)
 
 
-async def iask_where(topic: str, debug: bool = False):
+@app.command()
+def where(
+    topic: Annotated[str, typer.Argument(help="Topic to find placement for")],
+    num_docs: Annotated[int, typer.Option(help="Number of documents to use for context")] = 20,
+    debug: Annotated[bool, typer.Option(help="Show debugging information")] = False,
+    model: Annotated[
+        str, 
+        typer.Option(
+            help="Model to use: openai, claude, llama, google, etc. See langchain_helper.py for all options"
+        )
+    ] = "openai",
+):
+    """Suggest where to add new blog content about a topic"""
+    response = asyncio.run(iask_where(topic, num_docs, debug, model))
+    print(response)
+
+
+async def iask_where(topic: str, num_docs: int = 20, debug: bool = False, model: str = "openai"):
+    # Initialize timing stats
+    timing = TimingStats()
+    
     prompt = ChatPromptTemplate.from_template(
         """
 You are an expert blog organization consultant. You help Igor organize his blog content effectively.
@@ -713,21 +787,37 @@ File paths should always start with either "_d/" or "_posts/".
     """
     )
 
-    llm = langchain_helper.get_model(openai=True)
+    llm = get_model_for_name(model)
+    model_name = langchain_helper.get_model_name(llm)
+    timing.model_name = model_name
+    
+    if debug:
+        ic(f"Using model: {model_name}")
+    
+    # Time the RAG process
+    timing.start_rag()
+    
     db = get_chroma_db()
     if db is None:
         raise Exception(f"Blog database not found. Please run 'iwhere.py build' first.")
     
+    logger.info(f"Searching for documents related to '{topic}' using {num_docs} documents")
     docs_and_scores = await db.asimilarity_search_with_relevance_scores(
-        topic, k=8
+        topic, k=num_docs
     )
+    
+    timing.end_rag()
+    
     if debug:
+        rag_time = timing.rag_end - timing.rag_start
+        ic(f"RAG retrieval completed in {rag_time:.2f} seconds")
         ic("Retrieved documents and scores:")
         for doc, score in docs_and_scores:
             ic(doc.metadata, score)
 
     facts_to_inject = [doc for doc, _ in docs_and_scores]
     context = docs_to_prompt(facts_to_inject)
+    timing.token_count = num_tokens_from_string(context)
 
     from langchain.output_parsers import PydanticOutputParser
 
@@ -737,10 +827,17 @@ File paths should always start with either "_d/" or "_posts/".
     backlinks_content = (
         Path.home() / "gits/idvorkin.github.io/back-links.json"
     ).read_text()
+    
+    # Time the LLM inference - only the actual API call
+    timing.start_llm()
     result = await chain.ainvoke(
         {"topic": topic, "context": context, "backlinks": backlinks_content}
     )
+    timing.end_llm()
+    
     if debug:
+        llm_time = timing.llm_end - timing.llm_start
+        ic(f"LLM inference completed in {llm_time:.2f} seconds")
         ic("LLM Response:", result)
 
     response = f"""
@@ -767,16 +864,26 @@ Structuring Tips:
 Organization Tips:
 {chr(10).join(f'• {tip}' for tip in result.organization_tips)}
 """
+    
+    # Finish timing and print stats
+    timing.finish()
+    timing.print_stats()
+    
     return response
 
 
 async def iask(
     question: str,
-    facts: int,
+    facts: int = 20,
     debug: bool = True,
+    model: str = "openai",
 ):
+    # Initialize timing stats
+    timing = TimingStats()
+    
     if debug:
         ic(facts)
+    
     # load chroma from DB
     db = get_chroma_db()
     if db is None:
@@ -807,25 +914,32 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     """
     )
 
-    llm = langchain_helper.get_model(openai=True)
+    llm = get_model_for_name(model)
+    model_name = langchain_helper.get_model_name(llm)
+    timing.model_name = model_name
+    
+    if debug:
+        ic(f"Using model: {model_name}")
 
-    # We can improve our relevance by getting the md_simple_chunks, but that loses context
-    # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
-
+    # Time RAG retrieval
+    timing.start_rag()
+    
     docs_and_scores = await db.asimilarity_search_with_relevance_scores(
         question, k=4 * facts
     )
-    for doc, score in docs_and_scores:
-        ic(doc.metadata, score)
+    
+    timing.end_rag()
+    
+    if debug:
+        rag_time = timing.rag_end - timing.rag_start
+        ic(f"RAG retrieval completed in {rag_time:.2f} seconds")
+        for doc, score in docs_and_scores:
+            ic(doc.metadata, score)
 
     candidate_facts = [d for d, _ in docs_and_scores]
 
     facts_to_inject: List[Document] = []
-    # build a set of facts to inject
-    # if we got suggested partial files, try to find the full size version
-    # if we can inject full size version, include that.
-    # include upto fact docs
-
+    
     def facts_to_append_contains_whole_file(path):
         for fact in facts_to_inject:
             if fact.metadata["source"] == path and fact.metadata["is_entire_document"]:
@@ -840,11 +954,13 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
         fact_path = fact.metadata["source"]
         # Already added
         if facts_to_append_contains_whole_file(fact_path):
-            ic("Whole file already present", fact_path)
+            if debug:
+                ic("Whole file already present", fact_path)
             continue
         # Whole document is available
         if has_whole_document(fact_path):
-            ic("Adding whole file instead", fact.metadata)
+            if debug:
+                ic("Adding whole file instead", fact.metadata)
             facts_to_inject.append(get_document(fact_path))
             continue
         # All we have is the partial
@@ -853,34 +969,67 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     good_docs = ["_posts/2020-04-01-Igor-Eulogy.md", "_d/operating-manual-2.md"]
     facts_to_inject += [get_document(d) for d in good_docs]
 
-    print("Source Documents")
-    for doc in facts_to_inject:
-        # Remap metadata to url
-        ic(doc.metadata)
+    if debug:
+        print("Source Documents")
+        for doc in facts_to_inject:
+            # Remap metadata to url
+            ic(doc.metadata)
 
     context = docs_to_prompt(facts_to_inject)
-    ic(num_tokens_from_string(context))
+    timing.token_count = num_tokens_from_string(context)
+    
+    if debug:
+        ic(timing.token_count)
+    
     chain = prompt | llm | StrOutputParser()
     global g_debug_info
     g_debug_info = DebugInfo()
     g_debug_info.documents = facts_to_inject
-    g_debug_info.count_tokens = num_tokens_from_string(context)
+    g_debug_info.count_tokens = timing.token_count
     g_debug_info.question = question
-    g_debug_info.model = langchain_helper.get_model_name(llm)
+    g_debug_info.model = model_name
 
-    response = chain.ainvoke({"question": question, "context": context})
+    # Time the actual LLM inference
+    timing.start_llm()
+    response = await chain.ainvoke({"question": question, "context": context})
+    timing.end_llm()
+    
+    if debug:
+        llm_time = timing.llm_end - timing.llm_start
+        ic(f"LLM inference completed in {llm_time:.2f} seconds")
 
-    return await response
+    # Finish timing and print stats
+    timing.finish()
+    timing.print_stats()
+    
+    return response
 
 
-@app.command()
-def where(
-    topic: Annotated[str, typer.Argument(help="Topic to find placement for")],
-    debug: Annotated[bool, typer.Option(help="Show debugging information")] = False,
-):
-    """Suggest where to add new blog content about a topic"""
-    response = asyncio.run(iask_where(topic, debug))
-    print(response)
+def get_model_for_name(model_name: str) -> BaseChatModel:
+    """Convert model name to the appropriate model object"""
+    model_name = model_name.lower()
+    
+    if model_name == "openai":
+        return langchain_helper.get_model(openai=True)
+    elif model_name == "claude":
+        return langchain_helper.get_model(claude=True)
+    elif model_name == "llama":
+        return langchain_helper.get_model(llama=True)
+    elif model_name == "google":
+        return langchain_helper.get_model(google=True)
+    elif model_name == "google_think":
+        return langchain_helper.get_model(google_think=True)
+    elif model_name == "google_flash":
+        return langchain_helper.get_model(google_flash=True)
+    elif model_name == "deepseek":
+        return langchain_helper.get_model(deepseek=True)
+    elif model_name == "o4_mini":
+        return langchain_helper.get_model(o4_mini=True)
+    elif model_name == "openai_mini":
+        return langchain_helper.get_model(openai_mini=True)
+    else:
+        logger.warning(f"Unknown model name: {model_name}, defaulting to OpenAI")
+        return langchain_helper.get_model(openai=True)
 
 
 def app_wrap_loguru():
