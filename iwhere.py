@@ -218,6 +218,9 @@ def get_chroma_db():
     
     # Return cached DB if it exists
     if g_blog_content_db is not None:
+        if g_all_documents is None: # Defensive check
+            logger.warning("g_blog_content_db is cached, but g_all_documents is None. Re-fetching documents.")
+            g_all_documents = g_blog_content_db.get()
         return g_blog_content_db
 
     if os.path.exists(DEFAULT_CHROMA_DB_DIR):
@@ -711,25 +714,34 @@ def fixup_markdown_path(src):
 
 
 def has_whole_document(path):
-    db = get_chroma_db()
-    if db is None:
-        return False
-    all_documents = db.get()
-    for m in all_documents["metadatas"]:
+    global g_all_documents
+    if g_all_documents is None:
+        logger.warning("g_all_documents is None in has_whole_document. DB might not be properly initialized. Attempting to load.")
+        # Attempt to ensure DB and g_all_documents are loaded
+        db = get_chroma_db() 
+        if g_all_documents is None: # Still None after trying to load DB
+            logger.error("Failed to load g_all_documents in has_whole_document.")
+            return False 
+    
+    for m in g_all_documents["metadatas"]:
         if m["source"] == path and m["is_entire_document"]:
             return True
     return False
 
 
 def get_document(path) -> Document:
-    db = get_chroma_db()
-    if db is None:
-        raise Exception(f"Blog database not found. Please run 'iwhere.py build' first.")
-    all_documents = db.get()
-    for i, m in enumerate(all_documents["metadatas"]):
+    global g_all_documents
+    if g_all_documents is None:
+        logger.warning("g_all_documents is None in get_document. DB might not be properly initialized. Attempting to load.")
+        # Attempt to ensure DB and g_all_documents are loaded
+        db = get_chroma_db()
+        if g_all_documents is None: # Still None after trying to load DB
+            raise Exception(f"Blog database (g_all_documents) not found/populated after attempting reload. Please run 'iwhere.py build' first.")
+
+    for i, m in enumerate(g_all_documents["metadatas"]):
         if m["source"] == path and m["is_entire_document"]:
-            return Document(page_content=all_documents["documents"][i], metadata=m)
-    raise Exception(f"{path} document found")
+            return Document(page_content=g_all_documents["documents"][i], metadata=m)
+    raise Exception(f"Whole document for path '{path}' not found in g_all_documents.")
 
 
 # cache this so it's memoized
