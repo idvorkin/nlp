@@ -3,6 +3,7 @@
 # requires-python = ">=3.8"
 # dependencies = [
 #     "typer",
+#     "click==8.1.8", # Pinned click version
 #     "icecream",
 #     "rich",
 #     "langchain",
@@ -10,7 +11,6 @@
 #     "langchain-openai",
 #     "langchain-chroma",
 #     "openai",
-#     "pydantic",
 #     # "fastapi", # FastAPI import removed as the local server instance is removed.
 #     "requests", 
 #     "typing-extensions",
