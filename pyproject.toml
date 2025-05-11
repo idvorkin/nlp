@@ -62,6 +62,9 @@ dependencies = [
     "pytest-asyncio",
     "requests",
     "tqdm",
+    "fastmcp",
+    "uvicorn",
+    "unstructured",
 ]
 
 [tool.setuptools]
