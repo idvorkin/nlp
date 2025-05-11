@@ -99,6 +99,16 @@ class TimingStats:
         self.end_time = 0
         self.model_name = ""
         self.token_count = 0
+        self.overall_init_start = 0
+        self.overall_init_end = 0
+        self.db_load_start = 0
+        self.db_load_end = 0
+        self.doc_prep_start = 0
+        self.doc_prep_end = 0
+        self.backlinks_load_start = 0  # Specific to iask_where
+        self.backlinks_load_end = 0    # Specific to iask_where
+        self.post_llm_start = 0
+        self.post_llm_end = 0
         
     def start_rag(self):
         self.rag_start = time.time()
@@ -114,19 +124,67 @@ class TimingStats:
         
     def finish(self):
         self.end_time = time.time()
+
+    def start_overall_init(self):
+        self.overall_init_start = time.time()
+
+    def end_overall_init(self):
+        self.overall_init_end = time.time()
+
+    def start_db_load(self):
+        self.db_load_start = time.time()
+
+    def end_db_load(self):
+        self.db_load_end = time.time()
+
+    def start_doc_prep(self):
+        self.doc_prep_start = time.time()
+
+    def end_doc_prep(self):
+        self.doc_prep_end = time.time()
+
+    def start_backlinks_load(self): # For iask_where
+        self.backlinks_load_start = time.time()
+
+    def end_backlinks_load(self):   # For iask_where
+        self.backlinks_load_end = time.time()
+
+    def start_post_llm(self):
+        self.post_llm_start = time.time()
+
+    def end_post_llm(self):
+        self.post_llm_end = time.time()
         
     def print_stats(self):
         """Print timing statistics to stderr."""
+        overall_init_time = self.overall_init_end - self.overall_init_start if self.overall_init_end > 0 else 0
+        db_load_time = self.db_load_end - self.db_load_start if self.db_load_end > 0 else 0
         rag_time = self.rag_end - self.rag_start if self.rag_end > 0 else 0
+        doc_prep_time = self.doc_prep_end - self.doc_prep_start if self.doc_prep_end > 0 else 0
+        backlinks_load_time = self.backlinks_load_end - self.backlinks_load_start if self.backlinks_load_end > 0 else 0
         llm_time = self.llm_end - self.llm_start if self.llm_end > 0 else 0
+        post_llm_time = self.post_llm_end - self.post_llm_start if self.post_llm_end > 0 else 0
         total_time = self.end_time - self.start_time
         
+        measured_sum = overall_init_time + db_load_time + rag_time + doc_prep_time + backlinks_load_time + llm_time + post_llm_time
+        unaccounted_time = total_time - measured_sum
+
         stats = f"""
 === Performance Statistics ===
 Model: {self.model_name}
+Overall Initialization: {overall_init_time:.2f}s
+Database Loading: {db_load_time:.2f}s
 RAG retrieval time: {rag_time:.2f}s
-LLM inference time: {llm_time:.2f}s
+Document Preparation: {doc_prep_time:.2f}s
+"""
+        if backlinks_load_time > 0: # Only print if relevant for iask_where
+            stats += f"Backlinks File Loading: {backlinks_load_time:.2f}s\n"
+        stats += f"""LLM inference time: {llm_time:.2f}s
+Post-LLM Processing: {post_llm_time:.2f}s
+----------------------------
+Sum of Measured Steps: {measured_sum:.2f}s
 Total processing time: {total_time:.2f}s
+Unaccounted time: {unaccounted_time:.2f}s
 Token count: {self.token_count}
 ============================
 """
@@ -741,6 +799,7 @@ def where(
 async def iask_where(topic: str, num_docs: int = 20, debug: bool = False, model: str = "openai"):
     # Initialize timing stats
     timing = TimingStats()
+    timing.start_overall_init() # START OVERALL INIT
     
     prompt = ChatPromptTemplate.from_template(
         """
@@ -793,14 +852,19 @@ File paths should always start with either "_d/" or "_posts/".
     
     if debug:
         ic(f"Using model: {model_name}")
+
+    timing.end_overall_init() # END OVERALL INIT
     
-    # Time the RAG process
-    timing.start_rag()
-    
+    # Time DB load
+    timing.start_db_load()
     db = get_chroma_db()
+    timing.end_db_load()
+    
     if db is None:
         raise Exception(f"Blog database not found. Please run 'iwhere.py build' first.")
     
+    # Time the RAG process
+    timing.start_rag()
     logger.info(f"Searching for documents related to '{topic}' using {num_docs} documents")
     docs_and_scores = await db.asimilarity_search_with_relevance_scores(
         topic, k=num_docs
@@ -815,18 +879,23 @@ File paths should always start with either "_d/" or "_posts/".
         for doc, score in docs_and_scores:
             ic(doc.metadata, score)
 
+    timing.start_doc_prep() # START DOC PREP
     facts_to_inject = [doc for doc, _ in docs_and_scores]
     context = docs_to_prompt(facts_to_inject)
     timing.token_count = num_tokens_from_string(context)
+    timing.end_doc_prep() # END DOC PREP
 
     from langchain.output_parsers import PydanticOutputParser
 
     parser = PydanticOutputParser(pydantic_object=BlogPlacementSuggestion)
 
     chain = prompt | llm | parser
+
+    timing.start_backlinks_load() # START BACKLINKS LOAD
     backlinks_content = (
         Path.home() / "gits/idvorkin.github.io/back-links.json"
     ).read_text()
+    timing.end_backlinks_load() # END BACKLINKS LOAD
     
     # Time the LLM inference - only the actual API call
     timing.start_llm()
@@ -834,11 +903,11 @@ File paths should always start with either "_d/" or "_posts/".
         {"topic": topic, "context": context, "backlinks": backlinks_content}
     )
     timing.end_llm()
-    
+
+    timing.start_post_llm() # START POST LLM
     if debug:
         llm_time = timing.llm_end - timing.llm_start
         ic(f"LLM inference completed in {llm_time:.2f} seconds")
-        ic("LLM Response:", result)
 
     response = f"""
 RECOMMENDED LOCATIONS:
@@ -864,6 +933,7 @@ Structuring Tips:
 Organization Tips:
 {chr(10).join(f'• {tip}' for tip in result.organization_tips)}
 """
+    timing.end_post_llm() # END POST LLM
     
     # Finish timing and print stats
     timing.finish()
@@ -880,6 +950,7 @@ async def iask(
 ):
     # Initialize timing stats
     timing = TimingStats()
+    timing.start_overall_init() # START OVERALL INIT
     
     if debug:
         ic(facts)
@@ -921,6 +992,14 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     if debug:
         ic(f"Using model: {model_name}")
 
+    # Time DB load
+    timing.start_db_load()
+    db = get_chroma_db()
+    timing.end_db_load()
+    
+    if db is None:
+        raise Exception(f"Blog database not found. Please run 'iwhere.py build' first.")
+
     # Time RAG retrieval
     timing.start_rag()
     
@@ -936,6 +1015,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
         for doc, score in docs_and_scores:
             ic(doc.metadata, score)
 
+    timing.start_doc_prep() # START DOC PREP
     candidate_facts = [d for d, _ in docs_and_scores]
 
     facts_to_inject: List[Document] = []
@@ -977,6 +1057,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
 
     context = docs_to_prompt(facts_to_inject)
     timing.token_count = num_tokens_from_string(context)
+    timing.end_doc_prep() # END DOC PREP
     
     if debug:
         ic(timing.token_count)
@@ -994,9 +1075,11 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     response = await chain.ainvoke({"question": question, "context": context})
     timing.end_llm()
     
+    timing.start_post_llm() # START POST LLM
     if debug:
         llm_time = timing.llm_end - timing.llm_start
         ic(f"LLM inference completed in {llm_time:.2f} seconds")
+    timing.end_post_llm() # END POST LLM
 
     # Finish timing and print stats
     timing.finish()
