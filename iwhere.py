@@ -54,6 +54,7 @@ from pathlib import Path
 from loguru import logger
 import sys
 import time
+import importlib.metadata
 
 
 # Directories to exclude from indexing
@@ -806,6 +807,19 @@ def where(
     """Suggest where to add new blog content about a topic"""
     response = asyncio.run(iask_where(topic, num_docs, debug, model))
     print(response)
+
+
+@app.command()
+def versions():
+    """Show versions of key libraries."""
+    libraries = ["typer", "click", "rich"]
+    print("Installed library versions:")
+    for lib in libraries:
+        try:
+            version = importlib.metadata.version(lib)
+            print(f"  {lib}: {version}")
+        except importlib.metadata.PackageNotFoundError:
+            print(f"  {lib}: Not found")
 
 
 async def iask_where(topic: str, num_docs: int = 20, debug: bool = False, model: str = "openai"):
