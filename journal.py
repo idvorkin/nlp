@@ -1,8 +1,6 @@
 #!python3
 
-import openai
 import typer
-import ell
 import rich
 import os
 import tempfile
@@ -14,25 +12,8 @@ import langchain_helper
 
 app = typer.Typer(no_args_is_help=True)
 
-# Create custom client with Gemini endpoint
-client = openai.Client(
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-    api_key=os.environ["GOOGLE_API_KEY"],
-)
-
-# Get model from langchain_helper
-model = langchain_helper.get_model(google=True)  # Use google=True for Gemini Pro
-model_to_use = langchain_helper.get_model_name(
-    model
-)  # Get model name using the helper function
-
-# Register the model with your custom client
-ell.config.register_model(model_to_use, client)
-
-
-@ell.simple(model=model_to_use, temperature=0.7)
-def prompt_hello():
-    return "Hello world tell me a joke"
+# Use the correct Gemini model name directly
+model_to_use = "gemini-2.5-pro-exp-03-25"
 
 
 # Annoying, ell can't take a base64 input of a file, lets use gemini raw for that
@@ -204,31 +185,51 @@ Heading Level 2
 
 
 def gemini_transcribe(pdf_path: str, page_breaks: bool = False):
-    import vertexai
-    from vertexai.generative_models import GenerativeModel, Part
+    import google.generativeai as genai
+    from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
-    pdf_data = Part.from_data(
-        mime_type="application/pdf", data=Path(pdf_path).read_bytes()
-    )
+    try:
+        # Configure the API key
+        genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 
-    # Add page_breaks parameter to prompt
-    prompt = gemini_prompt + f"\nPAGE_BREAKS: {'true' if page_breaks else 'false'}"
+        # Read PDF file
+        pdf_data = Path(pdf_path).read_bytes()
 
-    generation_config = {
-        "max_output_tokens": 8192,
-        "temperature": 1,
-        "top_p": 0.95,
-    }
-    vertexai.init(project="tranquil-hawk-325816", location="us-central1")
-    model = GenerativeModel(model_name=model_to_use)
-    chat = model.start_chat()
-    ic("starting", model_to_use)
-    response = chat.send_message(
-        [prompt, pdf_data], generation_config=generation_config
-    )
-    ic(response.usage_metadata)
-    return response.text
+        # Add page_breaks parameter to prompt
+        prompt = gemini_prompt + f"\nPAGE_BREAKS: {'true' if page_breaks else 'false'}"
 
+        # Configure generation parameters
+        generation_config = {
+            "max_output_tokens": 8192,
+            "temperature": 1,
+            "top_p": 0.95,
+        }
+
+        # Initialize the model with safety filters disabled
+        model = genai.GenerativeModel(
+            model_name=model_to_use,
+            generation_config=generation_config,
+            safety_settings=None
+        )
+
+        # Create a multipart content with text and PDF
+        contents = [
+            {"text": prompt},
+            {"inline_data": {"mime_type": "application/pdf", "data": pdf_data}}
+        ]
+
+        # Generate response
+        ic("starting", model_to_use)
+        response = model.generate_content(contents)
+
+        # Log usage metadata if available
+        if hasattr(response, 'usage_metadata'):
+            ic(response.usage_metadata)
+
+        return response.text
+    except Exception as e:
+        ic(f"Error during transcription: {str(e)}")
+        raise
 
 @app.command()
 def transcribe(

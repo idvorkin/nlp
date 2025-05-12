@@ -25,7 +25,7 @@ dependencies = [
     "elevenlabs",
     "langchain-google-genai",
     "langchain-google-genai",
-    "vertexai",
+    "google-generativeai",
     "pyobjc; sys_platform == 'darwin'",
     "langchain_anthropic",
     "replicate",
