@@ -42,12 +42,14 @@ def _(mo):
 
 @app.cell
 def _():
-    import marimo as mo
-    return (mo,)
+    print ("Hello Donky Kong!")
+    hello_string = "Goodbye"
+    return (hello_string,)
 
 
 @app.cell
-def _():
+def _(hello_string):
+    print (hello_string)
     return
 
 
