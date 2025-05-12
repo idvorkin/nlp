@@ -1,3 +1,10 @@
+#!uv run
+# /// script
+# dependencies = [
+#     "marimo",
+# ]
+# ///
+
 import marimo
 
 __generated_with = "0.13.6"
