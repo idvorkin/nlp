@@ -10,6 +10,14 @@ from typing import Callable, List, TypeVar
 from datetime import datetime, timedelta
 import asyncio
 
+def get_embeddings_model():
+    """
+    Returns an embeddings model for use with Chroma DB.
+    Currently using OpenAI's embeddings model.
+    """
+    from langchain_openai import OpenAIEmbeddings
+    return OpenAIEmbeddings(model="text-embedding-3-large")
+
 
 def get_model_name(model: BaseChatModel):
     # if model has model_name, return that
