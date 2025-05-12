@@ -325,6 +325,12 @@ def process_chunks_in_batches(chunks: List[Document], batch_size: int = 50):
     if total_chunks == 0:
         logger.info("No chunks to process in batches.")
         return # Yield nothing if no chunks
+    
+    # Adjust batch size if it's too large (OpenAI has a 300k token limit per request)
+    # A safer batch size of 100 should keep us under the limit in most cases
+    if batch_size > 100:
+        logger.warning(f"Requested batch size {batch_size} may exceed token limits. Reducing to 100.")
+        batch_size = 100
         
     logger.info(f"Processing {total_chunks} chunks in batches of {batch_size}")
     for i in tqdm(range(0, total_chunks, batch_size), desc="Batching chunks for embedding"):

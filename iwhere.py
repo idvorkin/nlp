@@ -72,7 +72,7 @@ console = Console()
 @app.command()
 def build(
     blog_path: Annotated[str, typer.Option(help="Path to the blog repository")] = "~/blog",
-    batch_size: Annotated[int, typer.Option(help="Number of chunks to process in each batch for embedding")] = 50,
+    batch_size: Annotated[int, typer.Option(help="Number of chunks to process in each batch for embedding")] = 100,
 ):
     """Build the vector database from blog content."""
     logger.info(f"CLI 'build' invoked for blog path: {blog_path} with batch size: {batch_size}")
