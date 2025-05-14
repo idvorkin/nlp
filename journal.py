@@ -13,7 +13,7 @@ import langchain_helper
 app = typer.Typer(no_args_is_help=True)
 
 # Use the correct Gemini model name directly
-model_to_use = "gemini-2.5-pro-exp-03-25"
+model_to_use = "gemini-2.5-pro-preview-03-25"
 
 
 # Annoying, ell can't take a base64 input of a file, lets use gemini raw for that
