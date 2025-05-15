@@ -16,7 +16,6 @@ from icecream import ic
 from loguru import logger
 from pydantic import BaseModel
 from rich.console import Console
-from pydub import AudioSegment
 import os
 import re
 
@@ -81,7 +80,10 @@ def say(
     to_speak = "\n".join(sys.stdin.readlines())
     model = "eleven_turbo_v2" if fast else "eleven_multilingual_v2"
     ic(voice, model)
-    client = ElevenLabs()
+    api_key = os.getenv("ELEVEN_API_KEY")
+
+    client = ElevenLabs(api_key=api_key)
+
     voice_settings = VoiceSettings(
         stability=0.4, similarity_boost=0.6, style=0.36, use_speaker_boost=True
     )
@@ -227,6 +229,7 @@ def google_multi(pod=Path("pod.json"), speak: bool = True):
 
 @app.command()
 def merge_audio(directory: Path):
+    from pydub import AudioSegment
     # Specify the directory where youjjjjr audio files are located
 
     # Function to extract the numeric part from the filename for sorting
