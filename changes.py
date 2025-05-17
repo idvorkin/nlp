@@ -1,4 +1,21 @@
-#!python3
+#!uv run
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#     "icecream",
+#     "langchain",
+#     "langchain-community",
+#     "langchain-core",
+#     "langchain-openai",
+#     "loguru",
+#     "openai",
+#     "pydantic",
+#     "pudb",
+#     "requests",
+#     "rich",
+#     "typer",
+# ]
+# ///
 
 
 import asyncio

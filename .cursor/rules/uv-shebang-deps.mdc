@@ -1,0 +1,46 @@
+---
+description: 
+globs: *py
+alwaysApply: false
+---
+# Using `uv` Shebang and Dependency Block in Python Scripts
+
+Some scripts in this codebase, such as [changes.py](mdc:changes.py), use a modern approach for environment and dependency management by leveraging the `uv` tool.
+
+## Shebang Format
+The script begins with:
+```python
+#!uv run
+```
+This tells the operating system to execute the script using `uv run`, which manages dependencies and the Python environment automatically.
+
+## Dependency Block
+Immediately after the shebang, a special comment block specifies the required Python version and dependencies:
+```python
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#     "typer",
+#     "icecream",
+#     "rich",
+#     "langchain",
+#     "langchain-core",
+#     "langchain-community",
+#     "langchain-openai",
+#     "openai",
+#     "loguru",
+#     "pydantic",
+#     "requests",
+# ]
+# ///
+```
+- List all third-party packages imported in the script.
+- If you add or remove imports, update this block accordingly.
+- If you use additional tools (e.g., `pudb` for debugging), add them to the list as needed.
+
+## Benefits
+- Anyone with `uv` installed can run the script directly without manual environment setup.
+- Ensures reproducibility and reduces dependency issues.
+
+## Example
+See [changes.py](mdc:changes.py) for a real-world implementation of this pattern.
