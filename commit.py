@@ -125,12 +125,11 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
     # Filter out diffs from files that should be skipped
     filtered_text = filter_diff_content(user_text)
 
-    if fast:
-        # Use R1 (deepseek) only once for fast mode
-        llms = [langchain_helper.get_model(llama=True)]
-    elif oneline:
-        # For oneline, just use Llama
-        llms = [langchain_helper.get_model(llama=True)]
+    if fast or oneline:
+        # Use Google Flash for both fast and oneline modes
+        llms = [langchain_helper.get_model(google_flash=True)]
+        # Llama is currently down, use flash
+        # llms = [langchain_helper.get_model(llama=True)]
     else:
         llms = langchain_helper.get_models(
             openai=True, google=True, o4_mini=True, claude=True, openai_mini=True
