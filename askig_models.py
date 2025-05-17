@@ -1,6 +1,6 @@
 import time
 import sys
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel
 from langchain.docstore.document import Document # For DebugInfo.documents
 
@@ -23,27 +23,27 @@ class DebugInfo(BaseModel):
 
 class TimingStats:
     """Class to track timing information for various stages of processing."""
-    
+
     def __init__(self):
         self.start_time = time.time()
-        self.rag_start = 0
-        self.rag_end = 0
-        self.llm_start = 0
-        self.llm_end = 0
-        self.end_time = 0
+        self.rag_start = 0.0
+        self.rag_end = 0.0
+        self.llm_start = 0.0
+        self.llm_end = 0.0
+        self.end_time = 0.0
         self.model_name = ""
         self.token_count = 0
-        self.overall_init_start = 0
-        self.overall_init_end = 0
-        self.db_load_start = 0
-        self.db_load_end = 0
-        self.doc_prep_start = 0
-        self.doc_prep_end = 0
-        self.backlinks_load_start = 0  # Specific to iask_where
-        self.backlinks_load_end = 0    # Specific to iask_where
-        self.post_llm_start = 0
-        self.post_llm_end = 0
-        
+        self.overall_init_start = 0.0
+        self.overall_init_end = 0.0
+        self.db_load_start = 0.0
+        self.db_load_end = 0.0
+        self.doc_prep_start = 0.0
+        self.doc_prep_end = 0.0
+        self.backlinks_load_start = 0.0  # Specific to iask_where
+        self.backlinks_load_end = 0.0    # Specific to iask_where
+        self.post_llm_start = 0.0
+        self.post_llm_end = 0.0
+
     def start_rag(self): self.rag_start = time.time()
     def end_rag(self): self.rag_end = time.time()
     def start_llm(self): self.llm_start = time.time()
@@ -59,7 +59,7 @@ class TimingStats:
     def end_backlinks_load(self): self.backlinks_load_end = time.time()   # For iask_where
     def start_post_llm(self): self.post_llm_start = time.time()
     def end_post_llm(self): self.post_llm_end = time.time()
-        
+
     def print_stats(self):
         """Print timing statistics to stderr."""
         overall_init_time = self.overall_init_end - self.overall_init_start if self.overall_init_end > 0 else 0
@@ -70,7 +70,7 @@ class TimingStats:
         llm_time = self.llm_end - self.llm_start if self.llm_end > 0 else 0
         post_llm_time = self.post_llm_end - self.post_llm_start if self.post_llm_end > 0 else 0
         total_time = self.end_time - self.start_time
-        
+
         measured_sum = overall_init_time + db_load_time + rag_time + doc_prep_time + backlinks_load_time + llm_time + post_llm_time
         unaccounted_time = total_time - measured_sum
 
@@ -93,4 +93,4 @@ Unaccounted time: {unaccounted_time:.2f}s
 Token count: {self.token_count}
 ============================
 """
-        print(stats_str, file=sys.stderr) 
+        print(stats_str, file=sys.stderr)
