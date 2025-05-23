@@ -122,7 +122,7 @@ def get_model(
         from langchain_anthropic import ChatAnthropic
 
         model = ChatAnthropic(
-            model_name="claude-3-7-sonnet-20250219",
+            model_name="claude-sonnet-4-20250514",
             model_kwargs={"format": "json"} if structured else {},
         )
     elif llama:
