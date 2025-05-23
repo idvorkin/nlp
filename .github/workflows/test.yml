@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -38,7 +43,7 @@ jobs:
             pytest.xml
           comment_mode: always
 
-      - name: Generate test summary
+      - name: Generate test summary and update badge
         if: always()
         run: |
           if [ -f pytest.xml ]; then
@@ -54,35 +59,33 @@ jobs:
             
             PASSED=$((TESTS - FAILURES - ERRORS))
             
-            echo "TOTAL_TESTS=$TESTS" >> $GITHUB_ENV
-            echo "PASSED_TESTS=$PASSED" >> $GITHUB_ENV
-            echo "FAILED_TESTS=$((FAILURES + ERRORS))" >> $GITHUB_ENV
-            
             if [ $((FAILURES + ERRORS)) -eq 0 ]; then
-              echo "TEST_STATUS=$PASSED/$TESTS passing" >> $GITHUB_ENV
-              echo "TEST_COLOR=brightgreen" >> $GITHUB_ENV
+              TEST_STATUS="$PASSED/$TESTS passing"
+              TEST_COLOR="brightgreen"
             else
-              echo "TEST_STATUS=$PASSED/$TESTS passing" >> $GITHUB_ENV
-              echo "TEST_COLOR=red" >> $GITHUB_ENV
+              TEST_STATUS="$PASSED/$TESTS passing"
+              TEST_COLOR="red"
             fi
+            
+            echo "📊 Test Results: $TEST_STATUS"
           else
-            echo "TOTAL_TESTS=0" >> $GITHUB_ENV
-            echo "PASSED_TESTS=0" >> $GITHUB_ENV
-            echo "FAILED_TESTS=0" >> $GITHUB_ENV
-            echo "TEST_STATUS=no tests" >> $GITHUB_ENV
-            echo "TEST_COLOR=lightgrey" >> $GITHUB_ENV
+            TEST_STATUS="no tests"
+            TEST_COLOR="lightgrey"
+            echo "❌ No test results found"
           fi
 
-      - name: Create test count badge
-        if: always()
-        uses: schneegans/dynamic-badges-action@v1.7.0
-        with:
-          auth: ${{ secrets.GITHUB_TOKEN }}
-          gistID: ${{ secrets.GIST_ID }}
-          filename: test-badge.json
-          label: tests
-          message: ${{ env.TEST_STATUS }}
-          color: ${{ env.TEST_COLOR }}
+          # Create badge JSON and update gist
+          echo "{\"schemaVersion\": 1, \"label\": \"tests\", \"message\": \"$TEST_STATUS\", \"color\": \"$TEST_COLOR\"}" > test-badge.json
+
+          # Try to update the gist - if it fails, just log it
+          if ! echo '{}' | gh gist edit ${{ secrets.GIST_ID }} test-badge.json --filename test-badge.json; then
+            echo "⚠️ Could not update gist badge, but tests completed successfully"
+            echo "Badge would show: $TEST_STATUS"
+          else
+            echo "✅ Updated badge: $TEST_STATUS"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -92,3 +95,4 @@ jobs:
           path: |
             pytest.xml
             pytest_output.txt
+            test-badge.json
