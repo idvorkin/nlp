@@ -196,13 +196,13 @@ def get_model(
             model_kwargs={
                 "generation_config": {
                     "thinking_config": {
-                        "thinking_budget": GoogleThinkingLevel.MEDIUM.value
+                        "thinking_budget": GoogleThinkingLevel.LOW.value
                     }
                 }
             },
         )
         # Add custom attribute to track thinking level
-        model._thinking_level = "MEDIUM"  # type: ignore
+        model._thinking_level = "LOW"  # type: ignore
     elif google_think_low:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
