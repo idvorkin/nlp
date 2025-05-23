@@ -370,7 +370,7 @@ def changes(
     google: bool = False,
     google_flash: bool = True,
     google_think: bool = typer.Option(
-        False, help="Google Gemini 2.5 Flash with thinking (8192 tokens - MEDIUM level)"
+        True, help="Google Gemini 2.5 Flash with thinking (8192 tokens - MEDIUM level)"
     ),
     google_think_low: bool = typer.Option(
         False, help="Google Gemini 2.5 Flash with low thinking (1024 tokens)"
