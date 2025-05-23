@@ -45,6 +45,41 @@ def get_model_name(model: BaseChatModel):
     if model_name.startswith("models/"):
         model_name = model_name[7:]  # Skip "models/"
 
+    # Check for custom _thinking_level attribute (added by our get_model function)
+    if hasattr(model, "_thinking_level") and model._thinking_level:  # type: ignore
+        thinking_level = model._thinking_level  # type: ignore
+        model_name = f"{model_name}-thinking-{thinking_level}"
+        return model_name
+
+    # Check if this is a Google model with thinking configuration in model_kwargs
+    if (
+        hasattr(model, "model_kwargs")
+        and model.model_kwargs is not None
+        and model.model_kwargs
+    ):  # type: ignore
+        try:
+            model_kwargs = model.model_kwargs  # type: ignore
+            generation_config = model_kwargs.get("generation_config", {})
+            thinking_config = generation_config.get("thinking_config", {})
+            thinking_budget = thinking_config.get("thinking_budget")
+
+            if thinking_budget is not None and isinstance(
+                thinking_budget, (int, float)
+            ):
+                # Map thinking budget to level name using the enum
+                thinking_level_map = {
+                    GoogleThinkingLevel.LOW.value: "LOW",
+                    GoogleThinkingLevel.MEDIUM.value: "MEDIUM",
+                    GoogleThinkingLevel.HIGH.value: "HIGH",
+                }
+                thinking_level = thinking_level_map.get(
+                    thinking_budget, f"CUSTOM-{thinking_budget}"
+                )
+                model_name = f"{model_name}-thinking-{thinking_level}"
+        except (AttributeError, TypeError):
+            # Handle cases where model_kwargs doesn't behave like a dict (e.g., Mock objects)
+            pass
+
     return model_name
 
 
@@ -166,6 +201,8 @@ def get_model(
                 }
             },
         )
+        # Add custom attribute to track thinking level
+        model._thinking_level = "MEDIUM"  # type: ignore
     elif google_think_low:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -179,6 +216,8 @@ def get_model(
                 }
             },
         )
+        # Add custom attribute to track thinking level
+        model._thinking_level = "LOW"  # type: ignore
     elif google_think_medium:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -192,6 +231,8 @@ def get_model(
                 }
             },
         )
+        # Add custom attribute to track thinking level
+        model._thinking_level = "MEDIUM"  # type: ignore
     elif google_think_high:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -205,6 +246,8 @@ def get_model(
                 }
             },
         )
+        # Add custom attribute to track thinking level
+        model._thinking_level = "HIGH"  # type: ignore
     elif claude:
         from langchain_anthropic import ChatAnthropic
 
