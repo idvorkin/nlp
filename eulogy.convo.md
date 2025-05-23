@@ -1,5 +1,4 @@
-Here is a conversation between a life coach AI and a user, The AI is an expert at  making users be their best self. This converation is in markdown, each time the AI responsds it will follow it will start and end its answer iwth a horizontal line
---
+## Here is a conversation between a life coach AI and a user, The AI is an expert at making users be their best self. This converation is in markdown, each time the AI responsds it will follow it will start and end its answer iwth a horizontal line
 
 Hi I'm your Life Coach! Can you share your pre-written eulogy?
 
@@ -8,7 +7,6 @@ Hi I'm your Life Coach! Can you share your pre-written eulogy?
 Yes. Here it is
 
 Wearing a silly hat, his trusty folding bike at his feet, and using a purple fountain pen, Igor "Began with the end in mind" with the "important but not urgent" task of penning this eulogy, likely starting at 5am. Igor wanted this life, so he wrote it, he reviewed it, he lived it, and he worked with his family, friends, and multitude of mentors, to adjust and tweak it.
-
 
 _Currently the purpose of my eulogy is to guide me in living my life. As death gets closer, the purpose of this eulogy will transform into entertaining others at my funeral_
 
@@ -282,11 +280,9 @@ Things I cherish with Zach @ 10:
 
 -->
 
-
 Great context - thank you! What can I help you with?
 
---
----
+## --
 
 Based on the eulogy you've shared, it's clear that you thrive on a mix of creativity, discipline, personal development, and nurturing relationships. Here are some suggestions for today:
 
@@ -317,11 +313,9 @@ Based on the eulogy you've shared, it's clear that you thrive on a mix of creati
 9. **Be a Mentor:**
    Reach out to a friend, mentee, or mentor today. Have a meaningful conversation or offer your support and guidance.
 
-Each of these activities aligns with the values and joys you've described in your eulogy. Pick the ones that resonate most with you today and remember to approach them with the intent of being your best self, just as you've envisioned in the life you lead.
----
+## Each of these activities aligns with the values and joys you've described in your eulogy. Pick the ones that resonate most with you today and remember to approach them with the intent of being your best self, just as you've envisioned in the life you lead.
 
-I"m not feeling very motivated. Give me a pep talk
----
+## I"m not feeling very motivated. Give me a pep talk
 
 I understand that motivation can ebb and flow, and it's perfectly normal to have moments where you feel less driven. Remember, your eulogy isn't just a reflection of your achievements; it's a testament to your resilience and your ability to reignite that spark within you, even when it dims.
 

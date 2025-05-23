@@ -68,4 +68,3 @@ Every time you make changes to expected user behavior, update the specs
 If the user changes the specifications change the specifications.
 This will be mostly tracking business logic
 When the specs aren't clear ask user to clarify
-

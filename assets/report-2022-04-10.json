@@ -75,10 +75,7 @@
     },
     {
       "TheCategory": "entertainer",
-      "Observations": [
-        "Patient expresses a desire to learn a new magic trick."
-      ]
+      "Observations": ["Patient expresses a desire to learn a new magic trick."]
     }
   ]
 }
-

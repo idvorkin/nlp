@@ -4,7 +4,7 @@
 
 _**User**_
 
-The think file is ending up on the bottom of the gist. Include it after the overview  file, make sure to update the links in teh overview too 
+The think file is ending up on the bottom of the gist. Include it after the overview file, make sure to update the links in teh overview too
 
 ---
 
@@ -14,7 +14,7 @@ Let me help you reorganize the files in your gist. First, I'll need to check the
 
 ---
 
-_****_
+_\*\*\*\*_
 
 <details>
             <summary>Searched codebase "overview file and think.py file organization in gist" • **25** results</summary>
@@ -51,15 +51,13 @@ _****_
 
 ---
 
-_****_
-
-
+_\*\*\*\*_
 
 Let me check the current organization of the files to understand how to make the changes.
 
 ---
 
-_****_
+_\*\*\*\*_
 
 <details>
             <summary>Searched codebase "create_overview_content file organization gist order" • **25** results</summary>
@@ -96,11 +94,10 @@ _****_
 
 ---
 
-_****_
-
-
+_\*\*\*\*_
 
 I can see that in the `think.py` file, the files are organized in the gist in the following order:
+
 1. Overview file (`a_overview.md` or `a_title--overview.md`)
 2. Main analysis file (`think.md`)
 3. Model summaries
@@ -109,17 +106,14 @@ Let me modify the code to ensure the `think.md` file appears after the overview 
 
 ---
 
-_****_
-
-
+_\*\*\*\*_
 
 ---
 
-_****_
-
-
+_\*\*\*\*_
 
 I see that the code already has the correct order - the files are added to `files_to_gist` in the order: `[overview_path, output_path] + model_summaries`, where:
+
 - `overview_path` is the overview file
 - `output_path` is the `think.md` file
 - `model_summaries` are the model summary files
@@ -128,15 +122,11 @@ Let me check if there's anything in the link in the overview file that needs to 
 
 ---
 
-_****_
-
-
+_\*\*\*\*_
 
 ---
 
-_****_
-
-
+_\*\*\*\*_
 
 I see that the link to `think.md` is already correctly placed at the top of the overview content, right after the header. The code is already structured to:
 
@@ -151,7 +141,7 @@ This should already achieve what you want - having the think file appear after t
 
 _**User**_
 
-No, the gist will list the files in alphabetical order, that's why a_..overview.md
+No, the gist will list the files in alphabetical order, that's why a\_..overview.md
 
 ---
 
@@ -163,19 +153,12 @@ Let me modify the code to rename the think.md file:
 
 ---
 
-_****_
-
-
+_\*\*\*\*_
 
 ---
 
-_****_
-
-
+_\*\*\*\*_
 
 ---
 
-
-
 ---
-
