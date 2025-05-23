@@ -1,0 +1,48 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Clean Commits Rule
+
+## Context
+- Before any git commit operation
+- When files are staged for commit
+- To prevent accidentally committing unintended files or changes
+
+## Requirements
+- Always run `git status` before committing to review staged files
+- Remove any untracked files that shouldn't be committed (temp files, build artifacts, etc.)
+- Use `git reset` to unstage unwanted files if accidentally added with `git add -A`
+- Only stage and commit the specific files that are intentionally changed
+- Verify commit contents match the intended changes
+
+## Examples
+
+<example>
+# Good: Review before commit
+git status
+git add specific_file.py another_file.js
+git commit -m "Add specific feature"
+</example>
+
+<example>
+# Good: Clean up after accidental git add -A
+git add -A  # Accidentally staged everything
+git status  # Review what was staged
+git reset   # Unstage everything
+git add intended_file.py  # Stage only intended files
+git commit -m "Fix intended issue"
+</example>
+
+<example type="invalid">
+# Bad: Blind commit without review
+git add -A
+git commit -m "Some changes"  # Don't know what's being committed
+</example>
+
+<example type="invalid">
+# Bad: Committing temp files
+git add -A  # Stages temp files like uv.lock, *.tmp, build artifacts
+git commit -m "Add feature"  # Commits spurious files
+</example>
