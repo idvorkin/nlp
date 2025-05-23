@@ -85,7 +85,7 @@ jobs:
             echo "✅ Updated badge: $TEST_STATUS"
           fi
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GIST_TOKEN }}
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
