@@ -50,7 +50,7 @@ def test_get_categories_and_description():
 
 
 def test_github_url_format():
-    url = get_latest_github_commit_url()
+    url = get_latest_github_commit_url("idvorkin/nlp", "think.py")
     assert url.startswith("https://github.com/idvorkin/nlp/blob/")
     assert url.endswith("/think.py")
     # Should contain a 40-character SHA

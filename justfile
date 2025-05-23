@@ -4,19 +4,19 @@ default:
 
 # Run all tests
 test:
-    python3 -m pytest -v
+    uv run pytest -v
 
 # Run tests with coverage report
 test-cov:
-    python3 -m pytest --cov=. --cov-report=term-missing -v
+    uv run pytest --cov=. --cov-report=term-missing -v
 
 # Run fast tests
 fast-test:
-    python3 -m pytest tests/fast -v
+    uv run pytest tests/fast -v
 
 # Run tests in watch mode
 test-watch:
-    ptw -- -v
+    uv run ptw -- -v
 
 # Run twillio dev server
 twillio-dev:
@@ -27,8 +27,6 @@ install:
     uv venv
     . .venv/bin/activate
     uv pip install --editable .
-
-
 
 global-install: install
     uv tool install . --force --editable
