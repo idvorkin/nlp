@@ -1,4 +1,3 @@
-import json
 import os
 import time
 
@@ -7,25 +6,37 @@ from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 from pathlib import Path
 
+# Global variable to hold the client, instantiated lazily
+_client = None
+
 
 def setup_secret():
-    # do nothing if already set
-    if os.environ.get("OPENAI_API_KEY"):
-        return
-
-    secret_file = Path.home() / "gits/igor2/secretBox.json"
-    SECRETS = json.loads(secret_file.read_text())
-    os.environ["OPENAI_API_KEY"] = SECRETS["openai"]
+    # Only check if OPENAI_API_KEY is already set in environment
+    # No file loading - secrets should be in environment variables
+    pass
 
 
 def setup_gpt():
     from openai import OpenAI
 
     setup_secret()
-    return OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+    # Check if we have an API key in environment
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        # Return None if no API key is available
+        # Functions that need the client will need to handle this case
+        return None
+
+    return OpenAI(api_key=api_key)
 
 
-client = setup_gpt()
+def get_client():
+    """Get the OpenAI client, creating it lazily if needed."""
+    global _client
+    if _client is None:
+        _client = setup_gpt()
+    return _client
 
 
 class CompletionModel(BaseModel):
@@ -138,6 +149,12 @@ def ask_gpt_n(
     debug=False,
     n=1,
 ):
+    client = get_client()
+    if client is None:
+        raise ValueError(
+            "OpenAI API key not found in environment variables. Please set OPENAI_API_KEY."
+        )
+
     text_model_best, tokens = choose_model(u4)
     messages = [
         {"role": "system", "content": "You are a really good improv coach."},
@@ -172,7 +189,7 @@ def ask_gpt_n(
             delta_content = delta.get("content", "")
             response_contents[elem["index"]] += delta_content
     if debug:
-        out = f"All chunks took: {int((time.time() - start)*1000)} ms"
+        out = f"All chunks took: {int((time.time() - start) * 1000)} ms"
         ic(out)
 
     # hard code to only return first response
