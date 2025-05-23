@@ -118,3 +118,10 @@ dev-dependencies = [
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    # Suppress Pydantic deprecation warnings from dependencies
+    "ignore:`min_items` is deprecated and will be removed, use `min_length` instead:DeprecationWarning:pydantic.*",
+    "ignore:`max_items` is deprecated and will be removed, use `max_length` instead:DeprecationWarning:pydantic.*",
+    # Suppress Pydantic v1 typing warnings from dependencies
+    "ignore:Failing to pass a value to the 'type_params' parameter.*:DeprecationWarning:pydantic.*",
+]
