@@ -109,15 +109,22 @@ def get_model(
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        model = ChatGoogleGenerativeAI(model="gemini-2.5-pro-preview-05-06")
+        if model_size == "large":
+            model_name = "gemini-2.5-pro-preview-05-06"
+        elif model_size == "medium":
+            model_name = "gemini-2.5-flash-preview-05-20"
+        elif model_size == "thinking":
+            model_name = "gemini-2.0-flash"
+
+        model = ChatGoogleGenerativeAI(model=model_name)
     elif google_flash:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        model = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-04-17")
+        model = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20")
     elif google_think:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-01-21")
+        model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
     elif claude:
         from langchain_anthropic import ChatAnthropic
 
