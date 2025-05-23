@@ -7,6 +7,9 @@
 #     "langchain-community",
 #     "langchain-core",
 #     "langchain-openai",
+#     "langchain-google-genai",
+#     "langchain-anthropic",
+#     "langchain-groq",
 #     "loguru",
 #     "openai",
 #     "pydantic",
@@ -20,7 +23,6 @@
 
 import asyncio
 import subprocess
-import requests
 import tempfile
 
 from langchain_core import messages
@@ -42,7 +44,6 @@ from langchain_community.chat_models import ChatOpenAI
 
 from loguru import logger
 from pydantic import BaseModel
-from rich import print as rich_print
 from rich.console import Console
 from pathlib import Path
 import langchain_helper
@@ -80,6 +81,7 @@ def is_skip_file(file, only_pattern=None, verbose=False):
     # If only_pattern is specified, skip files that don't match the pattern
     if only_pattern:
         from fnmatch import fnmatch
+
         if not fnmatch(file, only_pattern):
             if verbose:
                 ic(f"Skip {file} as it doesn't match pattern {only_pattern}")
@@ -98,25 +100,60 @@ def is_skip_file(file, only_pattern=None, verbose=False):
         if verbose:
             ic(f"Skip logs file: {file}")
         return True
-    
+
     # Skip binary and media files
     binary_extensions = {
         # Images
-        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.ico', '.webp',
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".bmp",
+        ".tiff",
+        ".ico",
+        ".webp",
         # Audio
-        '.mp3', '.wav', '.ogg', '.m4a', '.flac',
+        ".mp3",
+        ".wav",
+        ".ogg",
+        ".m4a",
+        ".flac",
         # Video
-        '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv',
+        ".mp4",
+        ".avi",
+        ".mov",
+        ".wmv",
+        ".flv",
+        ".webm",
+        ".mkv",
         # Documents
-        '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx',
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".ppt",
+        ".pptx",
+        ".xls",
+        ".xlsx",
         # Archives
-        '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2',
+        ".zip",
+        ".rar",
+        ".7z",
+        ".tar",
+        ".gz",
+        ".bz2",
         # Executables
-        '.exe', '.dll', '.so', '.dylib',
+        ".exe",
+        ".dll",
+        ".so",
+        ".dylib",
         # Other binary
-        '.bin', '.dat', '.db', '.sqlite', '.pyc'
+        ".bin",
+        ".dat",
+        ".db",
+        ".sqlite",
+        ".pyc",
     }
-    
+
     if file_path.suffix.lower() in binary_extensions:
         if verbose:
             ic(f"Skip binary file: {file}")
@@ -137,9 +174,9 @@ def is_skip_file(file, only_pattern=None, verbose=False):
     return False
 
 
-
-
-async def get_file_diff(file, first_commit_hash, last_commit_hash, verbose=False) -> Tuple[str, str]:
+async def get_file_diff(
+    file, first_commit_hash, last_commit_hash, verbose=False
+) -> Tuple[str, str]:
     """
     Asynchronously get the diff for a file, including the begin and end revision,
     and perform string parsing in Python to avoid using shell-specific commands.
@@ -156,7 +193,13 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash, verbose=False
     if verbose:
         ic(f"Checking if {file} is binary")
     is_binary_cmd = await asyncio.create_subprocess_exec(
-        "git", "diff", "--numstat", first_commit_hash, last_commit_hash, "--", file,
+        "git",
+        "diff",
+        "--numstat",
+        first_commit_hash,
+        last_commit_hash,
+        "--",
+        file,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -172,13 +215,16 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash, verbose=False
         ic(f"Getting file sizes for {file}")
     file_size_before = 0
     file_size_after = Path(file).stat().st_size if Path(file).exists() else 0
-    
+
     try:
         # Try to get size of file in previous commit
         if verbose:
             ic(f"Getting previous size for {file}")
         size_cmd = await asyncio.create_subprocess_exec(
-            "git", "cat-file", "-s", f"{first_commit_hash}:{file}",
+            "git",
+            "cat-file",
+            "-s",
+            f"{first_commit_hash}:{file}",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -192,7 +238,7 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash, verbose=False
     # Use nbdiff for Jupyter notebooks to ignore outputs
     if verbose:
         ic(f"Starting diff process for {file}")
-    
+
     async def run_with_timeout(cmd, timeout_seconds=30):
         try:
             process = await asyncio.create_subprocess_exec(
@@ -200,39 +246,46 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash, verbose=False
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            return await asyncio.wait_for(process.communicate(), timeout=timeout_seconds)
+            return await asyncio.wait_for(
+                process.communicate(), timeout=timeout_seconds
+            )
         except asyncio.TimeoutError:
             try:
                 process.kill()
-            except:
+            except ProcessLookupError:
                 pass
             if verbose:
-                ic(f"Command timed out after {timeout_seconds} seconds: {' '.join(cmd)}")
+                ic(
+                    f"Command timed out after {timeout_seconds} seconds: {' '.join(cmd)}"
+                )
             return None, None
-    
+
     if file.endswith(".ipynb"):
         if verbose:
-            ic(f"Checking if nbdiff is available")
+            ic("Checking if nbdiff is available")
         # Check if nbdiff is available
         which_process = await asyncio.create_subprocess_exec(
-            "which", "nbdiff",
+            "which",
+            "nbdiff",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
         stdout, _ = await which_process.communicate()
-        
+
         if stdout and stdout.decode().strip():
             if verbose:
                 ic(f"Using nbdiff for {file}")
-            stdout_diff, stderr = await run_with_timeout([
-                "nbdiff",
-                "--ignore-outputs",
-                first_commit_hash,
-                last_commit_hash,
-                "--",
-                file,
-            ])
-            
+            stdout_diff, stderr = await run_with_timeout(
+                [
+                    "nbdiff",
+                    "--ignore-outputs",
+                    first_commit_hash,
+                    last_commit_hash,
+                    "--",
+                    file,
+                ]
+            )
+
             if stdout_diff is None:  # timeout occurred
                 if verbose:
                     ic(f"nbdiff timed out, falling back to git diff for {file}")
@@ -245,24 +298,26 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash, verbose=False
             use_git_diff = True
     else:
         use_git_diff = True
-    
+
     if use_git_diff:
         if verbose:
             ic(f"Using git diff for {file}")
-        stdout_diff, stderr = await run_with_timeout([
-            "git",
-            "diff",
-            first_commit_hash,
-            last_commit_hash,
-            "--",
-            file,
-        ])
-        
+        stdout_diff, stderr = await run_with_timeout(
+            [
+                "git",
+                "diff",
+                first_commit_hash,
+                last_commit_hash,
+                "--",
+                file,
+            ]
+        )
+
         if stdout_diff is None:  # timeout occurred
             if verbose:
                 ic(f"Git diff timed out for {file}")
             return file, f"Diff timed out for {file}"
-    
+
     if stderr and verbose:
         ic(f"Stderr from diff for {file}: {stderr.decode('utf-8', errors='replace')}")
 
@@ -274,7 +329,7 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash, verbose=False
     if verbose:
         ic(f"Decoding diff output for {file}")
     try:
-        diff_content = stdout_diff.decode('utf-8')
+        diff_content = stdout_diff.decode("utf-8")
     except UnicodeDecodeError:
         if verbose:
             ic(f"Failed to decode diff for {file}, likely binary")
@@ -286,7 +341,7 @@ async def get_file_diff(file, first_commit_hash, last_commit_hash, verbose=False
         return (
             file,
             f"Diff skipped: size exceeds 100,000 characters (actual size: {len(diff_content):,} characters)\n"
-            f"File size changed from {size_before_kb:.1f}KB to {size_after_kb:.1f}KB"
+            f"File size changed from {size_before_kb:.1f}KB to {size_after_kb:.1f}KB",
         )
 
     if verbose:
@@ -312,8 +367,20 @@ def changes(
     gist: bool = True,
     openai: bool = True,
     claude: bool = True,
-    google: bool = False,
+    google: bool = True,
     google_flash: bool = True,
+    google_think: bool = typer.Option(
+        False, help="Google Gemini 2.5 Flash with thinking (8192 tokens - MEDIUM level)"
+    ),
+    google_think_low: bool = typer.Option(
+        False, help="Google Gemini 2.5 Flash with low thinking (1024 tokens)"
+    ),
+    google_think_medium: bool = typer.Option(
+        False, help="Google Gemini 2.5 Flash with medium thinking (8192 tokens)"
+    ),
+    google_think_high: bool = typer.Option(
+        False, help="Google Gemini 2.5 Flash with high thinking (24576 tokens)"
+    ),
     llama: bool = True,
     deepseek: bool = True,
     o4_mini: bool = True,
@@ -327,27 +394,37 @@ def changes(
         claude = False
         google = False
         google_flash = True
+        google_think = False
+        google_think_low = False
+        google_think_medium = False
+        google_think_high = False
         llama = False
         deepseek = False
         o4_mini = False
         if verbose:
             print("Only using flash models as requested by only-flash parameter")
-    
+
     llms = langchain_helper.get_models(
         openai=openai,
         claude=claude,
         google=google,
         google_flash=google_flash,
+        google_think=google_think,
+        google_think_low=google_think_low,
+        google_think_medium=google_think_medium,
+        google_think_high=google_think_high,
         deepseek=deepseek,
         o4_mini=o4_mini,
-        llama=llama
+        llama=llama,
     )
-    
+
     # If no models are selected, provide a helpful error message
     if not llms:
-        print("Error: No models selected. Please enable at least one model or disable only-flash.")
+        print(
+            "Error: No models selected. Please enable at least one model or disable only-flash."
+        )
         return
-        
+
     achanges_params = llms, before, after, gist, only, verbose
 
     # check if direcotry is in a git repo, if so go to the root of the repo
@@ -596,6 +673,7 @@ def DirectoryContext(directory: Path):
     finally:
         os.chdir(original_directory)
 
+
 @contextmanager
 def TempDirectoryContext():
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -609,19 +687,18 @@ def sanitize_model_name(model_name):
 
 
 async def achanges(
-    llms: List[BaseChatModel], 
-    before, 
-    after, 
-    gist, 
-    only: str = None, 
-    verbose: bool = False
+    llms: List[BaseChatModel],
+    before,
+    after,
+    gist,
+    only: str = None,
+    verbose: bool = False,
 ):
     if verbose:
         ic("v 0.0.4")
-    start = datetime.now()
     repo_info = get_repo_info(for_file_changes=True)
     repo_path = Path.cwd()
-    
+
     # Add file operation semaphore
     file_semaphore = asyncio.Semaphore(50)  # Limit concurrent file operations
     if verbose:
@@ -630,13 +707,15 @@ async def achanges(
     # Run first_last_commit and get_changed_files in parallel
     first_last, _ = await asyncio.gather(
         first_last_commit(before, after, verbose),
-        get_changed_files("", "", verbose)  # Placeholder, will be updated
+        get_changed_files("", "", verbose),  # Placeholder, will be updated
     )
     first, last = first_last
-    
+
     # Get updated changed files with correct commit hashes
     changed_files = await get_changed_files(first, last, verbose)
-    changed_files = [file for file in changed_files if not is_skip_file(file, only, verbose)]
+    changed_files = [
+        file for file in changed_files if not is_skip_file(file, only, verbose)
+    ]
 
     # Modify get_file_diff calls to use semaphore
     async def get_file_diff_with_semaphore(file, first, last):
@@ -661,7 +740,7 @@ async def achanges(
         max_parallel = asyncio.Semaphore(100)
 
         # Special handling for o4-mini model
-        if isinstance(llm, ChatOpenAI) and llm.model_name == 'o4-mini-2025-04-16':
+        if isinstance(llm, ChatOpenAI) and llm.model_name == "o4-mini-2025-04-16":
             llm.model_kwargs = {}  # Clear any default parameters like temperature
 
         async def concurrent_llm_call(file, diff_content):
@@ -690,26 +769,29 @@ async def achanges(
         results = [result.content for result in await asyncio.gather(*ai_invoke_tasks)]
         results.sort(key=lambda x: len(x), reverse=True)
         code_based_diff_report = "\n\n___\n\n".join(results)
-        
+
         model_name = langchain_helper.get_model_name(llm)
         # Get summary for this model
         if verbose:
             ic(f"++ LLM summary call start with {model_name}")
         summary_all_diffs = await (
-            (prompt_summarize_diff_summaries(code_based_diff_report) | llm)
-            .ainvoke({})
-        )
+            prompt_summarize_diff_summaries(code_based_diff_report) | llm
+        ).ainvoke({})
         if verbose:
             ic(f"-- LLM summary call end with {model_name}")
-        summary_content = summary_all_diffs.content if hasattr(summary_all_diffs, 'content') else summary_all_diffs
-        
+        summary_content = (
+            summary_all_diffs.content
+            if hasattr(summary_all_diffs, "content")
+            else summary_all_diffs
+        )
+
         model_end = datetime.now()
         return {
             "model": llm,
             "model_name": model_name,
             "analysis_duration": model_end - model_start,
             "diff_report": code_based_diff_report,
-            "summary": summary_content
+            "summary": summary_content,
         }
 
     # Run all models in parallel
@@ -720,8 +802,10 @@ async def achanges(
         model_name = result["model_name"]
         safe_model_name = sanitize_model_name(model_name)
         summary_path = temp_dir / f"z_{safe_model_name}.md"
-        
-        github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
+
+        github_repo_diff_link = (
+            f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
+        )
         model_output = f"""
 ### Changes to {github_repo_diff_link} From [{after}] To [{before}]
 * Model: {model_name}
@@ -751,7 +835,9 @@ ___
         overview_path = temp_dir / f"{overview_filename}.md"
 
         today = datetime.now().strftime("%Y-%m-%d")
-        github_repo_diff_link = f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
+        github_repo_diff_link = (
+            f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
+        )
         overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url(get_repo_info().name, "changes.py")}) - {today}*
 
 Changes to {github_repo_diff_link} From [{after}] To [{before}]
@@ -760,11 +846,17 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
 |-------|---------------------------|-----------------|
 """
 
-        for result in sorted(analysis_results, key=lambda x: x["analysis_duration"].total_seconds(), reverse=True):
+        for result in sorted(
+            analysis_results,
+            key=lambda x: x["analysis_duration"].total_seconds(),
+            reverse=True,
+        ):
             model_name = result["model_name"]
             safe_name = sanitize_model_name(model_name)
             duration = int(result["analysis_duration"].total_seconds())
-            output_size = len(result["diff_report"] + result["summary"]) / 1024  # Convert to KB
+            output_size = (
+                len(result["diff_report"] + result["summary"]) / 1024
+            )  # Convert to KB
             overview_content += f"| [{model_name}](#file-z_{safe_name}-md) | {duration} | {output_size:.1f} |\n"
 
         # Write overview file
@@ -776,8 +868,12 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
             # Create description using repo name and date range
             gist_description = f"changes - {repo_info.name} ({after} to {before})"
             # Clean up description by removing newlines and truncating if too long
-            gist_description = gist_description.replace('\n', ' ')[:100]
-            await asyncio.to_thread(langchain_helper.to_gist_multiple, files_to_gist, description=gist_description)
+            gist_description = gist_description.replace("\n", " ")[:100]
+            await asyncio.to_thread(
+                langchain_helper.to_gist_multiple,
+                files_to_gist,
+                description=gist_description,
+            )
         else:
             print(overview_content)
             for result in analysis_results:

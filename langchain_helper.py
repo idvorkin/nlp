@@ -9,6 +9,17 @@ from types import FrameType
 from typing import Callable, List, TypeVar
 from datetime import datetime, timedelta
 import asyncio
+from enum import Enum
+
+
+class GoogleThinkingLevel(Enum):
+    """Enum for Google thinking levels with corresponding token budgets"""
+
+    NONE = 0  # No thinking - fastest and cheapest
+    LOW = 1024  # Light reasoning for simple tasks
+    MEDIUM = 8192  # Moderate reasoning for complex tasks
+    HIGH = 24576  # Maximum reasoning for very complex tasks
+
 
 def get_embeddings_model():
     """
@@ -16,6 +27,7 @@ def get_embeddings_model():
     Currently using OpenAI's embeddings model.
     """
     from langchain_openai import OpenAIEmbeddings
+
     return OpenAIEmbeddings(model="text-embedding-3-large")
 
 
@@ -47,6 +59,9 @@ def get_models(
     google_flash: bool = False,
     structured: bool = False,
     openai_mini: bool = False,
+    google_think_low: bool = False,
+    google_think_medium: bool = False,
+    google_think_high: bool = False,
 ) -> List[BaseChatModel]:
     ret = []
 
@@ -58,6 +73,15 @@ def get_models(
 
     if google_think:
         ret.append(get_model(google_think=True))
+
+    if google_think_low:
+        ret.append(get_model(google_think_low=True))
+
+    if google_think_medium:
+        ret.append(get_model(google_think_medium=True))
+
+    if google_think_high:
+        ret.append(get_model(google_think_high=True))
 
     if claude:
         ret.append(get_model(claude=True))
@@ -91,13 +115,28 @@ def get_model(
     google_flash: bool = False,
     structured: bool = False,
     openai_mini: bool = False,
+    google_think_low: bool = False,
+    google_think_medium: bool = False,
+    google_think_high: bool = False,
 ) -> BaseChatModel:
     """
     See changes in diff
     """
     # if more then one is true, exit and fail
     count_true = sum(
-        [openai, google, claude, llama, google_think, deepseek, o4_mini, google_flash]
+        [
+            openai,
+            google,
+            claude,
+            llama,
+            google_think,
+            deepseek,
+            o4_mini,
+            google_flash,
+            google_think_low,
+            google_think_medium,
+            google_think_high,
+        ]
     )
     if count_true > 1:
         print("Only one model can be selected")
@@ -109,14 +148,7 @@ def get_model(
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        if model_size == "large":
-            model_name = "gemini-2.5-pro-preview-05-06"
-        elif model_size == "medium":
-            model_name = "gemini-2.5-flash-preview-05-20"
-        elif model_size == "thinking":
-            model_name = "gemini-2.0-flash"
-
-        model = ChatGoogleGenerativeAI(model=model_name)
+        model = ChatGoogleGenerativeAI(model="gemini-2.5-pro-preview-05-06")
     elif google_flash:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -124,7 +156,55 @@ def get_model(
     elif google_think:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+        model = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash-preview-05-20",
+            model_kwargs={
+                "generation_config": {
+                    "thinking_config": {
+                        "thinking_budget": GoogleThinkingLevel.MEDIUM.value
+                    }
+                }
+            },
+        )
+    elif google_think_low:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        model = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash-preview-05-20",
+            model_kwargs={
+                "generation_config": {
+                    "thinking_config": {
+                        "thinking_budget": GoogleThinkingLevel.LOW.value
+                    }
+                }
+            },
+        )
+    elif google_think_medium:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        model = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash-preview-05-20",
+            model_kwargs={
+                "generation_config": {
+                    "thinking_config": {
+                        "thinking_budget": GoogleThinkingLevel.MEDIUM.value
+                    }
+                }
+            },
+        )
+    elif google_think_high:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        model = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash-preview-05-20",
+            model_kwargs={
+                "generation_config": {
+                    "thinking_config": {
+                        "thinking_budget": GoogleThinkingLevel.HIGH.value
+                    }
+                }
+            },
+        )
     elif claude:
         from langchain_anthropic import ChatAnthropic
 
