@@ -19,3 +19,12 @@ repos:
     rev: v2.8.1
     hooks:
       - id: dasel-validate
+
+  - repo: local
+    hooks:
+      - id: test
+        name: Run tests
+        entry: just test
+        language: system
+        pass_filenames: false
+        always_run: true
