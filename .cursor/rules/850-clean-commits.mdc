@@ -15,15 +15,18 @@ alwaysApply: false
 - Remove any untracked files that shouldn't be committed (temp files, build artifacts, etc.)
 - Use `git reset` to unstage unwanted files if accidentally added with `git add -A`
 - Only stage and commit the specific files that are intentionally changed
+- Show a summary of what will be committed before running the commit command
 - Verify commit contents match the intended changes
 
 ## Examples
 
 <example>
-# Good: Review before commit
+# Good: Review before commit with summary
 git status
 git add specific_file.py another_file.js
-git commit -m "Add specific feature"
+git status  # Verify only intended files are staged
+echo "Summary: Committing bug fix to authentication module"
+git commit -m "Fix authentication timeout issue"
 </example>
 
 <example>
@@ -32,17 +35,19 @@ git add -A  # Accidentally staged everything
 git status  # Review what was staged
 git reset   # Unstage everything
 git add intended_file.py  # Stage only intended files
-git commit -m "Fix intended issue"
+git status  # Verify staging
+echo "Summary: Adding new feature X to module Y"
+git commit -m "Add feature X"
 </example>
 
 <example type="invalid">
-# Bad: Blind commit without review
+# Bad: Blind commit without review or summary
 git add -A
-git commit -m "Some changes"  # Don't know what's being committed
+git commit -m "Some changes"  # No review, no summary
 </example>
 
 <example type="invalid">
-# Bad: Committing temp files
-git add -A  # Stages temp files like uv.lock, *.tmp, build artifacts
-git commit -m "Add feature"  # Commits spurious files
+# Bad: Committing without understanding impact
+git add file1.py file2.js temp.log  # Mixed intentional and spurious files
+git commit -m "Updates"  # No summary of what's being changed
 </example>
