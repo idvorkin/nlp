@@ -1,7 +1,7 @@
 # My explorations in NLP
 
 [![Tests](https://github.com/idvorkin/nlp/actions/workflows/test.yml/badge.svg)](https://github.com/idvorkin/nlp/actions/workflows/test.yml)
-![Tests](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/idvorkin/274055087f22814e0987f1efb207444e/raw/test-badge.json)
+[![Tests](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/idvorkin/274055087f22814e0987f1efb207444e/raw/test-badge.json)](https://github.com/idvorkin/nlp/actions/workflows/test.yml)
 
 From my [blog](https://idvork.in/nlp):
 
