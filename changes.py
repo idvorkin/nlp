@@ -384,25 +384,25 @@ def changes(
     llama: bool = True,
     deepseek: bool = True,
     o4_mini: bool = True,
+    fast: bool = typer.Option(False, help="Fast analysis using only Llama model"),
     only: str = None,
-    only_flash: bool = False,
     verbose: bool = False,
 ):
-    # If only_flash is True, override other model selections to use only flash models
-    if only_flash:
+    # If fast is True, override other model selections to use only llama
+    if fast:
         openai = False
         claude = False
         google = False
-        google_flash = True
+        google_flash = False
         google_think = False
         google_think_low = False
         google_think_medium = False
         google_think_high = False
-        llama = False
+        llama = True
         deepseek = False
         o4_mini = False
         if verbose:
-            print("Only using flash models as requested by only-flash parameter")
+            print("Fast mode: using only Llama model for quick analysis")
 
     llms = langchain_helper.get_models(
         openai=openai,
@@ -421,7 +421,7 @@ def changes(
     # If no models are selected, provide a helpful error message
     if not llms:
         print(
-            "Error: No models selected. Please enable at least one model or disable only-flash."
+            "Error: No models selected. Please enable at least one model."
         )
         return
 
