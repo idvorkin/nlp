@@ -1,5 +1,6 @@
 # Ignore log directories
 zz-chop-logs/
+.specstory/**
 
 # Ignore other potential directories that shouldn't be formatted
 node_modules/
