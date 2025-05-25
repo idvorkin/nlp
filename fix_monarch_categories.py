@@ -1,6 +1,21 @@
-#!python3
+#!uv run
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#     "typer",
+#     "loguru",
+#     "langchain",
+#     "langchain-core",
+#     "langchain-openai",
+#     "icecream",
+#     "openai",
+#     "requests",
+# ]
+# ///
 
 import asyncio
+import csv
+import io
 import time
 import typer
 from loguru import logger
@@ -19,17 +34,40 @@ You are an expert in enhancing CSV data. You will be provided with segments of a
 **Task Instructions:**
 - Replace any 'Uncategorized' entries with the most suitable category based on the context provided.
 - Valid categories include: "Groceries; Electronics; Pets; Entertainment & Recreation; Clothing; Furniture & Housewares; Shopping; Books; Movies; Fitness".
-- Ensure all fields are correctly quoted to handle commas and quotes within the data. Each row must have the correct number of columns.
+- Convert the input data to the required 8-column Monarch format in this exact order: Date, Merchant, Category, Account, Original Statement, Notes, Amount, Tags
+- Map input columns as follows:
+  * Date → Date
+  * Merchant → Merchant  
+  * Category → Category
+  * Account → Account
+  * Original Statement → Original Statement
+  * Notes → Notes
+  * Amount → Amount
+  * Tags → Tags
 
 **CSV File Details:**
-- The input CSV contains the following columns: Date, Merchant, Category, Account, Original Statement, Notes, Amount, Tags.
+- The input CSV contains: Date, Merchant, Category, Account, Original Statement, Notes, Amount, Tags
+- Output must be exactly 8 columns in the specified order: Date, Merchant, Category, Account, Original Statement, Notes, Amount, Tags
+- Do NOT include a header row in your output (the header will be added separately)
+- If the input contains a header row, ignore it and only process data rows
+
+**Amount Format Requirements:**
+- Monarch uses positive numbers for income and negative numbers for expenses
+- +$100.00 = income, -$100.00 = expense
+- Ensure amounts follow this convention
+
+**CSV Escaping Requirements:**
+- Fields containing commas, quotes, or newlines MUST be enclosed in double quotes
+- Double quotes within fields must be escaped by doubling them (e.g., "He said \\"Hello\\"")
+- Newlines within fields should be preserved within quoted fields
+- Empty fields should be represented as empty strings (not quoted unless they contain special characters)
 
 **Output Requirements:**
-- Only output the column names and data present in the original input segment.
-- Ensure your output is a valid CSV with the same number of columns as the input.
-- Retain all lines from the input, except for modifying 'Uncategorized' entries to the correct category name.
+- Output exactly 8 columns per row in the specified order
+- Follow proper CSV escaping rules as specified above
 - The output should NOT contain ``` or ```csv
-- There should be the same number of output lines as input lines
+- Do NOT output a header row in your response
+- There should be the same number of output lines as input data lines (excluding any input header)
 """
     return ChatPromptTemplate.from_messages(
         [
@@ -39,6 +77,31 @@ You are an expert in enhancing CSV data. You will be provided with segments of a
     )
 
 
+def format_csv_output(llm_output: str) -> str:
+    """
+    Post-process LLM output to ensure proper CSV formatting
+    """
+    lines = llm_output.strip().split("\n")
+    output = io.StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+
+    for line in lines:
+        if not line.strip():
+            continue
+        # Parse the line as CSV to handle any existing escaping
+        try:
+            reader = csv.reader([line])
+            row = next(reader)
+            # Re-write with proper escaping
+            writer.writerow(row)
+        except csv.Error:
+            # If parsing fails, try to split by comma and clean up
+            row = [field.strip().strip('"') for field in line.split(",")]
+            writer.writerow(row)
+
+    return output.getvalue().strip()
+
+
 async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
     from langchain_openai.chat_models import ChatOpenAI
 
@@ -46,8 +109,15 @@ async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
     # llm = ChatOpenAI(model="gpt-4o-mini")
     ic(llm)
     # llm = langchain_helper.get_model(openai=True)
+
+    # Print the header row first
+    print("Date,Merchant,Category,Account,Original Statement,Notes,Amount,Tags")
+
     with open(path, "r") as file:
         lines = file.readlines()
+        # Skip the first line if it's a header
+        if lines and lines[0].strip().lower().startswith(("date,", "date\t")):
+            lines = lines[1:]
         total_chunks = (
             len(lines) + lines_per_chunk - 1
         ) // lines_per_chunk  # Calculate total chunks
@@ -60,7 +130,9 @@ async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
             ret = await (
                 prompt_fix_categories(chunk) | llm | StrOutputParser()
             ).ainvoke({})
-            results[index] = ret
+            # Format the output properly
+            formatted_ret = format_csv_output(ret)
+            results[index] = formatted_ret
             end_chunk_time = time.time()
             chunk_processing_time = end_chunk_time - start_chunk_time
             ic(f"Chunk {index + 1} processed in {chunk_processing_time:.2f} seconds")
@@ -78,7 +150,7 @@ async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
                 estimated_remaining_time_minutes = estimated_remaining_time / 60
                 start_chunk = max(0, i - chunk_size + 1)
                 ic(
-                    f"Processing chunks {start_chunk}-{i+1}/{total_chunks}, estimated remaining time: {estimated_remaining_time_minutes:.2f} minutes"
+                    f"Processing chunks {start_chunk}-{i + 1}/{total_chunks}, estimated remaining time: {estimated_remaining_time_minutes:.2f} minutes"
                 )
                 await asyncio.gather(*tasks)
                 tasks = []
