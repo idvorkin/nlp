@@ -56,6 +56,48 @@ class ConversationChapters(BaseModel):
     chapters: List[Chapter]
 
 
+class ConversationState(BaseModel):
+    """Persistent state for conversation generation"""
+
+    voice_mapping: dict[str, str]
+    chapters: Optional[List[Chapter]] = None
+    completed_turns: List[int] = []
+    total_turns: int
+    speed: float
+    conversation_hash: str  # To detect if source file changed
+
+
+def get_file_hash(file_path: Path) -> str:
+    """Get a hash of the file content to detect changes"""
+    import hashlib
+
+    with open(file_path, "rb") as f:
+        return hashlib.md5(f.read()).hexdigest()
+
+
+def load_conversation_state(state_file: Path) -> Optional[ConversationState]:
+    """Load conversation state from JSON file"""
+    if not state_file.exists():
+        return None
+
+    try:
+        with open(state_file, "r") as f:
+            data = json.load(f)
+        return ConversationState.model_validate(data)
+    except Exception as e:
+        console.print(f"⚠️ Could not load state file: {e}")
+        return None
+
+
+def save_conversation_state(state: ConversationState, state_file: Path):
+    """Save conversation state to JSON file"""
+    try:
+        with open(state_file, "w") as f:
+            json.dump(state.model_dump(), f, indent=2)
+    except Exception as e:
+        console.print(f"⚠️ Could not save state file: {e}")
+
+
 def parse_conversation_file(file_path: Path) -> List[ConversationTurn]:
     """Parse a conversation file with [SPEAKER_XX]: format"""
     turns = []
@@ -169,6 +211,12 @@ async def generate_single_turn(
     turn: ConversationTurn, voice_name: str, output_path: Path, speed: float = 1.0
 ):
     """Generate a single conversation turn asynchronously"""
+
+    # Check if file already exists and is non-empty
+    if output_path.exists() and output_path.stat().st_size > 0:
+        console.print(f"   ✅ Already exists: {output_path}")
+        return output_path
+
     client = tts.TextToSpeechAsyncClient()
 
     try:
@@ -185,6 +233,7 @@ async def generate_single_turn(
             audio_config=audio_config,
         )
 
+        # Use context manager to ensure file is properly closed
         with open(output_path, "wb") as out:
             out.write(response.audio_content)
 
@@ -194,10 +243,29 @@ async def generate_single_turn(
     except Exception as e:
         console.print(f"   ❌ Failed to generate {output_path}: {e}")
         return None
+    finally:
+        # Ensure client is properly closed
+        try:
+            await client.transport.close()
+        except Exception:
+            pass  # Best effort cleanup
 
 
-def analyze_conversation_chapters(turns: List[ConversationTurn]) -> List[Chapter]:
-    """Use LLM to analyze conversation and identify chapter markers"""
+def analyze_conversation_chapters(
+    turns: List[ConversationTurn], cache_file: Path = None
+) -> List[Chapter]:
+    """Use LLM to analyze conversation and identify chapter markers with caching"""
+
+    # Check if we have cached results
+    if cache_file and cache_file.exists():
+        try:
+            with open(cache_file, "r") as f:
+                cached_data = json.load(f)
+            chapters_model = ConversationChapters.model_validate(cached_data)
+            console.print(f"📖 Using cached chapter analysis from {cache_file}")
+            return chapters_model.chapters
+        except Exception as e:
+            console.print(f"⚠️ Could not load cached chapters: {e}")
 
     # Prepare conversation text for analysis
     conversation_text = ""
@@ -281,6 +349,23 @@ Make sure start_turn numbers are valid (1 to {len(turns)}) and in ascending orde
                     description="Conversation opening",
                 ),
             )
+
+        # Cache the results
+        if cache_file:
+            try:
+                with open(cache_file, "w") as f:
+                    json.dump(
+                        {
+                            "chapters": [
+                                chapter.model_dump() for chapter in validated_chapters
+                            ]
+                        },
+                        f,
+                        indent=2,
+                    )
+                console.print(f"💾 Cached chapter analysis to {cache_file}")
+            except Exception as e:
+                console.print(f"⚠️ Could not cache chapters: {e}")
 
         return validated_chapters
 
@@ -400,6 +485,18 @@ def merge_audio_files_with_chapters(
 ) -> Path:
     """Merge multiple audio files into one using ffmpeg with optional chapters"""
 
+    # Check if merged file already exists and is recent
+    if output_path.exists() and output_path.stat().st_size > 0:
+        # Check if any audio files are newer than the merged file
+        merged_mtime = output_path.stat().st_mtime
+        if all(
+            audio_file.stat().st_mtime <= merged_mtime
+            for audio_file in audio_files
+            if audio_file.exists()
+        ):
+            console.print(f"✅ Merged file already up to date: {output_path}")
+            return output_path
+
     # Create a file list for ffmpeg
     file_list_path = output_path.parent / "filelist.txt"
     chapters_file = None
@@ -478,12 +575,28 @@ def recreate(
         True, help="Merge all audio files into one conversation"
     ),
     chapters: bool = typer.Option(True, help="Add chapter markers to merged audio"),
+    force: bool = typer.Option(False, help="Force regeneration of all files"),
 ):
     """Recreate a conversation using Google Chirp 3: HD voices"""
 
     if not convo_file.exists():
         console.print(f"❌ Conversation file not found: {convo_file}")
         raise typer.Exit(1)
+
+    # Set up output directory
+    if output_dir is None:
+        output_dir = Path.home() / "tmp/tts" / f"conversation_{convo_file.stem}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # State management
+    state_file = output_dir / "conversation_state.json"
+    chapters_cache_file = output_dir / "chapters_cache.json"
+
+    # Get file hash to detect changes
+    conversation_hash = get_file_hash(convo_file)
+
+    # Load existing state
+    existing_state = load_conversation_state(state_file) if not force else None
 
     # Parse the conversation
     console.print(f"📖 Reading conversation from: {convo_file}")
@@ -493,24 +606,47 @@ def recreate(
         console.print("❌ No conversation turns found in file")
         raise typer.Exit(1)
 
-    # Analyze chapters if requested
-    conversation_chapters = None
-    if chapters and len(turns) > 3:  # Only analyze chapters for longer conversations
-        console.print("\n🧠 Analyzing conversation for chapter markers...")
-        conversation_chapters = analyze_conversation_chapters(turns)
+    # Check if we can reuse existing state
+    can_reuse_state = (
+        existing_state is not None
+        and existing_state.conversation_hash == conversation_hash
+        and existing_state.total_turns == len(turns)
+        and existing_state.speed == speed
+    )
 
-    # Get unique speakers and create voice mapping
-    speakers = {turn.speaker for turn in turns}
-    voice_mapping = get_voice_mapping(speakers)
+    if can_reuse_state:
+        console.print("🔄 Resuming from existing state...")
+        voice_mapping = existing_state.voice_mapping
+        conversation_chapters = existing_state.chapters
+    else:
+        console.print("🆕 Starting fresh generation...")
+        # Get unique speakers and create voice mapping
+        speakers = {turn.speaker for turn in turns}
+        voice_mapping = get_voice_mapping(speakers)
 
-    console.print(f"\n🎭 Found {len(speakers)} speakers:")
+        # Analyze chapters if requested
+        conversation_chapters = None
+        if (
+            chapters and len(turns) > 3
+        ):  # Only analyze chapters for longer conversations
+            console.print("\n🧠 Analyzing conversation for chapter markers...")
+            conversation_chapters = analyze_conversation_chapters(
+                turns, chapters_cache_file
+            )
+
+        # Create new state
+        existing_state = ConversationState(
+            voice_mapping=voice_mapping,
+            chapters=conversation_chapters,
+            completed_turns=[],
+            total_turns=len(turns),
+            speed=speed,
+            conversation_hash=conversation_hash,
+        )
+
+    console.print(f"\n🎭 Found {len(set(turn.speaker for turn in turns))} speakers:")
     for speaker, voice in voice_mapping.items():
         console.print(f"   {speaker} → {voice}")
-
-    # Set up output directory
-    if output_dir is None:
-        output_dir = Path.home() / "tmp/tts" / f"conversation_{convo_file.stem}"
-    output_dir.mkdir(parents=True, exist_ok=True)
 
     console.print(f"\n📁 Output directory: {output_dir}")
     console.print(f"🔊 Speed: {speed}x")
@@ -530,15 +666,26 @@ def recreate(
             async with semaphore:
                 output_path = output_dir / f"turn_{i:03d}_{turn.speaker}.mp3"
                 voice_name = voice_mapping[turn.speaker]
-                return await generate_single_turn(turn, voice_name, output_path, speed)
+                result = await generate_single_turn(
+                    turn, voice_name, output_path, speed
+                )
+
+                # Update state on successful generation
+                if result is not None and i not in existing_state.completed_turns:
+                    existing_state.completed_turns.append(i)
+                    save_conversation_state(existing_state, state_file)
+
+                return result
 
         tasks = [generate_with_semaphore(turn, i) for i, turn in enumerate(turns)]
         results = await asyncio.gather(*tasks)
         return [result for result in results if result is not None]
 
     console.print(f"\n🚀 Generating {len(turns)} audio segments...")
-    start_time = time.time()
+    if can_reuse_state and existing_state.completed_turns:
+        console.print(f"   ♻️ {len(existing_state.completed_turns)} already completed")
 
+    start_time = time.time()
     audio_files = asyncio.run(generate_all_turns())
     generation_time = time.time() - start_time
 
@@ -577,6 +724,12 @@ def recreate(
                 f"   • Chapters: {len(conversation_chapters)} chapter markers added"
             )
 
+    # Clean up state file on successful completion
+    if len(existing_state.completed_turns) == len(turns):
+        console.print("🧹 Cleaning up state file (generation complete)")
+        if state_file.exists():
+            state_file.unlink()
+
 
 def merge_audio_files(audio_files: List[Path], output_path: Path) -> Path:
     """Legacy function - redirects to new chapter-aware function"""
@@ -605,9 +758,13 @@ def chapters_only(
 
     console.print(f"💬 Found {len(turns)} conversation turns")
 
-    # Analyze chapters
+    # Analyze chapters with caching
+    output_dir = Path.home() / "tmp/tts" / f"conversation_{convo_file.stem}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    chapters_cache_file = output_dir / "chapters_cache.json"
+
     console.print("\n🧠 Analyzing conversation for chapter markers...")
-    chapters = analyze_conversation_chapters(turns)
+    chapters = analyze_conversation_chapters(turns, chapters_cache_file)
 
     console.print("\n📖 Chapter Analysis Results:")
     console.print(f"   • Total chapters: {len(chapters)}")
@@ -656,6 +813,57 @@ def chapters_only(
 
     console.print("\n💡 To generate audio with these chapters:")
     console.print(f"   uv run tts-dialog.py recreate {convo_file}")
+
+
+@app.command()
+def clean(
+    convo_file: Path = typer.Argument(
+        Path("samples/convo.1.txt"), help="Path to conversation file"
+    ),
+    output_dir: Optional[Path] = typer.Option(None, help="Output directory to clean"),
+):
+    """Clean up all generated files and state for a conversation"""
+
+    if output_dir is None:
+        output_dir = Path.home() / "tmp/tts" / f"conversation_{convo_file.stem}"
+
+    if not output_dir.exists():
+        console.print(f"📁 Directory doesn't exist: {output_dir}")
+        return
+
+    # List what we'll delete
+    state_files = list(output_dir.glob("*.json"))
+    audio_files = list(output_dir.glob("*.mp3"))
+    temp_files = list(output_dir.glob("*.txt"))
+
+    total_files = len(state_files) + len(audio_files) + len(temp_files)
+
+    if total_files == 0:
+        console.print(f"📁 Directory is already clean: {output_dir}")
+        return
+
+    console.print(f"🧹 Cleaning up {total_files} files from {output_dir}")
+    console.print(f"   • State files: {len(state_files)}")
+    console.print(f"   • Audio files: {len(audio_files)}")
+    console.print(f"   • Temp files: {len(temp_files)}")
+
+    # Clean up files
+    for file_list in [state_files, audio_files, temp_files]:
+        for file_path in file_list:
+            try:
+                file_path.unlink()
+            except Exception as e:
+                console.print(f"⚠️ Could not delete {file_path}: {e}")
+
+    # Remove directory if empty
+    try:
+        if not any(output_dir.iterdir()):
+            output_dir.rmdir()
+            console.print(f"📁 Removed empty directory: {output_dir}")
+    except Exception:
+        pass  # Directory not empty or other issue
+
+    console.print("✅ Cleanup complete")
 
 
 @app.command()
