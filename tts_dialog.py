@@ -99,8 +99,8 @@ def save_conversation_state(state: ConversationState, state_file: Path):
 
 
 def parse_conversation_file(file_path: Path) -> List[ConversationTurn]:
-    """Parse a conversation file with [SPEAKER_XX]: format"""
-    turns = []
+    """Parse a conversation file with [SPEAKER_XX]: format and merge consecutive turns from same speaker"""
+    raw_turns = []
 
     with open(file_path, "r") as f:
         content = f.read()
@@ -109,15 +109,34 @@ def parse_conversation_file(file_path: Path) -> List[ConversationTurn]:
     pattern = r"\[SPEAKER_(\d+)\]:\s*(.*?)(?=\[SPEAKER_|\Z)"
     matches = re.findall(pattern, content, re.DOTALL)
 
+    # First pass: collect all raw turns
     for speaker_id, text in matches:
         # Clean up the text - remove extra whitespace and newlines
         cleaned_text = " ".join(text.strip().split())
         if cleaned_text:  # Only add non-empty turns
-            turns.append(
+            raw_turns.append(
                 ConversationTurn(speaker=f"SPEAKER_{speaker_id}", text=cleaned_text)
             )
 
-    return turns
+    # Second pass: merge consecutive turns from same speaker
+    merged_turns = []
+    for turn in raw_turns:
+        if merged_turns and merged_turns[-1].speaker == turn.speaker:
+            # Merge with previous turn from same speaker
+            merged_turns[-1].text += " " + turn.text
+        else:
+            # New speaker or first turn
+            merged_turns.append(turn)
+
+    console.print(
+        f"📝 Merged {len(raw_turns)} raw turns into {len(merged_turns)} conversation turns"
+    )
+    if len(raw_turns) != len(merged_turns):
+        console.print(
+            f"   ♻️ Combined {len(raw_turns) - len(merged_turns)} consecutive same-speaker turns"
+        )
+
+    return merged_turns
 
 
 def get_voice_mapping(speakers: set[str]) -> dict[str, str]:
@@ -208,7 +227,11 @@ def get_voice_mapping(speakers: set[str]) -> dict[str, str]:
 
 
 async def generate_single_turn(
-    turn: ConversationTurn, voice_name: str, output_path: Path, speed: float = 1.0
+    turn: ConversationTurn,
+    voice_name: str,
+    output_path: Path,
+    speed: float = 1.0,
+    client=None,
 ):
     """Generate a single conversation turn asynchronously"""
 
@@ -217,7 +240,12 @@ async def generate_single_turn(
         console.print(f"   ✅ Already exists: {output_path}")
         return output_path
 
-    client = tts.TextToSpeechAsyncClient()
+    # Use provided client or create a new one
+    if client is None:
+        client = tts.TextToSpeechAsyncClient()
+        should_close_client = True
+    else:
+        should_close_client = False
 
     try:
         synthesis_input = SynthesisInput(text=turn.text)
@@ -244,11 +272,12 @@ async def generate_single_turn(
         console.print(f"   ❌ Failed to generate {output_path}: {e}")
         return None
     finally:
-        # Ensure client is properly closed
-        try:
-            await client.transport.close()
-        except Exception:
-            pass  # Best effort cleanup
+        # Only close client if we created it locally
+        if should_close_client:
+            try:
+                await client.transport.close()
+            except Exception:
+                pass  # Best effort cleanup
 
 
 def analyze_conversation_chapters(
@@ -660,26 +689,40 @@ def recreate(
 
     # Generate all audio files
     async def generate_all_turns():
-        semaphore = asyncio.Semaphore(50)  # Limit concurrent requests
+        # Use just one shared client to be maximally conservative
+        # But allow high concurrency since these are async calls through one client
+        semaphore = asyncio.Semaphore(50)  # Back to 50 for performance
 
-        async def generate_with_semaphore(turn, i):
-            async with semaphore:
-                output_path = output_dir / f"turn_{i:03d}_{turn.speaker}.mp3"
-                voice_name = voice_mapping[turn.speaker]
-                result = await generate_single_turn(
-                    turn, voice_name, output_path, speed
-                )
+        # Create a single shared client
+        client = tts.TextToSpeechAsyncClient()
+        try:
 
-                # Update state on successful generation
-                if result is not None and i not in existing_state.completed_turns:
-                    existing_state.completed_turns.append(i)
-                    save_conversation_state(existing_state, state_file)
+            async def generate_with_semaphore(turn, i):
+                async with semaphore:
+                    output_path = output_dir / f"turn_{i:03d}_{turn.speaker}.mp3"
+                    voice_name = voice_mapping[turn.speaker]
 
-                return result
+                    result = await generate_single_turn(
+                        turn, voice_name, output_path, speed, client
+                    )
 
-        tasks = [generate_with_semaphore(turn, i) for i, turn in enumerate(turns)]
-        results = await asyncio.gather(*tasks)
-        return [result for result in results if result is not None]
+                    # Update state on successful generation
+                    if result is not None and i not in existing_state.completed_turns:
+                        existing_state.completed_turns.append(i)
+                        save_conversation_state(existing_state, state_file)
+
+                    return result
+
+            tasks = [generate_with_semaphore(turn, i) for i, turn in enumerate(turns)]
+            results = await asyncio.gather(*tasks)
+            return [result for result in results if result is not None]
+
+        finally:
+            # Clean up the single client
+            try:
+                await client.transport.close()
+            except Exception:
+                pass  # Best effort cleanup
 
     console.print(f"\n🚀 Generating {len(turns)} audio segments...")
     if can_reuse_state and existing_state.completed_turns:
