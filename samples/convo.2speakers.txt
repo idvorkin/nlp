@@ -1,0 +1,10 @@
+[SPEAKER_00]: Hey there! How was your day?
+[SPEAKER_01]: Oh, it was really great! I finally finished that project I've been working on for weeks.
+[SPEAKER_00]: That's awesome! You've been putting in so much effort on that. How does it feel to be done?
+[SPEAKER_01]: It's such a relief! I can finally relax and maybe catch up on some reading this weekend.
+[SPEAKER_00]: You deserve it. What kind of books are you planning to read?
+[SPEAKER_01]: I've been wanting to dive into some science fiction novels. Maybe something by Ursula K. Le Guin.
+[SPEAKER_00]: Excellent choice! She's one of my favorite authors. Have you read "The Left Hand of Darkness" yet?
+[SPEAKER_01]: Not yet, but it's definitely on my list. I've heard amazing things about it.
+[SPEAKER_00]: You're going to love it. It really makes you think about society and identity in fascinating ways.
+[SPEAKER_01]: Now I'm even more excited to read it. Thanks for the recommendation! 
