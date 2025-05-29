@@ -65,6 +65,26 @@ class ConversationState(BaseModel):
     total_turns: int
     speed: float
     conversation_hash: str  # To detect if source file changed
+    merged_turn_count: int  # To detect if merging changed the structure
+
+
+def get_conversation_identifier(
+    file_path: Path, merged_turns: List[ConversationTurn]
+) -> str:
+    """Get a unique identifier for the conversation including merge information"""
+    import hashlib
+
+    # Include file content and the structure after merging
+    with open(file_path, "rb") as f:
+        file_content = f.read()
+
+    # Create a structure hash that includes speaker sequence and turn count
+    structure_info = f"{len(merged_turns)}:" + ":".join(
+        turn.speaker for turn in merged_turns
+    )
+
+    combined_data = file_content + structure_info.encode()
+    return hashlib.md5(combined_data).hexdigest()
 
 
 def get_file_hash(file_path: Path) -> str:
@@ -281,7 +301,7 @@ async def generate_single_turn(
 
 
 def analyze_conversation_chapters(
-    turns: List[ConversationTurn], cache_file: Path = None
+    turns: List[ConversationTurn], cache_file: Path = None, conversation_id: str = None
 ) -> List[Chapter]:
     """Use LLM to analyze conversation and identify chapter markers with caching"""
 
@@ -290,9 +310,21 @@ def analyze_conversation_chapters(
         try:
             with open(cache_file, "r") as f:
                 cached_data = json.load(f)
-            chapters_model = ConversationChapters.model_validate(cached_data)
-            console.print(f"📖 Using cached chapter analysis from {cache_file}")
-            return chapters_model.chapters
+
+            # Validate cache against conversation structure if ID provided
+            if (
+                conversation_id
+                and cached_data.get("conversation_id") != conversation_id
+            ):
+                console.print(
+                    "⚠️ Cache outdated (conversation structure changed), regenerating chapters..."
+                )
+            else:
+                chapters_model = ConversationChapters.model_validate(
+                    cached_data.get("chapters", cached_data)
+                )
+                console.print(f"📖 Using cached chapter analysis from {cache_file}")
+                return chapters_model.chapters
         except Exception as e:
             console.print(f"⚠️ Could not load cached chapters: {e}")
 
@@ -379,19 +411,17 @@ Make sure start_turn numbers are valid (1 to {len(turns)}) and in ascending orde
                 ),
             )
 
-        # Cache the results
+        # Cache the results with conversation ID
         if cache_file:
             try:
+                cache_data = {
+                    "conversation_id": conversation_id,
+                    "chapters": [
+                        chapter.model_dump() for chapter in validated_chapters
+                    ],
+                }
                 with open(cache_file, "w") as f:
-                    json.dump(
-                        {
-                            "chapters": [
-                                chapter.model_dump() for chapter in validated_chapters
-                            ]
-                        },
-                        f,
-                        indent=2,
-                    )
+                    json.dump(cache_data, f, indent=2)
                 console.print(f"💾 Cached chapter analysis to {cache_file}")
             except Exception as e:
                 console.print(f"⚠️ Could not cache chapters: {e}")
@@ -621,13 +651,7 @@ def recreate(
     state_file = output_dir / "conversation_state.json"
     chapters_cache_file = output_dir / "chapters_cache.json"
 
-    # Get file hash to detect changes
-    conversation_hash = get_file_hash(convo_file)
-
-    # Load existing state
-    existing_state = load_conversation_state(state_file) if not force else None
-
-    # Parse the conversation
+    # Parse the conversation first to get the actual structure
     console.print(f"📖 Reading conversation from: {convo_file}")
     turns = parse_conversation_file(convo_file)
 
@@ -635,12 +659,19 @@ def recreate(
         console.print("❌ No conversation turns found in file")
         raise typer.Exit(1)
 
+    # Get conversation identifier including merge information
+    conversation_hash = get_conversation_identifier(convo_file, turns)
+
+    # Load existing state
+    existing_state = load_conversation_state(state_file) if not force else None
+
     # Check if we can reuse existing state
     can_reuse_state = (
         existing_state is not None
         and existing_state.conversation_hash == conversation_hash
         and existing_state.total_turns == len(turns)
         and existing_state.speed == speed
+        and existing_state.merged_turn_count == len(turns)
     )
 
     if can_reuse_state:
@@ -660,7 +691,7 @@ def recreate(
         ):  # Only analyze chapters for longer conversations
             console.print("\n🧠 Analyzing conversation for chapter markers...")
             conversation_chapters = analyze_conversation_chapters(
-                turns, chapters_cache_file
+                turns, chapters_cache_file, conversation_hash
             )
 
         # Create new state
@@ -671,6 +702,7 @@ def recreate(
             total_turns=len(turns),
             speed=speed,
             conversation_hash=conversation_hash,
+            merged_turn_count=len(turns),
         )
 
     console.print(f"\n🎭 Found {len(set(turn.speaker for turn in turns))} speakers:")
@@ -806,8 +838,13 @@ def chapters_only(
     output_dir.mkdir(parents=True, exist_ok=True)
     chapters_cache_file = output_dir / "chapters_cache.json"
 
+    # Get conversation identifier for cache validation
+    conversation_id = get_conversation_identifier(convo_file, turns)
+
     console.print("\n🧠 Analyzing conversation for chapter markers...")
-    chapters = analyze_conversation_chapters(turns, chapters_cache_file)
+    chapters = analyze_conversation_chapters(
+        turns, chapters_cache_file, conversation_id
+    )
 
     console.print("\n📖 Chapter Analysis Results:")
     console.print(f"   • Total chapters: {len(chapters)}")
