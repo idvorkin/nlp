@@ -1,4 +1,18 @@
-#!python3
+#!uv run
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#     "typer",
+#     "elevenlabs",
+#     "icecream",
+#     "loguru",
+#     "pydantic",
+#     "rich",
+#     "pbf",
+#     "google-cloud-texttospeech",
+#     "pydub",
+# ]
+# ///
 
 
 import json
