@@ -69,7 +69,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "image", "captions", "ell_helper", "pdspy", "qa_blog", "discord_helper", "journal", "github_helper", "iwhere", "askig_mcp", "askig_build_logic", "askig_logic", "askig_models"]
+py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "tts_dialog", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "image", "captions", "ell_helper", "pdspy", "qa_blog", "discord_helper", "journal", "github_helper", "iwhere", "askig_mcp", "askig_build_logic", "askig_logic", "askig_models"]
 
 [project.scripts]
 gpt = "gpt3:app"
@@ -84,6 +84,7 @@ improv = "improv:app"
 plc = "play_langchain:app"
 life = "life:app"
 tts = "tts:app"
+tts-dialog = "tts_dialog:app_wrap_loguru"
 bestie = "bestie:app"
 pbf = "pbf:app"
 commit = "commit:app"
