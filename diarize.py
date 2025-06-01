@@ -802,8 +802,83 @@ class ChapterManager:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
+class PacingEnhancer:
+    """Enhancer for adding Google Cloud TTS Chirp 3 HD pacing controls to diarized conversations"""
+
+    def __init__(self):
+        # Use Gemini for pacing analysis
+        self.llm = langchain_helper.get_model(google=True)
+
+    def enhance_with_pacing(self, diarized_conversation: str) -> str:
+        """Add Google Cloud TTS Chirp 3 HD pacing enhancements to diarized conversation"""
+        if not diarized_conversation.strip():
+            return diarized_conversation
+
+        prompt_template = ChatPromptTemplate.from_template("""
+You are an expert at enhancing text for Google Cloud Text-to-Speech Chirp 3 HD voices to sound natural and engaging.
+
+Transform the following diarized conversation using these Google Cloud TTS guidelines:
+
+PUNCTUATION FOR PACING:
+• Periods (.) - Full stop with longer pause for complete thoughts
+• Commas (,) - Shorter pauses within sentences, breath breaks
+• Ellipses (...) - Longer, deliberate pauses for emphasis, hesitation, or drama
+• Hyphens (-) - Brief pauses or sudden breaks in thought
+
+NATURAL SPEECH TECHNIQUES:
+• Use contractions (it's, we're, don't) for conversational tone
+• Add strategic pauses with ellipses where speakers would naturally pause
+• Include subtle disfluencies (ums, uhs, wells) for authenticity
+• Break down complex sentences into shorter, manageable ones
+• Make it sound like real conversation, not robotic speech
+
+EXAMPLES OF IMPROVEMENTS:
+• "I think that is good" → "I think... that's really good"
+• "We will discuss this later" → "We'll, uh, discuss this later"
+• "The meeting is scheduled for tomorrow" → "The meeting's scheduled for tomorrow... should be good"
+
+GUIDELINES:
+1. Preserve ALL speaker labels exactly as they are
+2. Keep the core meaning of each statement
+3. Add natural pauses with ellipses where emphasis or breath would occur
+4. Use contractions to make speech more casual
+5. Add occasional disfluencies (ums, wells, uhs) where natural
+6. Break up long sentences with commas or periods
+7. Make each speaker sound conversational and human
+8. Don't overdo it - keep it natural
+
+Original conversation:
+{conversation}
+
+Return the enhanced conversation that will sound natural when spoken by Google Cloud TTS Chirp 3 HD voices.
+""")
+
+        try:
+            console.print("🎭 Enhancing conversation for natural TTS pacing...")
+
+            formatted_prompt = prompt_template.format(
+                conversation=diarized_conversation
+            )
+            enhanced_conversation = self.llm.invoke(formatted_prompt)
+
+            # Extract content if it's wrapped in an AIMessage
+            if hasattr(enhanced_conversation, "content"):
+                enhanced_conversation = enhanced_conversation.content
+
+            console.print("✅ Natural pacing enhancement completed!")
+            return enhanced_conversation.strip()
+
+        except Exception as e:
+            console.print(f"❌ Error enhancing with pacing: {e}")
+            logger.error(f"Error enhancing with pacing: {e}")
+            return diarized_conversation
+
+
 def save_results(
-    regular_transcript: str, diarized_conversation: str, output_file: Path
+    regular_transcript: str,
+    diarized_conversation: str,
+    output_file: Path,
+    paced_conversation: Optional[str] = None,
 ) -> None:
     """Save results to file"""
     full_output = ""
@@ -813,7 +888,11 @@ def save_results(
 
     if diarized_conversation:
         full_output += "=== DIARIZED CONVERSATION ===\n"
-        full_output += diarized_conversation + "\n"
+        full_output += diarized_conversation + "\n\n"
+
+    if paced_conversation:
+        full_output += "=== PACED CONVERSATION (Google Cloud TTS Chirp 3 HD) ===\n"
+        full_output += paced_conversation + "\n"
 
     # Save to file
     with open(output_file, "w", encoding="utf-8") as f:
@@ -834,12 +913,19 @@ def transcribe(
     show_results: Annotated[
         bool, typer.Option("--show", help="Show results in terminal")
     ] = False,
+    paced: Annotated[
+        bool,
+        typer.Option("--paced", help="Add Google Cloud TTS Chirp 3 HD pacing controls"),
+    ] = True,
 ):
     """
     Transcribe audio file with speaker diarization using Deepgram.
 
     This command processes an audio file and generates both a regular transcript
     and a diarized conversation with speaker labels.
+
+    Use --paced to add Google Cloud Text-to-Speech Chirp 3 HD pacing markup
+    for more natural sounding TTS output.
     """
 
     if not audio_file.exists():
@@ -848,10 +934,13 @@ def transcribe(
 
     # Set default output file
     if output_file is None:
-        output_file = audio_file.parent / f"{audio_file.stem}_diarized.txt"
+        suffix = "_paced_diarized" if paced else "_diarized"
+        output_file = audio_file.parent / f"{audio_file.stem}{suffix}.txt"
 
     console.print(f"🎵 Processing: {audio_file}")
     console.print(f"📄 Output: {output_file}")
+    if paced:
+        console.print("🎭 Pacing enhancement enabled for Google Cloud TTS Chirp 3 HD")
 
     # Initialize Deepgram manager
     deepgram = DeepgramManager()
@@ -872,8 +961,16 @@ def transcribe(
         console.print("❌ No transcript generated")
         raise typer.Exit(1)
 
+    # Enhance with pacing if requested
+    paced_conversation = None
+    if paced and diarized_conversation:
+        enhancer = PacingEnhancer()
+        paced_conversation = enhancer.enhance_with_pacing(diarized_conversation)
+
     # Save results
-    save_results(regular_transcript, diarized_conversation, output_file)
+    save_results(
+        regular_transcript, diarized_conversation, output_file, paced_conversation
+    )
 
     # Show results if requested
     if show_results:
@@ -897,7 +994,19 @@ def transcribe(
             if len(diarized_conversation.split("\n")) > 10:
                 console.print("   ...")
 
+        if paced_conversation:
+            console.print("\n🎭 Paced Conversation (Sample):")
+            lines = paced_conversation.split("\n")[:8]  # Show fewer lines due to markup
+            for line in lines:
+                if line.strip():
+                    console.print(f"   {line}")
+            if len(paced_conversation.split("\n")) > 8:
+                console.print("   ...")
+
     console.print("\n🎯 Diarization completed successfully!")
+    if paced:
+        console.print("🎭 Paced version ready for Google Cloud TTS Chirp 3 HD!")
+        console.print("💡 Use the 'markup' input type with Google Cloud TTS API")
     console.print("💡 Generate audio with different voices:")
     console.print(f"   uv run tts_dialog.py recreate {output_file}")
 
