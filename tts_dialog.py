@@ -178,9 +178,9 @@ def get_voice_mapping(speakers: set[str]) -> dict[str, str]:
     ]
 
     female_voices = [
+        "en-US-Chirp3-HD-Autonoe",
         "en-US-Chirp3-HD-Leda",
         "en-US-Chirp3-HD-Aoede",
-        "en-US-Chirp3-HD-Autonoe",
         "en-US-Chirp3-HD-Callirrhoe",
         "en-US-Chirp3-HD-Despina",
         "en-US-Chirp3-HD-Erinome",
