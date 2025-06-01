@@ -66,10 +66,12 @@ dependencies = [
     "fastmcp",
     "uvicorn",
     "unstructured",
+    "google-cloud-speech>=2.32.0",
+    "google-cloud-storage>=3.1.0",
 ]
 
 [tool.setuptools]
-py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "tts_dialog", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "image", "captions", "ell_helper", "pdspy", "qa_blog", "discord_helper", "journal", "github_helper", "iwhere", "askig_mcp", "askig_build_logic", "askig_logic", "askig_models"]
+py-modules = ["gpt3", "bestie", "life", "igor_journal", "dump_grateful", "improv", "openai_wrapper", "langchain_helper", "tts", "tts_dialog", "pbf", "commit", "play_langchain", "changes", "changes2", "fix", "illustrate", "think", "vapi_sim", "pell", "pchanges", "recognize", "parse_week", "image", "captions", "ell_helper", "pdspy", "qa_blog", "discord_helper", "journal", "github_helper", "iwhere", "askig_mcp", "askig_build_logic", "askig_logic", "askig_models", "diarize"]
 
 [project.scripts]
 gpt = "gpt3:app"
@@ -103,6 +105,7 @@ qa_blog = "qa_blog:app_wrap_loguru"
 journal = "journal:app"
 iwhere = "iwhere:app_wrap_loguru"
 askig_mcp = "askig_mcp:cli_app"
+diarize = "diarize:app"
 
 [tool.pyright]
 # ...
