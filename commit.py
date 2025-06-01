@@ -63,8 +63,6 @@ def clean_commit_message(message: str) -> str:
     return "\n".join(cleaned_lines).strip()
 
 
-
-
 def prompt_summarize_diff(diff_output, oneline=False):
     if oneline:
         instructions = """
@@ -84,29 +82,69 @@ Your response should be plain text only.
 """
     else:
         instructions = """
-You are an expert programmer, write a descriptive and informative commit message following the Conventional Commits format for a recent code change, which is presented as the output of git diff --staged.
+        # 🟢 Git Commit Message Generator Prompt (Enhanced)
 
-## Instructions
-* Do not describe changes to the table of contents, focus on the content
-* Start with a commit summary following Conventional Commits format: type(scope): description
-    * Type must be one of: feat, fix, docs, style, refactor, perf, test, build, ci, chore
-    * Scope is optional and should be the main component being changed, skip if only one file changed
-    * Description should be concise but informative, using imperative mood
-* Then add details in the body, separated by a blank line
-* If you see bugs, start at the top of the file with a section labeled "BUGS:"
-* When listing changes:
-    * Put them in the order of importance
-    * Use unnumbered lists with asterisks (*)
-* If any changes involve Cursor rules (files in .cursor/rules/ or with .mdc extension), include a special section for "Cursor Rules Changes:"
-* If there are breaking changes, include a section labeled "BREAKING CHANGE:"
-* You may include a "Reason for change" section if appropriate
-* Include a "Details" section with bullet points about the specific changes
-* If you see any of the following, skip them, or at most list them last as a single line:
-    * Changes to formatting/whitespace
-    * Changes to imports
-    * Changes to comments
-* Do not use backticks (```) or code blocks in your response.
-* Your response should be plain text only.
+You are an expert software engineer. Write a precise, descriptive, and informative commit message for a staged code change, using the **[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)** format. The input is the output of `git diff --staged`.
+
+---
+
+## 📌 Rules
+
+### 1. Commit Summary
+
+Format:
+`type(scope): description`
+
+- `type` must be one of: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`
+- `scope` is optional — use it if more than one file changed or if a clear module/component is being modified
+- Use **imperative mood** ("Fix bug", not "Fixed bug")
+- Be specific: avoid generic summaries like "fix bug"
+
+---
+
+### 2. Commit Body Structure
+
+Follow this format and order *if applicable*:
+
+```
+## The Problem
+
+Briefly explain the issue or unexpected behavior. Clarify assumptions or mismatches that caused the bug or need for change.
+
+## The Fix
+
+Explain what you changed and why it works. Describe important implementation decisions and tradeoffs.
+
+## Testing
+
+List how the change was tested or validated. Use bullet points or short narrative.
+
+## Cursor Rules Changes:
+
+If any `.cursor/rules/` or `.mdc` files changed, list and explain those here.
+
+## BREAKING CHANGE:
+
+Clearly state if this change breaks existing behavior and what consumers must do to adapt.
+
+## Reason for change:
+
+(Optional) Use this section for context or motivation not already captured above.
+```
+
+---
+
+### 3. Content Guidelines
+
+- Put the most important changes at the top
+- Use `*` for bullet points
+- **Do not** describe changes to:
+  - Table of contents
+  - Whitespace-only edits
+  - Pure comment or import order changes (unless essential — then list them last)
+- **Do not** use backticks or code blocks — plain text only
+- Prefer clarity and conciseness over verbosity, but don’t skip meaningful rationale
+
 """
 
     prompt = ChatPromptTemplate.from_messages(
@@ -139,10 +177,14 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
 
     def describe_diff(llm: BaseChatModel):
         try:
-            chain = prompt_summarize_diff(filtered_text, oneline) | llm | StrOutputParser()
+            chain = (
+                prompt_summarize_diff(filtered_text, oneline) | llm | StrOutputParser()
+            )
             return chain
         except Exception as e:
-            logger.error(f"Error with model {langchain_helper.get_model_name(llm)}: {e}")
+            logger.error(
+                f"Error with model {langchain_helper.get_model_name(llm)}: {e}"
+            )
             return {"error": str(e)}
 
     describe_diffs = await langchain_helper.async_run_on_llms(describe_diff, llms)
