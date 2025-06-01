@@ -19,11 +19,10 @@ import os
 import time
 import subprocess
 import tempfile
-import re
 import hashlib
 import json
 from pathlib import Path
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Tuple
 
 import typer
 from typing_extensions import Annotated
@@ -46,6 +45,7 @@ app = typer.Typer(
 
 class Chapter(BaseModel):
     """Data model for a chapter with timing information"""
+
     title: str
     start_seconds: float
     end_seconds: float
@@ -53,12 +53,14 @@ class Chapter(BaseModel):
 
 class ChapterResponse(BaseModel):
     """Data model for the complete chapter generation response"""
+
     chapters: List[Chapter]
     reasoning: Optional[str] = None
 
 
 class TimedUtterance(BaseModel):
     """Data model for an utterance with timing information"""
+
     speaker: str
     text: str
     start_seconds: float
@@ -70,7 +72,9 @@ class TranscriptionCache:
 
     def __init__(self, cache_dir: Optional[Path] = None):
         if cache_dir is None:
-            cache_dir = Path.cwd() / ".transcription_cache"
+            # Use system temporary directory with a subdirectory for our cache
+            temp_dir = Path(tempfile.gettempdir())
+            cache_dir = temp_dir / "nlp_transcription_cache"
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(exist_ok=True)
 
@@ -84,7 +88,7 @@ class TranscriptionCache:
 
         # For small files, include content hash for accuracy
         if stat.st_size < 50 * 1024 * 1024:  # Less than 50MB
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 # Read in chunks to handle larger files
                 while chunk := f.read(8192):
                     hasher.update(chunk)
@@ -103,7 +107,7 @@ class TranscriptionCache:
 
             if cache_path.exists():
                 console.print(f"📋 Found cached transcription for {audio_file.name}")
-                with open(cache_path, 'r', encoding='utf-8') as f:
+                with open(cache_path, "r", encoding="utf-8") as f:
                     cached_data = json.load(f)
                 return cached_data
 
@@ -122,7 +126,7 @@ class TranscriptionCache:
             # The Deepgram response object needs to be converted to dict
             cache_data = self._response_to_dict(response)
 
-            with open(cache_path, 'w', encoding='utf-8') as f:
+            with open(cache_path, "w", encoding="utf-8") as f:
                 json.dump(cache_data, f, indent=2)
 
             console.print(f"💾 Cached transcription for {audio_file.name}")
@@ -134,7 +138,7 @@ class TranscriptionCache:
         """Convert Deepgram response object to dictionary for JSON serialization"""
         try:
             # If response has a to_dict method, use it
-            if hasattr(response, 'to_dict'):
+            if hasattr(response, "to_dict"):
                 return response.to_dict()
 
             # If it's already a dict, return as-is
@@ -143,51 +147,54 @@ class TranscriptionCache:
 
             # Try to convert response attributes to dict manually
             result = {}
-            if hasattr(response, 'results'):
-                result['results'] = self._extract_results(response.results)
+            if hasattr(response, "results"):
+                result["results"] = self._extract_results(response.results)
 
             return result
 
         except Exception as e:
             logger.warning(f"Failed to convert response to dict: {e}")
             # Fallback: try to serialize what we can
-            return {"error": "Failed to serialize response", "type": str(type(response))}
+            return {
+                "error": "Failed to serialize response",
+                "type": str(type(response)),
+            }
 
     def _extract_results(self, results):
         """Extract results from Deepgram response for caching"""
         try:
             results_dict = {}
 
-            if hasattr(results, 'channels'):
-                results_dict['channels'] = []
+            if hasattr(results, "channels"):
+                results_dict["channels"] = []
                 for channel in results.channels:
                     channel_dict = {}
-                    if hasattr(channel, 'alternatives'):
-                        channel_dict['alternatives'] = []
+                    if hasattr(channel, "alternatives"):
+                        channel_dict["alternatives"] = []
                         for alt in channel.alternatives:
                             alt_dict = {}
-                            if hasattr(alt, 'transcript'):
-                                alt_dict['transcript'] = alt.transcript
-                            if hasattr(alt, 'words'):
-                                alt_dict['words'] = [
+                            if hasattr(alt, "transcript"):
+                                alt_dict["transcript"] = alt.transcript
+                            if hasattr(alt, "words"):
+                                alt_dict["words"] = [
                                     {
-                                        'word': getattr(word, 'word', ''),
-                                        'start': getattr(word, 'start', 0),
-                                        'end': getattr(word, 'end', 0),
-                                        'speaker': getattr(word, 'speaker', None)
+                                        "word": getattr(word, "word", ""),
+                                        "start": getattr(word, "start", 0),
+                                        "end": getattr(word, "end", 0),
+                                        "speaker": getattr(word, "speaker", None),
                                     }
                                     for word in alt.words
                                 ]
-                            channel_dict['alternatives'].append(alt_dict)
-                    results_dict['channels'].append(channel_dict)
+                            channel_dict["alternatives"].append(alt_dict)
+                    results_dict["channels"].append(channel_dict)
 
-            if hasattr(results, 'utterances'):
-                results_dict['utterances'] = [
+            if hasattr(results, "utterances"):
+                results_dict["utterances"] = [
                     {
-                        'transcript': getattr(utt, 'transcript', ''),
-                        'start': getattr(utt, 'start', 0),
-                        'end': getattr(utt, 'end', 0),
-                        'speaker': getattr(utt, 'speaker', 0)
+                        "transcript": getattr(utt, "transcript", ""),
+                        "start": getattr(utt, "start", 0),
+                        "end": getattr(utt, "end", 0),
+                        "speaker": getattr(utt, "speaker", 0),
                     }
                     for utt in results.utterances
                 ]
@@ -201,9 +208,16 @@ class TranscriptionCache:
     def clear_cache(self) -> None:
         """Clear all cached transcriptions"""
         try:
-            for cache_file in self.cache_dir.glob("*.json"):
+            cache_files = list(self.cache_dir.glob("*.json"))
+            file_count = len(cache_files)
+
+            for cache_file in cache_files:
                 cache_file.unlink()
-            console.print("🗑️ Cleared transcription cache")
+
+            if file_count > 0:
+                console.print(f"🗑️ Cleared {file_count} transcription cache file(s)")
+            else:
+                console.print("🗑️ Cache was already empty")
         except Exception as e:
             logger.error(f"Failed to clear cache: {e}")
 
@@ -284,38 +298,45 @@ class DeepgramManager:
 
     def _dict_to_response_object(self, cached_data: dict):
         """Convert cached dictionary back to a response-like object"""
+
         # Create a simple object that mimics the Deepgram response structure
         class MockResponse:
             def __init__(self, data):
-                self.results = MockResults(data.get('results', {}))
+                self.results = MockResults(data.get("results", {}))
 
         class MockResults:
             def __init__(self, results_data):
-                self.channels = [MockChannel(ch) for ch in results_data.get('channels', [])]
-                self.utterances = [MockUtterance(utt) for utt in results_data.get('utterances', [])]
+                self.channels = [
+                    MockChannel(ch) for ch in results_data.get("channels", [])
+                ]
+                self.utterances = [
+                    MockUtterance(utt) for utt in results_data.get("utterances", [])
+                ]
 
         class MockChannel:
             def __init__(self, channel_data):
-                self.alternatives = [MockAlternative(alt) for alt in channel_data.get('alternatives', [])]
+                self.alternatives = [
+                    MockAlternative(alt) for alt in channel_data.get("alternatives", [])
+                ]
 
         class MockAlternative:
             def __init__(self, alt_data):
-                self.transcript = alt_data.get('transcript', '')
-                self.words = [MockWord(word) for word in alt_data.get('words', [])]
+                self.transcript = alt_data.get("transcript", "")
+                self.words = [MockWord(word) for word in alt_data.get("words", [])]
 
         class MockWord:
             def __init__(self, word_data):
-                self.word = word_data.get('word', '')
-                self.start = word_data.get('start', 0)
-                self.end = word_data.get('end', 0)
-                self.speaker = word_data.get('speaker', None)
+                self.word = word_data.get("word", "")
+                self.start = word_data.get("start", 0)
+                self.end = word_data.get("end", 0)
+                self.speaker = word_data.get("speaker", None)
 
         class MockUtterance:
             def __init__(self, utt_data):
-                self.transcript = utt_data.get('transcript', '')
-                self.start = utt_data.get('start', 0)
-                self.end = utt_data.get('end', 0)
-                self.speaker = utt_data.get('speaker', 0)
+                self.transcript = utt_data.get("transcript", "")
+                self.start = utt_data.get("start", 0)
+                self.end = utt_data.get("end", 0)
+                self.speaker = utt_data.get("speaker", 0)
 
         return MockResponse(cached_data)
 
@@ -381,20 +402,24 @@ class ConversationFormatter:
                         if current_speaker is not None and current_text_parts:
                             speaker_label = f"SPEAKER_{current_speaker:02d}"
                             combined_text = " ".join(current_text_parts).strip()
-                            conversation_turns.append({
-                                "speaker": speaker_label,
-                                "text": combined_text,
-                                "start": current_start,
-                                "end": current_end
-                            })
+                            conversation_turns.append(
+                                {
+                                    "speaker": speaker_label,
+                                    "text": combined_text,
+                                    "start": current_start,
+                                    "end": current_end,
+                                }
+                            )
 
                             # Add to timed utterances
-                            timed_utterances.append(TimedUtterance(
-                                speaker=speaker_label,
-                                text=combined_text,
-                                start_seconds=current_start,
-                                end_seconds=current_end
-                            ))
+                            timed_utterances.append(
+                                TimedUtterance(
+                                    speaker=speaker_label,
+                                    text=combined_text,
+                                    start_seconds=current_start,
+                                    end_seconds=current_end,
+                                )
+                            )
 
                         # Start new speaker
                         current_speaker = speaker_id
@@ -410,20 +435,24 @@ class ConversationFormatter:
                 if current_speaker is not None and current_text_parts:
                     speaker_label = f"SPEAKER_{current_speaker:02d}"
                     combined_text = " ".join(current_text_parts).strip()
-                    conversation_turns.append({
-                        "speaker": speaker_label,
-                        "text": combined_text,
-                        "start": current_start,
-                        "end": current_end
-                    })
+                    conversation_turns.append(
+                        {
+                            "speaker": speaker_label,
+                            "text": combined_text,
+                            "start": current_start,
+                            "end": current_end,
+                        }
+                    )
 
                     # Add to timed utterances
-                    timed_utterances.append(TimedUtterance(
-                        speaker=speaker_label,
-                        text=combined_text,
-                        start_seconds=current_start,
-                        end_seconds=current_end
-                    ))
+                    timed_utterances.append(
+                        TimedUtterance(
+                            speaker=speaker_label,
+                            text=combined_text,
+                            start_seconds=current_start,
+                            end_seconds=current_end,
+                        )
+                    )
 
                 if conversation_turns:
                     diarized_conversation = "\n".join(
@@ -543,7 +572,9 @@ class ChapterGenerator:
         secs = int(seconds % 60)
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
-    def generate_chapters(self, timed_utterances: List[TimedUtterance]) -> List[Chapter]:
+    def generate_chapters(
+        self, timed_utterances: List[TimedUtterance]
+    ) -> List[Chapter]:
         """Generate chapters using LLM analysis of the timed transcript"""
         if not timed_utterances:
             return []
@@ -585,14 +616,16 @@ Include brief reasoning for your chapter divisions.
             formatted_prompt = prompt_template.format(
                 transcript=timed_transcript,
                 duration=int(total_duration),
-                duration_minutes=total_duration / 60
+                duration_minutes=total_duration / 60,
             )
 
             # Get structured LLM response
             response: ChapterResponse = self.llm.invoke(formatted_prompt)
 
             # Validate and fix chapter timing
-            validated_chapters = self._validate_chapters(response.chapters, total_duration)
+            validated_chapters = self._validate_chapters(
+                response.chapters, total_duration
+            )
 
             console.print(f"✅ Generated {len(validated_chapters)} chapters")
             return validated_chapters
@@ -602,20 +635,22 @@ Include brief reasoning for your chapter divisions.
             logger.error(f"Error generating chapters: {e}")
 
             # Return fallback chapter
-            return [Chapter(
-                title="Full Recording",
-                start_seconds=0,
-                end_seconds=total_duration
-            )]
+            return [
+                Chapter(
+                    title="Full Recording", start_seconds=0, end_seconds=total_duration
+                )
+            ]
 
-    def _validate_chapters(self, chapters: List[Chapter], total_duration: float) -> List[Chapter]:
+    def _validate_chapters(
+        self, chapters: List[Chapter], total_duration: float
+    ) -> List[Chapter]:
         """Validate and fix chapter timing issues"""
         if not chapters:
-            return [Chapter(
-                title="Full Recording",
-                start_seconds=0,
-                end_seconds=total_duration
-            )]
+            return [
+                Chapter(
+                    title="Full Recording", start_seconds=0, end_seconds=total_duration
+                )
+            ]
 
         # Sort chapters by start time
         chapters.sort(key=lambda c: c.start_seconds)
@@ -640,18 +675,18 @@ Include brief reasoning for your chapter divisions.
             if i == len(chapters) - 1:
                 end_time = total_duration
 
-            validated.append(Chapter(
-                title=chapter.title,
-                start_seconds=start_time,
-                end_seconds=end_time
-            ))
+            validated.append(
+                Chapter(
+                    title=chapter.title, start_seconds=start_time, end_seconds=end_time
+                )
+            )
 
         # Ensure first chapter starts at 0
         if validated and validated[0].start_seconds > 0:
             validated[0] = Chapter(
                 title=validated[0].title,
                 start_seconds=0,
-                end_seconds=validated[0].end_seconds
+                end_seconds=validated[0].end_seconds,
             )
 
         return validated
@@ -670,29 +705,31 @@ class ChapterManager:
             start_microseconds = int(chapter.start_seconds * 1_000_000)
             end_microseconds = int(chapter.end_seconds * 1_000_000)
 
-            metadata_lines.extend([
-                "",
-                "[CHAPTER]",
-                "TIMEBASE=1/1000000",
-                f"START={start_microseconds}",
-                f"END={end_microseconds}",
-                f"title={chapter.title}"
-            ])
+            metadata_lines.extend(
+                [
+                    "",
+                    "[CHAPTER]",
+                    "TIMEBASE=1/1000000",
+                    f"START={start_microseconds}",
+                    f"END={end_microseconds}",
+                    f"title={chapter.title}",
+                ]
+            )
 
         return "\n".join(metadata_lines)
 
     @staticmethod
     def apply_chapters_to_file(
-        input_file: Path,
-        output_file: Path,
-        chapters: List[Chapter]
+        input_file: Path, output_file: Path, chapters: List[Chapter]
     ) -> bool:
         """Apply chapters to audio file using ffmpeg"""
         try:
             console.print("🎬 Applying chapters to audio file...")
 
             # Create temporary metadata file
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".txt", delete=False
+            ) as temp_file:
                 metadata_content = ChapterManager.create_ffmpeg_metadata(chapters)
                 temp_file.write(metadata_content)
                 temp_metadata_path = temp_file.name
@@ -701,24 +738,23 @@ class ChapterManager:
                 # Run ffmpeg command to add chapters
                 cmd = [
                     "ffmpeg",
-                    "-i", str(input_file),
-                    "-i", temp_metadata_path,
-                    "-map_metadata", "1",
-                    "-codec", "copy",
+                    "-i",
+                    str(input_file),
+                    "-i",
+                    temp_metadata_path,
+                    "-map_metadata",
+                    "1",
+                    "-codec",
+                    "copy",
                     "-y",  # Overwrite output file if it exists
-                    str(output_file)
+                    str(output_file),
                 ]
 
                 console.print(f"   Running: {' '.join(cmd)}")
 
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
+                subprocess.run(cmd, capture_output=True, text=True, check=True)
 
-                console.print(f"✅ Chapters applied successfully!")
+                console.print("✅ Chapters applied successfully!")
                 console.print(f"📄 Output saved to: {output_file}")
                 return True
 
@@ -732,7 +768,9 @@ class ChapterManager:
             logger.error(f"FFmpeg failed: {e}")
             return False
         except FileNotFoundError:
-            console.print("❌ FFmpeg not found. Please install FFmpeg to use chapter functionality.")
+            console.print(
+                "❌ FFmpeg not found. Please install FFmpeg to use chapter functionality."
+            )
             console.print("💡 Install with: brew install ffmpeg")
             return False
         except Exception as e:
@@ -868,7 +906,8 @@ def transcribe(
 def chapters(
     audio_file: Annotated[Path, typer.Argument(help="Audio file to add chapters to")],
     output_file: Annotated[
-        Optional[Path], typer.Option("--output", "-o", help="Output audio file with chapters")
+        Optional[Path],
+        typer.Option("--output", "-o", help="Output audio file with chapters"),
     ] = None,
     language: Annotated[
         str, typer.Option("--language", help="Language code")
@@ -894,7 +933,9 @@ def chapters(
 
     # Set default output file
     if output_file is None:
-        output_file = audio_file.parent / f"{audio_file.stem}_with_chapters{audio_file.suffix}"
+        output_file = (
+            audio_file.parent / f"{audio_file.stem}_with_chapters{audio_file.suffix}"
+        )
 
     console.print(f"🎵 Processing: {audio_file}")
     console.print(f"📄 Output: {output_file}")
@@ -951,6 +992,7 @@ def clear_cache():
     Use this if you want to force re-transcription of files or if cache files are taking up too much space.
     """
     cache = TranscriptionCache()
+    console.print(f"📁 Cache location: {cache.cache_dir}")
     cache.clear_cache()
 
 
