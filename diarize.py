@@ -40,7 +40,6 @@ console = Console()
 app = typer.Typer(
     name="diarize",
     help="Convert audio files to structured conversations using speaker diarization with Deepgram",
-    add_completion=False,
     no_args_is_help=True,
 )
 
