@@ -97,6 +97,7 @@ tags
 .aider*
 .env
 .specstory/
+uv.lock
 
 # Private individual user cursor rules
 .cursor/rules/_*.mdc
