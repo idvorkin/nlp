@@ -335,8 +335,8 @@ def analyze_conversation_chapters(
 
     # Create prompt for LLM analysis
     prompt = f"""Analyze this conversation and identify logical chapter breaks with meaningful titles.
-    
-A chapter should represent a distinct topic, theme, or segment of the conversation. 
+
+A chapter should represent a distinct topic, theme, or segment of the conversation.
 Aim for 3-7 chapters for most conversations. Each chapter should have:
 - A clear starting point (turn number)
 - A concise, descriptive title (2-6 words)
@@ -355,7 +355,7 @@ Respond with JSON in this exact format:
     }},
     {{
       "start_turn": 5,
-      "title": "Main Topic Discussion", 
+      "title": "Main Topic Discussion",
       "description": "Deep dive into the primary subject"
     }}
   ]
@@ -441,6 +441,13 @@ Make sure start_turn numbers are valid (1 to {len(turns)}) and in ascending orde
         ]
 
 
+def get_cache_file_path(convo_file: Path) -> Path:
+    """Get the standard cache file path for a conversation"""
+    output_dir = Path.home() / "tmp/tts" / f"conversation_{convo_file.stem}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir / "chapters_cache.json"
+
+
 def get_audio_duration(audio_file: Path) -> float:
     """Get the duration of an audio file in seconds using ffprobe"""
     try:
@@ -503,6 +510,7 @@ def create_ffmpeg_chapters_file(
         # Next turn starts where this one ends
         if turn_num + 1 not in turn_start_times:
             turn_start_times[turn_num + 1] = cumulative_duration
+        console.print(f"   🎵 Turn {turn_num}: {audio_file.name} ({duration:.1f}s)")
 
     # Total conversation duration
     total_duration_ms = int(cumulative_duration * 1000)
@@ -536,6 +544,21 @@ def create_ffmpeg_chapters_file(
                 f"   📖 Chapter {i + 1}: {start_time_str} - {end_time_str} ({chapter.title})"
             )
 
+    try:
+        file_size = chapters_file.stat().st_size
+        console.print(f"📝 Created chapters file: {chapters_file}")
+        console.print(f"   File size: {file_size} bytes")
+        console.print(f"   Total duration: {cumulative_duration:.1f} seconds")
+
+        # Verify file content
+        if file_size == 0:
+            console.print("⚠️ WARNING: Chapters file is empty!")
+        else:
+            console.print("✅ Chapters file created successfully")
+
+    except Exception as e:
+        console.print(f"⚠️ Error checking chapters file: {e}")
+
     return chapters_file
 
 
@@ -567,14 +590,29 @@ def merge_audio_files_with_chapters(
                 if Path(audio_file).exists():
                     f.write(f"file '{audio_file.absolute()}'\n")
 
+        # Add debug output to see what's happening with chapters
+        console.print(
+            f"🔍 Debug: chapters={chapters}, len={len(chapters) if chapters else 'None'}"
+        )
+
         # Create chapters file if chapters are provided
-        if chapters and len(chapters) > 1:
-            chapters_file = create_ffmpeg_chapters_file(
-                chapters, audio_files, output_path.parent
-            )
-            console.print(f"📖 Created {len(chapters)} chapters:")
-            for chapter in chapters:
-                console.print(f"   • Turn {chapter.start_turn}: {chapter.title}")
+        if chapters and len(chapters) >= 1:  # Changed from > 1 to >= 1
+            try:
+                chapters_file = create_ffmpeg_chapters_file(
+                    chapters, audio_files, output_path.parent
+                )
+                if chapters_file and chapters_file.exists():
+                    console.print(f"📖 Created {len(chapters)} chapters:")
+                    for chapter in chapters:
+                        console.print(
+                            f"   • Turn {chapter.start_turn}: {chapter.title}"
+                        )
+                else:
+                    console.print("⚠️ Failed to create chapters file")
+                    chapters_file = None
+            except Exception as e:
+                console.print(f"⚠️ Error creating chapters: {e}")
+                chapters_file = None
 
         # Build ffmpeg command
         cmd = [
@@ -589,7 +627,26 @@ def merge_audio_files_with_chapters(
 
         # Add chapters if available
         if chapters_file and chapters_file.exists():
-            cmd.extend(["-i", str(chapters_file), "-map_metadata", "1"])
+            try:
+                # Give the file a moment to be fully written and check size
+                import time
+
+                time.sleep(0.1)  # Brief pause to ensure file is fully written
+
+                file_size = chapters_file.stat().st_size
+                if file_size > 0:
+                    cmd.extend(["-i", str(chapters_file), "-map_metadata", "1"])
+                    console.print(
+                        f"📖 Adding chapters from {chapters_file} ({file_size} bytes)"
+                    )
+                else:
+                    console.print(
+                        f"⚠️ Chapters file exists but is empty: {chapters_file}"
+                    )
+            except Exception as e:
+                console.print(f"⚠️ Error reading chapters file: {e}")
+        else:
+            console.print("⚠️ No valid chapters file, proceeding without chapters")
 
         cmd.extend(
             [
@@ -616,7 +673,8 @@ def merge_audio_files_with_chapters(
         # Clean up temporary files
         if file_list_path.exists():
             file_list_path.unlink()
-        if chapters_file and chapters_file.exists():
+        # Only delete chapters file if merge failed
+        if chapters_file and chapters_file.exists() and result.returncode != 0:
             chapters_file.unlink()
 
 
@@ -649,7 +707,7 @@ def recreate(
 
     # State management
     state_file = output_dir / "conversation_state.json"
-    chapters_cache_file = output_dir / "chapters_cache.json"
+    chapters_cache_file = get_cache_file_path(convo_file)
 
     # Parse the conversation first to get the actual structure
     console.print(f"📖 Reading conversation from: {convo_file}")
@@ -661,6 +719,7 @@ def recreate(
 
     # Get conversation identifier including merge information
     conversation_hash = get_conversation_identifier(convo_file, turns)
+    console.print(f"🔍 Conversation hash: {conversation_hash[:8]}...")
 
     # Load existing state
     existing_state = load_conversation_state(state_file) if not force else None
@@ -723,7 +782,7 @@ def recreate(
     async def generate_all_turns():
         # Use just one shared client to be maximally conservative
         # But allow high concurrency since these are async calls through one client
-        semaphore = asyncio.Semaphore(50)  # Back to 50 for performance
+        semaphore = asyncio.Semaphore(25)  # Back to 50 for performance
 
         # Create a single shared client
         client = tts.TextToSpeechAsyncClient()
@@ -834,16 +893,15 @@ def chapters_only(
     console.print(f"💬 Found {len(turns)} conversation turns")
 
     # Analyze chapters with caching
-    output_dir = Path.home() / "tmp/tts" / f"conversation_{convo_file.stem}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    chapters_cache_file = output_dir / "chapters_cache.json"
+    chapters_cache_file = get_cache_file_path(convo_file)
 
     # Get conversation identifier for cache validation
-    conversation_id = get_conversation_identifier(convo_file, turns)
+    conversation_hash = get_conversation_identifier(convo_file, turns)
+    console.print(f"🔍 Conversation hash: {conversation_hash[:8]}...")
 
     console.print("\n🧠 Analyzing conversation for chapter markers...")
     chapters = analyze_conversation_chapters(
-        turns, chapters_cache_file, conversation_id
+        turns, chapters_cache_file, conversation_hash
     )
 
     console.print("\n📖 Chapter Analysis Results:")
