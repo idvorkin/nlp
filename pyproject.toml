@@ -37,6 +37,7 @@ dependencies = [
     "numpy>=2.0.0",
     "typing-extensions",
     "assemblyai",
+    "deepgram-sdk",
     "openai",
     "pudb",
     "py-cord",
