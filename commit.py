@@ -3,12 +3,10 @@
 
 import sys
 import asyncio
-from typing import List, Optional, Union, Callable
 
 from langchain_core import messages
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
-from pydantic import BaseModel, Field, field_validator
 
 import typer
 from langchain.prompts import ChatPromptTemplate
