@@ -12,6 +12,7 @@
 #     "langchain-core",
 #     "langchain-openai",
 #     "langchain-google-genai",
+#     "asyncio",
 # ]
 # ///
 
@@ -21,6 +22,7 @@ import subprocess
 import tempfile
 import hashlib
 import json
+import asyncio
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -814,6 +816,76 @@ class PacingEnhancer:
         if not diarized_conversation.strip():
             return diarized_conversation
 
+        # Run async processing
+        return asyncio.run(self._enhance_with_pacing_async(diarized_conversation))
+
+    async def _enhance_with_pacing_async(self, diarized_conversation: str) -> str:
+        """Async implementation of pacing enhancement with chunked parallel processing"""
+
+        # Split conversation into chunks
+        chunks = self._split_conversation_into_chunks(
+            diarized_conversation, chunk_size=20
+        )
+
+        if len(chunks) == 1:
+            # Single chunk, process normally
+            console.print("🎭 Enhancing conversation for natural TTS pacing...")
+            return await self._enhance_chunk_async(chunks[0])
+
+        # Multiple chunks, process in parallel
+        console.print(
+            f"🎭 Enhancing conversation in {len(chunks)} parallel chunks for natural TTS pacing..."
+        )
+
+        # Process chunks concurrently
+        tasks = [self._enhance_chunk_async(chunk) for chunk in chunks]
+        enhanced_chunks = await asyncio.gather(*tasks)
+
+        # Combine results
+        enhanced_conversation = "\n".join(enhanced_chunks)
+        console.print("✅ Parallel pacing enhancement completed!")
+        return enhanced_conversation.strip()
+
+    def _split_conversation_into_chunks(
+        self, conversation: str, chunk_size: int = 20
+    ) -> List[str]:
+        """Split diarized conversation into chunks of approximately chunk_size turns each"""
+        lines = [line.strip() for line in conversation.split("\n") if line.strip()]
+
+        # Count actual speaker turns (lines that start with [SPEAKER_)
+        speaker_lines = [line for line in lines if line.startswith("[SPEAKER_")]
+
+        if len(speaker_lines) <= chunk_size:
+            return [conversation]  # Small conversation, don't chunk
+
+        chunks = []
+        current_chunk_lines = []
+        turns_in_chunk = 0
+
+        for line in lines:
+            current_chunk_lines.append(line)
+
+            # Count turns (lines with speaker labels)
+            if line.startswith("[SPEAKER_"):
+                turns_in_chunk += 1
+
+            # If we've reached chunk size, start a new chunk
+            if turns_in_chunk >= chunk_size and line.startswith("[SPEAKER_"):
+                chunks.append("\n".join(current_chunk_lines))
+                current_chunk_lines = []
+                turns_in_chunk = 0
+
+        # Add remaining lines as final chunk
+        if current_chunk_lines:
+            chunks.append("\n".join(current_chunk_lines))
+
+        return chunks
+
+    async def _enhance_chunk_async(self, chunk: str) -> str:
+        """Async method to enhance a single chunk of conversation"""
+        if not chunk.strip():
+            return chunk
+
         prompt_template = ChatPromptTemplate.from_template("""
 You are an expert at enhancing text for Google Cloud Text-to-Speech Chirp 3 HD voices to sound natural and engaging.
 
@@ -847,31 +919,26 @@ GUIDELINES:
 7. Make each speaker sound conversational and human
 8. Don't overdo it - keep it natural
 
-Original conversation:
+Original conversation chunk:
 {conversation}
 
-Return the enhanced conversation that will sound natural when spoken by Google Cloud TTS Chirp 3 HD voices.
+Return the enhanced conversation chunk that will sound natural when spoken by Google Cloud TTS Chirp 3 HD voices.
 """)
 
         try:
-            console.print("🎭 Enhancing conversation for natural TTS pacing...")
-
-            formatted_prompt = prompt_template.format(
-                conversation=diarized_conversation
-            )
-            enhanced_conversation = self.llm.invoke(formatted_prompt)
+            formatted_prompt = prompt_template.format(conversation=chunk)
+            enhanced_chunk = await self.llm.ainvoke(formatted_prompt)
 
             # Extract content if it's wrapped in an AIMessage
-            if hasattr(enhanced_conversation, "content"):
-                enhanced_conversation = enhanced_conversation.content
+            if hasattr(enhanced_chunk, "content"):
+                enhanced_chunk = enhanced_chunk.content
 
-            console.print("✅ Natural pacing enhancement completed!")
-            return enhanced_conversation.strip()
+            return enhanced_chunk.strip()
 
         except Exception as e:
-            console.print(f"❌ Error enhancing with pacing: {e}")
-            logger.error(f"Error enhancing with pacing: {e}")
-            return diarized_conversation
+            console.print(f"❌ Error enhancing chunk: {e}")
+            logger.error(f"Error enhancing chunk: {e}")
+            return chunk
 
 
 def save_results(
