@@ -46,21 +46,10 @@ class ConversationConfig(BaseModel):
     voice_mapping: dict[str, str]
 
 
-class Chapter(BaseModel):
-    start_turn: int
-    title: str
-    description: str
-
-
-class ConversationChapters(BaseModel):
-    chapters: List[Chapter]
-
-
 class ConversationState(BaseModel):
     """Persistent state for conversation generation"""
 
     voice_mapping: dict[str, str]
-    chapters: Optional[List[Chapter]] = None
     completed_turns: List[int] = []
     total_turns: int
     speed: float
@@ -300,272 +289,8 @@ async def generate_single_turn(
                 pass  # Best effort cleanup
 
 
-def analyze_conversation_chapters(
-    turns: List[ConversationTurn], cache_file: Path = None, conversation_id: str = None
-) -> List[Chapter]:
-    """Use LLM to analyze conversation and identify chapter markers with caching"""
-
-    # Check if we have cached results
-    if cache_file and cache_file.exists():
-        try:
-            with open(cache_file, "r") as f:
-                cached_data = json.load(f)
-
-            # Validate cache against conversation structure if ID provided
-            if (
-                conversation_id
-                and cached_data.get("conversation_id") != conversation_id
-            ):
-                console.print(
-                    "⚠️ Cache outdated (conversation structure changed), regenerating chapters..."
-                )
-            else:
-                chapters_model = ConversationChapters.model_validate(
-                    cached_data.get("chapters", cached_data)
-                )
-                console.print(f"📖 Using cached chapter analysis from {cache_file}")
-                return chapters_model.chapters
-        except Exception as e:
-            console.print(f"⚠️ Could not load cached chapters: {e}")
-
-    # Prepare conversation text for analysis
-    conversation_text = ""
-    for i, turn in enumerate(turns):
-        conversation_text += f"Turn {i + 1} - {turn.speaker}: {turn.text}\n"
-
-    # Create prompt for LLM analysis
-    prompt = f"""Analyze this conversation and identify logical chapter breaks with meaningful titles.
-
-A chapter should represent a distinct topic, theme, or segment of the conversation.
-Aim for 3-7 chapters for most conversations. Each chapter should have:
-- A clear starting point (turn number)
-- A concise, descriptive title (2-6 words)
-- A brief description of what's discussed
-
-Conversation:
-{conversation_text}
-
-Respond with JSON in this exact format:
-{{
-  "chapters": [
-    {{
-      "start_turn": 1,
-      "title": "Introduction and Setup",
-      "description": "Opening remarks and conversation setup"
-    }},
-    {{
-      "start_turn": 5,
-      "title": "Main Topic Discussion",
-      "description": "Deep dive into the primary subject"
-    }}
-  ]
-}}
-
-Make sure start_turn numbers are valid (1 to {len(turns)}) and in ascending order."""
-
-    try:
-        # Use OpenAI to analyze the conversation
-        import openai
-
-        client = openai.OpenAI()
-
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert at analyzing conversations and identifying logical chapter breaks. Always respond with valid JSON.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.3,
-            max_tokens=1000,
-        )
-
-        # Parse the JSON response
-        chapters_data = json.loads(response.choices[0].message.content)
-        chapters_model = ConversationChapters.model_validate(chapters_data)
-
-        # Validate and adjust chapter start positions
-        validated_chapters = []
-        for chapter in chapters_model.chapters:
-            # Ensure start_turn is within valid range
-            start_turn = max(1, min(chapter.start_turn, len(turns)))
-            validated_chapters.append(
-                Chapter(
-                    start_turn=start_turn,
-                    title=chapter.title,
-                    description=chapter.description,
-                )
-            )
-
-        # Sort by start_turn and ensure first chapter starts at turn 1
-        validated_chapters.sort(key=lambda x: x.start_turn)
-        if not validated_chapters or validated_chapters[0].start_turn > 1:
-            validated_chapters.insert(
-                0,
-                Chapter(
-                    start_turn=1,
-                    title="Introduction",
-                    description="Conversation opening",
-                ),
-            )
-
-        # Cache the results with conversation ID
-        if cache_file:
-            try:
-                cache_data = {
-                    "conversation_id": conversation_id,
-                    "chapters": [
-                        chapter.model_dump() for chapter in validated_chapters
-                    ],
-                }
-                with open(cache_file, "w") as f:
-                    json.dump(cache_data, f, indent=2)
-                console.print(f"💾 Cached chapter analysis to {cache_file}")
-            except Exception as e:
-                console.print(f"⚠️ Could not cache chapters: {e}")
-
-        return validated_chapters
-
-    except Exception as e:
-        console.print(f"⚠️ Chapter analysis failed: {e}")
-        console.print("📝 Using default single chapter")
-        # Fallback to single chapter
-        return [
-            Chapter(
-                start_turn=1,
-                title="Full Conversation",
-                description="Complete conversation without chapters",
-            )
-        ]
-
-
-def get_cache_file_path(convo_file: Path) -> Path:
-    """Get the standard cache file path for a conversation"""
-    output_dir = Path.home() / "tmp/tts" / f"conversation_{convo_file.stem}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir / "chapters_cache.json"
-
-
-def get_audio_duration(audio_file: Path) -> float:
-    """Get the duration of an audio file in seconds using ffprobe"""
-    try:
-        result = subprocess.run(
-            [
-                "ffprobe",
-                "-v",
-                "quiet",
-                "-show_entries",
-                "format=duration",
-                "-of",
-                "csv=p=0",
-                str(audio_file),
-            ],
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode == 0:
-            return float(result.stdout.strip())
-        else:
-            console.print(
-                f"⚠️ Could not get duration for {audio_file}, using 4s estimate"
-            )
-            return 4.0  # fallback estimate
-    except Exception as e:
-        console.print(
-            f"⚠️ Error getting duration for {audio_file}: {e}, using 4s estimate"
-        )
-        return 4.0  # fallback estimate
-
-
-def create_ffmpeg_chapters_file(
-    chapters: List[Chapter], audio_files: List[Path], output_dir: Path
-) -> Path:
-    """Create an ffmpeg chapters file for the conversation using actual audio durations"""
-
-    chapters_file = output_dir / "chapters.txt"
-
-    # Calculate actual durations for each audio file
-    console.print("🕐 Calculating actual audio durations for precise chapter timing...")
-
-    # Create a mapping from turn number to audio file
-    turn_to_file = {}
-    for audio_file in audio_files:
-        # Extract turn number from filename like "turn_003_SPEAKER_00.mp3"
-        match = re.search(r"turn_(\d+)_", audio_file.name)
-        if match:
-            turn_num = int(match.group(1)) + 1  # Convert 0-based to 1-based
-            turn_to_file[turn_num] = audio_file
-
-    # Calculate cumulative durations
-    cumulative_duration = 0.0
-    turn_start_times = {1: 0.0}  # Turn 1 starts at 0
-
-    for turn_num in sorted(turn_to_file.keys()):
-        audio_file = turn_to_file[turn_num]
-        duration = get_audio_duration(audio_file)
-        cumulative_duration += duration
-        # Next turn starts where this one ends
-        if turn_num + 1 not in turn_start_times:
-            turn_start_times[turn_num + 1] = cumulative_duration
-        console.print(f"   🎵 Turn {turn_num}: {audio_file.name} ({duration:.1f}s)")
-
-    # Total conversation duration
-    total_duration_ms = int(cumulative_duration * 1000)
-
-    with open(chapters_file, "w") as f:
-        f.write(";FFMETADATA1\n")
-
-        for i, chapter in enumerate(chapters):
-            # Get actual start time for this chapter
-            start_seconds = turn_start_times.get(chapter.start_turn, 0.0)
-            start_ms = int(start_seconds * 1000)
-
-            # Calculate end time (start of next chapter or end of conversation)
-            if i + 1 < len(chapters):
-                next_start_turn = chapters[i + 1].start_turn
-                end_seconds = turn_start_times.get(next_start_turn, cumulative_duration)
-                end_ms = int(end_seconds * 1000)
-            else:
-                end_ms = total_duration_ms
-
-            f.write("\n[CHAPTER]\n")
-            f.write("TIMEBASE=1/1000\n")
-            f.write(f"START={start_ms}\n")
-            f.write(f"END={end_ms}\n")
-            f.write(f"title={chapter.title}\n")
-
-            # Print timing info for debugging
-            start_time_str = f"{start_seconds // 60:.0f}:{start_seconds % 60:04.1f}"
-            end_time_str = f"{(end_ms / 1000) // 60:.0f}:{(end_ms / 1000) % 60:04.1f}"
-            console.print(
-                f"   📖 Chapter {i + 1}: {start_time_str} - {end_time_str} ({chapter.title})"
-            )
-
-    try:
-        file_size = chapters_file.stat().st_size
-        console.print(f"📝 Created chapters file: {chapters_file}")
-        console.print(f"   File size: {file_size} bytes")
-        console.print(f"   Total duration: {cumulative_duration:.1f} seconds")
-
-        # Verify file content
-        if file_size == 0:
-            console.print("⚠️ WARNING: Chapters file is empty!")
-        else:
-            console.print("✅ Chapters file created successfully")
-
-    except Exception as e:
-        console.print(f"⚠️ Error checking chapters file: {e}")
-
-    return chapters_file
-
-
-def merge_audio_files_with_chapters(
-    audio_files: List[Path], output_path: Path, chapters: List[Chapter] = None
-) -> Path:
-    """Merge multiple audio files into one using ffmpeg with optional chapters"""
+def merge_audio_files(audio_files: List[Path], output_path: Path) -> Path:
+    """Merge multiple audio files into one using ffmpeg"""
 
     # Check if merged file already exists and is recent
     if output_path.exists() and output_path.stat().st_size > 0:
@@ -581,7 +306,6 @@ def merge_audio_files_with_chapters(
 
     # Create a file list for ffmpeg
     file_list_path = output_path.parent / "filelist.txt"
-    chapters_file = None
 
     try:
         # Create the file list
@@ -589,30 +313,6 @@ def merge_audio_files_with_chapters(
             for audio_file in sorted(audio_files):  # Sort to ensure correct order
                 if Path(audio_file).exists():
                     f.write(f"file '{audio_file.absolute()}'\n")
-
-        # Add debug output to see what's happening with chapters
-        console.print(
-            f"🔍 Debug: chapters={chapters}, len={len(chapters) if chapters else 'None'}"
-        )
-
-        # Create chapters file if chapters are provided
-        if chapters and len(chapters) >= 1:  # Changed from > 1 to >= 1
-            try:
-                chapters_file = create_ffmpeg_chapters_file(
-                    chapters, audio_files, output_path.parent
-                )
-                if chapters_file and chapters_file.exists():
-                    console.print(f"📖 Created {len(chapters)} chapters:")
-                    for chapter in chapters:
-                        console.print(
-                            f"   • Turn {chapter.start_turn}: {chapter.title}"
-                        )
-                else:
-                    console.print("⚠️ Failed to create chapters file")
-                    chapters_file = None
-            except Exception as e:
-                console.print(f"⚠️ Error creating chapters: {e}")
-                chapters_file = None
 
         # Build ffmpeg command
         cmd = [
@@ -623,39 +323,11 @@ def merge_audio_files_with_chapters(
             "0",
             "-i",
             str(file_list_path),
+            "-c",
+            "copy",
+            "-y",  # Overwrite output file
+            str(output_path),
         ]
-
-        # Add chapters if available
-        if chapters_file and chapters_file.exists():
-            try:
-                # Give the file a moment to be fully written and check size
-                import time
-
-                time.sleep(0.1)  # Brief pause to ensure file is fully written
-
-                file_size = chapters_file.stat().st_size
-                if file_size > 0:
-                    cmd.extend(["-i", str(chapters_file), "-map_metadata", "1"])
-                    console.print(
-                        f"📖 Adding chapters from {chapters_file} ({file_size} bytes)"
-                    )
-                else:
-                    console.print(
-                        f"⚠️ Chapters file exists but is empty: {chapters_file}"
-                    )
-            except Exception as e:
-                console.print(f"⚠️ Error reading chapters file: {e}")
-        else:
-            console.print("⚠️ No valid chapters file, proceeding without chapters")
-
-        cmd.extend(
-            [
-                "-c",
-                "copy",
-                "-y",  # Overwrite output file
-                str(output_path),
-            ]
-        )
 
         result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -673,9 +345,6 @@ def merge_audio_files_with_chapters(
         # Clean up temporary files
         if file_list_path.exists():
             file_list_path.unlink()
-        # Only delete chapters file if merge failed
-        if chapters_file and chapters_file.exists() and result.returncode != 0:
-            chapters_file.unlink()
 
 
 @app.command()
@@ -691,7 +360,6 @@ def recreate(
     merge: bool = typer.Option(
         True, help="Merge all audio files into one conversation"
     ),
-    chapters: bool = typer.Option(True, help="Add chapter markers to merged audio"),
     force: bool = typer.Option(False, help="Force regeneration of all files"),
 ):
     """Recreate a conversation using Google Chirp 3: HD voices"""
@@ -707,7 +375,6 @@ def recreate(
 
     # State management
     state_file = output_dir / "conversation_state.json"
-    chapters_cache_file = get_cache_file_path(convo_file)
 
     # Parse the conversation first to get the actual structure
     console.print(f"📖 Reading conversation from: {convo_file}")
@@ -736,27 +403,15 @@ def recreate(
     if can_reuse_state:
         console.print("🔄 Resuming from existing state...")
         voice_mapping = existing_state.voice_mapping
-        conversation_chapters = existing_state.chapters
     else:
         console.print("🆕 Starting fresh generation...")
         # Get unique speakers and create voice mapping
         speakers = {turn.speaker for turn in turns}
         voice_mapping = get_voice_mapping(speakers)
 
-        # Analyze chapters if requested
-        conversation_chapters = None
-        if (
-            chapters and len(turns) > 3
-        ):  # Only analyze chapters for longer conversations
-            console.print("\n🧠 Analyzing conversation for chapter markers...")
-            conversation_chapters = analyze_conversation_chapters(
-                turns, chapters_cache_file, conversation_hash
-            )
-
         # Create new state
         existing_state = ConversationState(
             voice_mapping=voice_mapping,
-            chapters=conversation_chapters,
             completed_turns=[],
             total_turns=len(turns),
             speed=speed,
@@ -831,8 +486,8 @@ def recreate(
     merged_file = None
     if merge and audio_files:
         console.print("\n🔗 Merging audio files...")
-        merged_file = merge_audio_files_with_chapters(
-            audio_files, output_dir / "full_conversation.mp3", conversation_chapters
+        merged_file = merge_audio_files(
+            audio_files, output_dir / "full_conversation.mp3"
         )
 
     # Play the conversation
@@ -853,104 +508,12 @@ def recreate(
     console.print(f"   • Output: {output_dir}")
     if merged_file:
         console.print(f"   • Merged: {merged_file}")
-        if conversation_chapters and len(conversation_chapters) > 1:
-            console.print(
-                f"   • Chapters: {len(conversation_chapters)} chapter markers added"
-            )
 
     # Clean up state file on successful completion
     if len(existing_state.completed_turns) == len(turns):
         console.print("🧹 Cleaning up state file (generation complete)")
         if state_file.exists():
             state_file.unlink()
-
-
-def merge_audio_files(audio_files: List[Path], output_path: Path) -> Path:
-    """Legacy function - redirects to new chapter-aware function"""
-    return merge_audio_files_with_chapters(audio_files, output_path, None)
-
-
-@app.command()
-def chapters_only(
-    convo_file: Path = typer.Argument(
-        Path("samples/convo.1.txt"), help="Path to conversation file"
-    ),
-):
-    """Analyze conversation and display chapter markers without generating audio"""
-
-    if not convo_file.exists():
-        console.print(f"❌ Conversation file not found: {convo_file}")
-        raise typer.Exit(1)
-
-    # Parse the conversation
-    console.print(f"📖 Reading conversation from: {convo_file}")
-    turns = parse_conversation_file(convo_file)
-
-    if not turns:
-        console.print("❌ No conversation turns found in file")
-        raise typer.Exit(1)
-
-    console.print(f"💬 Found {len(turns)} conversation turns")
-
-    # Analyze chapters with caching
-    chapters_cache_file = get_cache_file_path(convo_file)
-
-    # Get conversation identifier for cache validation
-    conversation_hash = get_conversation_identifier(convo_file, turns)
-    console.print(f"🔍 Conversation hash: {conversation_hash[:8]}...")
-
-    console.print("\n🧠 Analyzing conversation for chapter markers...")
-    chapters = analyze_conversation_chapters(
-        turns, chapters_cache_file, conversation_hash
-    )
-
-    console.print("\n📖 Chapter Analysis Results:")
-    console.print(f"   • Total chapters: {len(chapters)}")
-    console.print(f"   • Conversation length: {len(turns)} turns")
-
-    # Display chapters with context
-    console.print("\n📚 Chapter Breakdown:")
-
-    for i, chapter in enumerate(chapters):
-        console.print("\n" + "=" * 60)
-        console.print(f"📖 Chapter {i + 1}: {chapter.title}")
-        console.print(f"   Description: {chapter.description}")
-        console.print(f"   Starts at turn: {chapter.start_turn}")
-
-        # Show a few turns from this chapter
-        chapter_end = (
-            chapters[i + 1].start_turn - 1 if i + 1 < len(chapters) else len(turns)
-        )
-        turns_in_chapter = chapter_end - chapter.start_turn + 1
-        console.print(f"   Duration: {turns_in_chapter} turns")
-
-        console.print("\n   📝 Sample content:")
-        # Show first 3 turns of each chapter
-        for j in range(min(3, turns_in_chapter)):
-            turn_idx = chapter.start_turn - 1 + j  # Convert to 0-based index
-            if turn_idx < len(turns):
-                turn = turns[turn_idx]
-                turn_number = turn_idx + 1
-                console.print(
-                    f"      Turn {turn_number} - {turn.speaker}: {turn.text[:80]}{'...' if len(turn.text) > 80 else ''}"
-                )
-
-        if turns_in_chapter > 3:
-            console.print(
-                f"      ... and {turns_in_chapter - 3} more turns in this chapter"
-            )
-
-    console.print("\n" + "=" * 60)
-    console.print("📊 Summary:")
-    console.print(f"   • File: {convo_file}")
-    console.print(f"   • Total turns: {len(turns)}")
-    console.print(f"   • Chapters identified: {len(chapters)}")
-    console.print(
-        f"   • Average chapter length: {len(turns) / len(chapters):.1f} turns"
-    )
-
-    console.print("\n💡 To generate audio with these chapters:")
-    console.print(f"   uv run tts-dialog.py recreate {convo_file}")
 
 
 @app.command()
