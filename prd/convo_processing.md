@@ -98,6 +98,15 @@ FFMPeg is great, BUT, PITA to recall all the random commands. I use github copil
 
 ![](https://raw.githubusercontent.com/idvorkin/ipaste/main/20250607_074356.webp)
 
+### Listening from the cli - use MPV
+
+mpv is a cli tool that lets you using cli with keybindings, i even added custom chapters commands
+
+- c - show chapter list - i added myself [mpv config](https://github.com/idvorkin/settings/blob/0fc587aa33e5a92bcbca409e71447bc831fa7e3d/config/mpv/input.conf?plain=1#l8)
+- !/@ - next/prev chapter
+- [ / ] - decrease/increase playback speed
+- { / } - halve/double playback speed
+
 ### De-noising
 
 So far using [Adobe](https://podcast.adobe.com/en/enhance#), free for 30 minutes
