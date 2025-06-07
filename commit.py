@@ -78,7 +78,8 @@ Where:
 
 Do not include any additional details, line breaks, or explanations. Just the single line.
 Do not use backticks (```) or code formatting in your response.
-Your response should be plain text only.
+
+Your response should be plain text only, it will be sent to git -m COMMIT_MSG directly
 """
     else:
         instructions = """
@@ -144,6 +145,7 @@ Clearly state if this change breaks existing behavior and what consumers must do
   - Pure comment or import order changes (unless essential — then list them last)
 - **Do not** use backticks or code blocks — plain text only
 - Prefer clarity and conciseness over verbosity, but don’t skip meaningful rationale
+- Only respond with the the commit - it  will be sent to git -m COMMIT_MSG directly
 
 """
 
