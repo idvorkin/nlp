@@ -8,12 +8,11 @@ import requests
 from pathlib import Path
 from icecream import ic
 from urllib.parse import urlparse
-import langchain_helper
 
 app = typer.Typer(no_args_is_help=True)
 
 # Use the correct Gemini model name directly
-model_to_use = "gemini-2.5-pro-preview-05-06"
+model_to_use = "gemini-2.5-pro-preview-06-05"
 
 
 # Annoying, ell can't take a base64 input of a file, lets use gemini raw for that
@@ -186,7 +185,6 @@ Heading Level 2
 
 def gemini_transcribe(pdf_path: str, page_breaks: bool = False):
     import google.generativeai as genai
-    from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
     try:
         # Configure the API key
@@ -209,13 +207,13 @@ def gemini_transcribe(pdf_path: str, page_breaks: bool = False):
         model = genai.GenerativeModel(
             model_name=model_to_use,
             generation_config=generation_config,
-            safety_settings=None
+            safety_settings=None,
         )
 
         # Create a multipart content with text and PDF
         contents = [
             {"text": prompt},
-            {"inline_data": {"mime_type": "application/pdf", "data": pdf_data}}
+            {"inline_data": {"mime_type": "application/pdf", "data": pdf_data}},
         ]
 
         # Generate response
@@ -223,13 +221,14 @@ def gemini_transcribe(pdf_path: str, page_breaks: bool = False):
         response = model.generate_content(contents)
 
         # Log usage metadata if available
-        if hasattr(response, 'usage_metadata'):
+        if hasattr(response, "usage_metadata"):
             ic(response.usage_metadata)
 
         return response.text
     except Exception as e:
         ic(f"Error during transcription: {str(e)}")
         raise
+
 
 @app.command()
 def transcribe(
