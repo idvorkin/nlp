@@ -28,7 +28,8 @@ from typing import List, Optional, Tuple
 
 import typer
 from typing_extensions import Annotated
-from deepgram import DeepgramClient, PrerecordedOptions, FileSource
+from deepgram import DeepgramClient, DeepgramClientOptions, PrerecordedOptions, FileSource
+import httpx
 from loguru import logger
 from rich.console import Console
 from langchain.prompts import ChatPromptTemplate
@@ -226,8 +227,17 @@ class TranscriptionCache:
 class DeepgramManager:
     """Manager for Deepgram speech-to-text operations"""
 
-    def __init__(self):
+    def __init__(self, timeout: int = 300):
+        """
+        Initialize DeepgramManager with configurable timeout
+        
+        Args:
+            timeout: Request timeout in seconds (default: 300 seconds / 5 minutes)
+        """
         self.api_key = self._get_api_key()
+        self.timeout = timeout
+        
+        # Create simple client - timeout will be passed to individual requests
         self.client = DeepgramClient(self.api_key)
         self.cache = TranscriptionCache()
 
@@ -279,10 +289,21 @@ class DeepgramManager:
             )
 
             console.print("📤 Sending request to Deepgram...")
+            console.print(f"⏱️ Using timeout: {self.timeout} seconds")
             start_time = time.time()
 
-            # Make the transcription request
-            response = self.client.listen.rest.v("1").transcribe_file(payload, options)
+            # Create timeout configuration for the request
+            timeout_config = httpx.Timeout(
+                timeout=self.timeout,  # Overall timeout
+                connect=30.0,  # Connection timeout
+                read=self.timeout,  # Read timeout
+                write=self.timeout,  # Write timeout
+            )
+
+            # Make the transcription request with timeout
+            response = self.client.listen.rest.v("1").transcribe_file(
+                payload, options, timeout=timeout_config
+            )
 
             elapsed = time.time() - start_time
             console.print(f"✅ Transcription completed in {elapsed:.1f}s!")
@@ -293,8 +314,17 @@ class DeepgramManager:
             return response
 
         except Exception as e:
-            console.print(f"❌ Deepgram transcription failed: {e}")
-            logger.error(f"Deepgram transcription failed: {e}")
+            elapsed = time.time() - start_time if 'start_time' in locals() else 0
+            error_msg = str(e).lower()
+            
+            if "timeout" in error_msg or "408" in error_msg:
+                console.print(f"⏰ Deepgram transcription timed out after {elapsed:.1f}s")
+                console.print(f"💡 Try increasing timeout with: --timeout {self.timeout * 2}")
+                console.print(f"💡 Current timeout: {self.timeout}s, suggested: {self.timeout * 2}s")
+            else:
+                console.print(f"❌ Deepgram transcription failed: {e}")
+                
+            logger.error(f"Deepgram transcription failed after {elapsed:.1f}s: {e}")
             return None
 
     def _dict_to_response_object(self, cached_data: dict):
@@ -983,6 +1013,13 @@ def transcribe(
         bool,
         typer.Option("--paced", help="Add Google Cloud TTS Chirp 3 HD pacing controls"),
     ] = True,
+    timeout: Annotated[
+        int,
+        typer.Option(
+            "--timeout",
+            help="Request timeout in seconds (default: 300s / 5 minutes). Increase for large files.",
+        ),
+    ] = 300,
 ):
     """
     Transcribe audio file with speaker diarization using Deepgram.
@@ -992,6 +1029,9 @@ def transcribe(
 
     Use --paced to add Google Cloud Text-to-Speech Chirp 3 HD pacing markup
     for more natural sounding TTS output.
+    
+    Use --timeout to configure the API request timeout. The default is 300 seconds (5 minutes).
+    For large audio files that are timing out, try increasing this value (e.g., --timeout 600).
     """
 
     if not audio_file.exists():
@@ -1005,11 +1045,12 @@ def transcribe(
 
     console.print(f"🎵 Processing: {audio_file}")
     console.print(f"📄 Output: {output_file}")
+    console.print(f"⏱️ Timeout: {timeout} seconds")
     if paced:
         console.print("🎭 Pacing enhancement enabled for Google Cloud TTS Chirp 3 HD")
 
-    # Initialize Deepgram manager
-    deepgram = DeepgramManager()
+    # Initialize Deepgram manager with timeout
+    deepgram = DeepgramManager(timeout=timeout)
 
     # Transcribe the file
     response = deepgram.transcribe_file(audio_file, language)
@@ -1090,6 +1131,13 @@ def chapters(
     show_chapters: Annotated[
         bool, typer.Option("--show", help="Show generated chapters")
     ] = False,
+    timeout: Annotated[
+        int,
+        typer.Option(
+            "--timeout",
+            help="Request timeout in seconds (default: 300s / 5 minutes). Increase for large files.",
+        ),
+    ] = 300,
 ):
     """
     Add AI-generated chapters to an audio file.
@@ -1114,10 +1162,11 @@ def chapters(
 
     console.print(f"🎵 Processing: {audio_file}")
     console.print(f"📄 Output: {output_file}")
+    console.print(f"⏱️ Timeout: {timeout} seconds")
 
     # Step 1: Transcribe the file
     console.print("\n📝 Step 1: Transcribing audio...")
-    deepgram = DeepgramManager()
+    deepgram = DeepgramManager(timeout=timeout)
     response = deepgram.transcribe_file(audio_file, language)
 
     if not response:
