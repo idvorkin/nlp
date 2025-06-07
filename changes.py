@@ -382,7 +382,6 @@ def changes(
         False, help="Google Gemini 2.5 Flash with high thinking (24576 tokens)"
     ),
     llama: bool = True,
-    deepseek: bool = True,
     o4_mini: bool = True,
     fast: bool = typer.Option(False, help="Fast analysis using only Llama model"),
     only: str = None,
@@ -399,7 +398,6 @@ def changes(
         google_think_medium = False
         google_think_high = False
         llama = True
-        deepseek = False
         o4_mini = False
         if verbose:
             print("Fast mode: using only Llama model for quick analysis")
@@ -413,7 +411,6 @@ def changes(
         google_think_low=google_think_low,
         google_think_medium=google_think_medium,
         google_think_high=google_think_high,
-        deepseek=deepseek,
         o4_mini=o4_mini,
         llama=llama,
     )
