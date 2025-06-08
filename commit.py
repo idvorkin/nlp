@@ -139,12 +139,11 @@ Clearly state if this change breaks existing behavior and what consumers must do
 
 - Put the most important changes at the top
 - Use `*` for bullet points
-- **Do not** describe changes to:
-  - Table of contents
-  - Whitespace-only edits
-  - Pure comment or import order changes (unless essential — then list them last)
-- **Do not** use backticks or code blocks — plain text only
 - Prefer clarity and conciseness over verbosity, but don’t skip meaningful rationale
+- **Do not** mention discuss changes to the table of content.
+- **Do not** mention discuss whitespace only edits
+- **Do not** mention Pure comment or import order changes (unless essential — then list them last)
+- **Do not** use backticks or code blocks — plain text only
 - Only respond with the the commit - it  will be sent to git -m COMMIT_MSG directly
 
 """
