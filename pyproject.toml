@@ -16,7 +16,7 @@ dependencies = [
     "loguru",
     "langchain-core",
     "sparklines",
-    "langchain_community",
+    "langchain-community",
     "langchain-openai",
     "langchain-groq",
     "pandas",
