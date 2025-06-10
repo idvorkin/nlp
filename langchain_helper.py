@@ -1,5 +1,6 @@
 from pathlib import Path
 import subprocess
+import os
 from langchain_core.language_models.chat_models import (
     BaseChatModel,
     SimpleChatModel,
@@ -11,7 +12,6 @@ from typing import Callable, List, TypeVar
 from datetime import datetime, timedelta
 import asyncio
 from enum import Enum
-import os
 
 
 class GoogleThinkingLevel(Enum):
