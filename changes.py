@@ -24,6 +24,7 @@
 import asyncio
 import subprocess
 import tempfile
+import math
 
 from langchain_core import messages
 from typing import List, Tuple
@@ -386,6 +387,10 @@ def changes(
     fast: bool = typer.Option(False, help="Fast analysis using only Llama model"),
     only: str = None,
     verbose: bool = False,
+    completion_ratio: float = typer.Option(
+        0.5,
+        help="Fraction of models that must finish before returning early",
+    ),
 ):
     # If fast is True, override other model selections to use only llama
     if fast:
@@ -417,12 +422,10 @@ def changes(
 
     # If no models are selected, provide a helpful error message
     if not llms:
-        print(
-            "Error: No models selected. Please enable at least one model."
-        )
+        print("Error: No models selected. Please enable at least one model.")
         return
 
-    achanges_params = llms, before, after, gist, only, verbose
+    achanges_params = llms, before, after, gist, only, verbose, completion_ratio
 
     # check if direcotry is in a git repo, if so go to the root of the repo
     is_git_repo = subprocess.run(
@@ -683,6 +686,56 @@ def sanitize_model_name(model_name):
     return model_name.lower().replace(".", "-").replace("/", "-")
 
 
+async def gather_until_half_complete(
+    tasks, grace_seconds: int = 10, completion_ratio: float = 0.5
+):
+    """Gather results from tasks but return early.
+
+    Parameters
+    ----------
+    tasks : Iterable[Awaitable]
+        The tasks to await.
+    grace_seconds : int, optional
+        Extra seconds to wait after the threshold is reached, by default ``10``.
+    completion_ratio : float, optional
+        Ratio of tasks that must complete before returning, by default ``0.5``.
+
+    Returns
+    -------
+    tuple[list[Any], int, int]
+        A tuple containing the list of completed task results, the number of
+        tasks completed and the total number of tasks.
+    """
+
+    task_objs = {asyncio.create_task(t) for t in tasks}
+    completed: set[asyncio.Task] = set()
+    total_tasks = len(task_objs)
+    threshold = max(1, math.ceil(total_tasks * completion_ratio))
+
+    # Wait until enough tasks finish
+    while task_objs and len(completed) < threshold:
+        done, task_objs = await asyncio.wait(task_objs, return_when=asyncio.FIRST_COMPLETED)
+        completed.update(done)
+
+    if task_objs:
+        done, task_objs = await asyncio.wait(task_objs, timeout=grace_seconds)
+        completed.update(done)
+
+    for t in task_objs:
+        t.cancel()
+    await asyncio.gather(*task_objs, return_exceptions=True)
+
+    results = []
+    for t in completed:
+        if not t.cancelled():
+            try:
+                results.append(t.result())
+            except Exception as e:
+                logger.error(f"Task error: {e}")
+
+    return results, len(completed), total_tasks
+
+
 async def achanges(
     llms: List[BaseChatModel],
     before,
@@ -690,6 +743,7 @@ async def achanges(
     gist,
     only: str = None,
     verbose: bool = False,
+    completion_ratio: float = 0.5,
 ):
     if verbose:
         ic("v 0.0.4")
@@ -791,8 +845,13 @@ async def achanges(
             "summary": summary_content,
         }
 
-    # Run all models in parallel
-    analysis_results = await asyncio.gather(*(process_model(llm) for llm in llms))
+    # Run all models in parallel but return early based on completion_ratio
+    grace_seconds = 10
+    analysis_results, completed_models, total_models = await gather_until_half_complete(
+        [process_model(llm) for llm in llms],
+        grace_seconds=grace_seconds,
+        completion_ratio=completion_ratio,
+    )
 
     # Create all output files in parallel
     async def write_model_summary(result, temp_dir: Path):
@@ -836,6 +895,9 @@ ___
             f"[{repo_info.name}]({repo_info.url}/compare/{first}...{last})"
         )
         overview_content = f"""*🔄 via [changes.py]({get_latest_github_commit_url(get_repo_info().name, "changes.py")}) - {today}*
+
+
+_Returned after {completed_models}/{total_models} models finished (grace {grace_seconds}s)._
 
 Changes to {github_repo_diff_link} From [{after}] To [{before}]
 
