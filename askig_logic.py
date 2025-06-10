@@ -1,3 +1,22 @@
+#!uv run
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#     "loguru",
+#     "icecream",
+#     "requests",
+#     "pydantic",
+#     "langchain",
+#     "langchain-community",
+#     "langchain-core",
+#     "langchain-openai",
+#     "langchain-google-genai",
+#     "langchain-anthropic",
+#     "langchain-groq",
+#     "faiss-cpu",
+# ]
+# ///
+
 import requests
 from functools import lru_cache
 import pathlib
@@ -9,7 +28,12 @@ from typing import List, Optional
 from langchain.callbacks.tracers.langchain import LangChainTracer
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
+try:
+    from langchain_community.vectorstores import FAISS
+except ImportError as e:
+    raise ImportError(
+        "FAISS library is required. Install with `pip install faiss-cpu` or `pip install faiss-gpu`"
+    ) from e
 from langchain.prompts.chat import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
 from langchain_core.language_models.chat_models import BaseChatModel

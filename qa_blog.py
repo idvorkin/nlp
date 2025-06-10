@@ -1,3 +1,19 @@
+#!uv run
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#     "typer",
+#     "rich",
+#     "icecream",
+#     "requests",
+#     "langchain",
+#     "langchain-community",
+#     "langchain-core",
+#     "langchain-openai",
+#     "faiss-cpu",
+# ]
+# ///
+
 #!python3
 import asyncio
 from langchain.callbacks.tracers.langchain import LangChainTracer
@@ -12,7 +28,12 @@ from rich import print
 from typing import List, Optional
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
+try:
+    from langchain_community.vectorstores import FAISS
+except ImportError as e:
+    raise ImportError(
+        "FAISS library is required. Install with `pip install faiss-cpu` or `pip install faiss-gpu`"
+    ) from e
 import langchain_helper
 from langchain import (
     text_splitter,

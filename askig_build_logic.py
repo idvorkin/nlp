@@ -1,8 +1,36 @@
+#!uv run
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#     "loguru",
+#     "tqdm",
+#     "icecream",
+#     "langchain",
+#     "langchain-community",
+#     "langchain-core",
+#     "langchain-openai",
+#     "langchain-google-genai",
+#     "langchain-anthropic",
+#     "langchain-groq",
+#     "openai",
+#     "pydantic",
+#     "requests",
+#     "faiss-cpu",
+# ]
+# ///
+
 import os
 import pathlib
-from typing import List # Keep List for type hinting if any functions return List[Document] directly
+from typing import List  # Keep List for type hinting if any functions return List[Document] directly
 from langchain.docstore.document import Document
-from langchain_community.vectorstores import FAISS
+
+try:
+    from langchain_community.vectorstores import FAISS
+except ImportError as e:
+    raise ImportError(
+        "FAISS library is required. Install with `pip install faiss-cpu` or `pip install faiss-gpu`"
+    ) from e
+
 from langchain import text_splitter
 from openai_wrapper import num_tokens_from_string # Assuming this is from your openai_wrapper.py
 from loguru import logger
@@ -27,6 +55,7 @@ EXCLUDED_DIRS = [
     ".git",
     ".venv",
     ".cursor",
+    "node_modules",
 ]
 
 # Adjust to a safer size that won't exceed token limits (used by build process)

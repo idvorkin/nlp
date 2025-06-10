@@ -1,3 +1,19 @@
+#!uv run
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#     "typer",
+#     "rich",
+#     "icecream",
+#     "pydantic",
+#     "langchain",
+#     "langchain-community",
+#     "langchain-core",
+#     "langchain-openai",
+#     "faiss-cpu",
+# ]
+# ///
+
 #!python3
 
 import asyncio
@@ -30,7 +46,12 @@ from langchain.schema.output_parser import StrOutputParser
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.progress import track
-from langchain_community.vectorstores import FAISS
+try:
+    from langchain_community.vectorstores import FAISS
+except ImportError as e:
+    raise ImportError(
+        "FAISS library is required. Install with `pip install faiss-cpu` or `pip install faiss-gpu`"
+    ) from e
 # from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
 
 
