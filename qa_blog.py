@@ -212,7 +212,7 @@ def build():
     docs = list(get_blog_content("~/blog"))
 
     # It's OK, start by erasing the db
-    # db_path = pathlib.Path(chroma_db_dir)
+    # db_path = pathlib.Path(FAISS_DB_DIR)
     # db_path.rmdir()
 
     ic(len(docs))
@@ -428,7 +428,7 @@ async def iask(
 ):
     if debug:
         ic(facts)
-    # load chroma from DB
+    # load FAISS index from DB
 
     prompt = ChatPromptTemplate.from_template(
         """
@@ -588,7 +588,7 @@ async def ask_discord_command(ctx, question: str):
 async def enjoy(ctx, extra: str = ""):
     await ctx.defer()
 
-    # load chroma from DB
+    # load FAISS index from DB
 
     prompt = ChatPromptTemplate.from_template(
         """
