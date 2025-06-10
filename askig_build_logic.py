@@ -399,7 +399,11 @@ def chunk_documents_as_md_large(
         f"MD large chunking: processed {total_merged_docs_processed} documents suitable for this strategy."
     )
     if total_skipped_individual_chunks > 0:
-        logger.warning(
+                    db = FAISS.load_local(
+                        db_persist_directory,
+                        embeddings_model,
+                        allow_dangerous_deserialization=True,
+                    )
             f"MD large chunking: skipped {total_skipped_individual_chunks} individual sub-chunks that were too large."
         )
     return output_merged_chunks

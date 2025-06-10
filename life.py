@@ -458,7 +458,9 @@ def build_index_for_journal():
 def closest_journal_entries_stdin(
     count: int = 15,
 ):
-    index = FAISS.load_local(str(faiss_path_igor_journal), embeddings)
+    index = FAISS.load_local(
+        str(faiss_path_igor_journal), embeddings, allow_dangerous_deserialization=True
+    )
 
     str_stdin = "".join(sys.stdin.readlines())
     nearest_documents = index.similarity_search_with_score(str_stdin, k=count)
@@ -486,7 +488,9 @@ def closest_journal_entries(
     if not entry.is_valid():
         raise FileNotFoundError(f"No Entry for {date_journal_for} ")
 
-    index = FAISS.load_local(str(faiss_path_igor_journal), embeddings)
+    index = FAISS.load_local(
+        str(faiss_path_igor_journal), embeddings, allow_dangerous_deserialization=True
+    )
 
     nearest_documents = index.similarity_search_with_score(
         "\n".join(entry.body()), k=count

@@ -77,7 +77,9 @@ def get_faiss_db():
         )
 
     logger.info(f"Loading FAISS database from: {db_dir}")
-    g_blog_content_db = FAISS.load_local(db_dir, embeddings)
+    g_blog_content_db = FAISS.load_local(
+        db_dir, embeddings, allow_dangerous_deserialization=True
+    )
     # Fetch all documents once and store them
     logger.info("Fetching all documents from FAISS DB into memory...")
     docs = list(g_blog_content_db.docstore._dict.values())

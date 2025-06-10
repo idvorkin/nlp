@@ -72,7 +72,9 @@ def get_faiss_db():
             f"Blog database not found in {DEFAULT_FAISS_DB_DIR} or {ALTERNATE_FAISS_DB_DIR}"
         )
 
-    return FAISS.load_local(db_dir, embeddings)
+    return FAISS.load_local(
+        db_dir, embeddings, allow_dangerous_deserialization=True
+    )
 
 
 class DebugInfo(BaseModel):
