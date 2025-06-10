@@ -17,6 +17,7 @@ import typer
 from langchain.prompts import ChatPromptTemplate
 
 from loguru import logger
+import uuid
 from rich.console import Console
 import langchain_helper
 import openai_wrapper
@@ -384,7 +385,9 @@ def create_overview_content(header: str, analysis_body: AnalysisBody, model_summ
 async def a_think(
     gist: bool, writer: bool, path: str, core_problems: bool, interests: bool
 ):
-    output_dir = Path("~/tmp").expanduser()
+    base_dir = Path("~/tmp").expanduser()
+    unique_name = f"think_{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8]}"
+    output_dir = base_dir / unique_name
     repo_info = get_repo_info()  # Default False for getting source file URL
     output_dir.mkdir(parents=True, exist_ok=True)
     llms = langchain_helper.get_models(openai=True, claude=True, google=True, google_think=True, deepseek=True, o4_mini=True, google_flash=True, openai_mini=True)

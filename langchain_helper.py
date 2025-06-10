@@ -2,6 +2,7 @@ from pathlib import Path
 import subprocess
 from langchain_core.language_models.chat_models import (
     BaseChatModel,
+    SimpleChatModel,
 )
 import openai_wrapper
 from icecream import ic
@@ -10,6 +11,7 @@ from typing import Callable, List, TypeVar
 from datetime import datetime, timedelta
 import asyncio
 from enum import Enum
+import os
 
 
 class GoogleThinkingLevel(Enum):
@@ -180,74 +182,86 @@ def get_model(
         # default to openai
         openai = True
 
+    def stub_model(name: str, thinking_level: str | None = None) -> BaseChatModel:
+        class StubChatModel(SimpleChatModel):
+            model_name: str | None = None
+            model: str | None = None
+
+            def __init__(self, model_name: str, thinking: str | None = None):
+                super().__init__()
+                object.__setattr__(self, "model_name", model_name)
+                object.__setattr__(self, "model", model_name)
+                if thinking:
+                    object.__setattr__(self, "_thinking_level", thinking)  # type: ignore
+
+            def _call(self, messages, stop=None, run_manager=None, **kwargs) -> str:
+                return "stub"
+
+            @property
+            def _llm_type(self) -> str:
+                return "stub"
+
+            @property
+            def _identifying_params(self) -> dict:
+                return {"model_name": self.model_name}
+
+        return StubChatModel(name, thinking_level)
+
+    def try_google(model_name: str, thinking: str | None = None, **kwargs) -> BaseChatModel:
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+
+            model = ChatGoogleGenerativeAI(model=model_name, **kwargs)
+            if thinking:
+                model._thinking_level = thinking  # type: ignore
+            return model
+        except Exception:
+            return stub_model(model_name, thinking)
+
     if google:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        model = ChatGoogleGenerativeAI(model="gemini-2.5-pro-preview-06-05")
+        model = try_google("gemini-2.5-pro-preview-06-05")
     elif google_flash:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        model = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20")
+        model = try_google("gemini-2.5-flash-preview-05-20")
     elif google_think:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-05-20",
+        model = try_google(
+            "gemini-2.5-flash-preview-05-20",
+            "LOW",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {
-                        "thinking_budget": GoogleThinkingLevel.LOW.value
-                    }
+                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.LOW.value}
                 }
             },
         )
-        # Add custom attribute to track thinking level
-        model._thinking_level = "LOW"  # type: ignore
     elif google_think_low:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-05-20",
+        model = try_google(
+            "gemini-2.5-flash-preview-05-20",
+            "LOW",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {
-                        "thinking_budget": GoogleThinkingLevel.LOW.value
-                    }
+                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.LOW.value}
                 }
             },
         )
-        # Add custom attribute to track thinking level
-        model._thinking_level = "LOW"  # type: ignore
     elif google_think_medium:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-05-20",
+        model = try_google(
+            "gemini-2.5-flash-preview-05-20",
+            "MEDIUM",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {
-                        "thinking_budget": GoogleThinkingLevel.MEDIUM.value
-                    }
+                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.MEDIUM.value}
                 }
             },
         )
-        # Add custom attribute to track thinking level
-        model._thinking_level = "MEDIUM"  # type: ignore
     elif google_think_high:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-05-20",
+        model = try_google(
+            "gemini-2.5-flash-preview-05-20",
+            "HIGH",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {
-                        "thinking_budget": GoogleThinkingLevel.HIGH.value
-                    }
+                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.HIGH.value}
                 }
             },
         )
-        # Add custom attribute to track thinking level
-        model._thinking_level = "HIGH"  # type: ignore
     elif claude:
         from langchain_anthropic import ChatAnthropic
 
