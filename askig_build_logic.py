@@ -2,7 +2,7 @@ import os
 import pathlib
 from typing import List # Keep List for type hinting if any functions return List[Document] directly
 from langchain.docstore.document import Document
-from langchain_chroma.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain import text_splitter
 from openai_wrapper import num_tokens_from_string # Assuming this is from your openai_wrapper.py
 from loguru import logger
@@ -11,11 +11,11 @@ from tqdm import tqdm
 import langchain_helper # For getting embeddings model
 # We need to know where to build the DB. This could be passed as an argument to perform_build
 # or defined here if it's considered part of the build logic's responsibility.
-# For now, CHROMA_DB_NAME and DEFAULT_CHROMA_DB_DIR are defined here for the build process.
-# askig_logic.py uses similar constants for loading the DB.
+# For now, FAISS_INDEX_NAME and DEFAULT_FAISS_INDEX_DIR are defined here for the build process.
+# askig_logic.py uses similar constants for loading the index.
 # Ideally, these might come from a shared configuration file/module to avoid duplication.
-CHROMA_DB_NAME = "blog.chroma.db"
-DEFAULT_CHROMA_DB_DIR = CHROMA_DB_NAME
+FAISS_INDEX_NAME = "blog.faiss"
+DEFAULT_FAISS_INDEX_DIR = FAISS_INDEX_NAME
 
 
 # Directories to exclude from indexing (used by build process)
@@ -402,7 +402,9 @@ def perform_build(
     os.makedirs(db_persist_directory, exist_ok=True)
     
     db = None
-    logger.info(f"Embedding and ingesting chunks into Chroma DB at {db_persist_directory} in batches of {batch_size_for_embedding}")
+    logger.info(
+        f"Embedding and ingesting chunks into FAISS index at {db_persist_directory} in batches of {batch_size_for_embedding}"
+    )
     
     batch_generator = process_chunks_in_batches(deduplicated_chunks, batch_size=batch_size_for_embedding)
 
@@ -414,26 +416,25 @@ def perform_build(
 
             logger.info(f"Processing batch {i+1} with {len(batch_of_chunks)} chunks for embedding.")
             if i == 0:
-                logger.info("Creating new Chroma database with the first batch.")
-                db = Chroma.from_documents(
-                    batch_of_chunks, 
-                    embeddings_model, 
-                    persist_directory=db_persist_directory
-                )
+                logger.info("Creating new FAISS index with the first batch.")
+                db = FAISS.from_documents(batch_of_chunks, embeddings_model)
             else:
-                if db is None: # Should not happen after first batch if db was created.
-                    logger.warning("Chroma DB instance is None after the first batch. Attempting to reconnect.")
-                    db = Chroma(
-                        persist_directory=db_persist_directory, 
-                        embedding_function=embeddings_model
+                if db is None:  # Should not happen after first batch if db was created.
+                    logger.warning(
+                        "FAISS index instance is None after the first batch. Attempting to reconnect."
                     )
-                logger.info(f"Adding batch {i+1} to existing Chroma database.")
-                db.add_documents(batch_of_chunks) # Chroma handles internal batching for add_documents too.
+                    db = FAISS.load_local(
+                        db_persist_directory,
+                        embeddings_model,
+                        allow_dangerous_deserialization=True,
+                    )
+                logger.info(f"Adding batch {i+1} to existing FAISS index.")
+                db.add_documents(batch_of_chunks)
             
             logger.info(f"Batch {i+1} successfully processed and added to DB.")
-            # Persist is usually handled automatically by Chroma on add or when object is destroyed,
-            # but explicit persist can be called if issues arise.
-            # if db: db.persist() 
+            # Persist is usually handled automatically by FAISS on add,
+            # but explicit save can be called if issues arise.
+            # if db: db.save_local(db_persist_directory)
 
     except Exception as e:
         logger.error(f"An error occurred during database building (embedding/ingestion phase): {e}")
@@ -441,7 +442,11 @@ def perform_build(
         # Depending on error, db might be partially created.
         raise # Re-throw to indicate build failure
 
-    logger.info(f"Successfully built and persisted the blog database at {db_persist_directory}")
+    if db is not None:
+        db.save_local(db_persist_directory)
+    logger.info(
+        f"Successfully built and persisted the blog index at {db_persist_directory}"
+    )
     # The CLI part in iwhere.py will print the final user-facing message.
 
 # Example of how to initialize logger if this file is run directly (e.g., for testing)
@@ -450,4 +455,4 @@ def perform_build(
 #     logger.add(sys.stderr, level="DEBUG")
 #     logger.info("askig_build_logic.py loaded for testing")
 #     # Example test call (ensure DB dir exists or is handled):
-#     # perform_build(blog_repo_path="~/blog", db_persist_directory="./test_blog.chroma.db", batch_size_for_embedding=5) 
+#     # perform_build(blog_repo_path="~/blog", db_persist_directory="./test_blog.faiss", batch_size_for_embedding=5)

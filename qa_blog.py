@@ -12,7 +12,7 @@ from rich import print
 from typing import List, Optional
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 import langchain_helper
 from langchain import (
     text_splitter,
@@ -52,27 +52,27 @@ app = typer.Typer(no_args_is_help=True)
 console = Console()
 
 bot = discord.Bot()
-CHROMA_DB_NAME = "blog.chroma.db"
-DEFAULT_CHROMA_DB_DIR = CHROMA_DB_NAME
-ALTERNATE_CHROMA_DB_DIR = os.path.expanduser(f"~/gits/nlp/{CHROMA_DB_NAME}")
+FAISS_INDEX_NAME = "blog.faiss"
+DEFAULT_FAISS_INDEX_DIR = FAISS_INDEX_NAME
+ALTERNATE_FAISS_INDEX_DIR = os.path.expanduser(f"~/gits/nlp/{FAISS_INDEX_NAME}")
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 g_tracer: Optional[LangChainTracer] = None
 # embeddings = OpenAIEmbeddings()
 
 
-def get_chroma_db():
-    if os.path.exists(DEFAULT_CHROMA_DB_DIR):
-        db_dir = DEFAULT_CHROMA_DB_DIR
+def get_faiss_db():
+    if os.path.exists(DEFAULT_FAISS_INDEX_DIR):
+        db_dir = DEFAULT_FAISS_INDEX_DIR
     else:
-        ic(f"Using alternate blog database location: {ALTERNATE_CHROMA_DB_DIR}")
-        db_dir = ALTERNATE_CHROMA_DB_DIR
+        ic(f"Using alternate blog database location: {ALTERNATE_FAISS_INDEX_DIR}")
+        db_dir = ALTERNATE_FAISS_INDEX_DIR
 
     if not os.path.exists(db_dir):
         raise Exception(
-            f"Blog database not found in {DEFAULT_CHROMA_DB_DIR} or {ALTERNATE_CHROMA_DB_DIR}"
+            f"Blog database not found in {DEFAULT_FAISS_INDEX_DIR} or {ALTERNATE_FAISS_INDEX_DIR}"
         )
 
-    return Chroma(persist_directory=db_dir, embedding_function=embeddings)
+    return FAISS.load_local(db_dir, embeddings, allow_dangerous_deserialization=True)
 
 
 class DebugInfo(BaseModel):
@@ -223,10 +223,8 @@ def build():
     ic(len(chunks), len(deduped_chunks))
 
     # Build the index and persist it
-    # Weird, used to have a .save, now covered by persistant_directory
-    Chroma.from_documents(
-        deduped_chunks, embeddings, persist_directory=DEFAULT_CHROMA_DB_DIR
-    )
+    db = FAISS.from_documents(deduped_chunks, embeddings)
+    db.save_local(DEFAULT_FAISS_INDEX_DIR)
 
 
 @app.command()
@@ -260,7 +258,7 @@ def fixup_markdown_path(src):
     return fixup_ig66_path_to_url(fixup_markdown_path_to_url(src))
 
 
-g_blog_content_db = get_chroma_db()
+g_blog_content_db = get_faiss_db()
 g_all_documents = g_blog_content_db.get()
 
 

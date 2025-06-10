@@ -77,10 +77,10 @@ def build(
     """Build the vector database from blog content."""
     logger.info(f"CLI 'build' invoked for blog path: {blog_path} with batch size: {batch_size}")
     try:
-        # The DB persist directory is now sourced from askig_build_logic.DEFAULT_CHROMA_DB_DIR
+        # The index persist directory is now sourced from askig_build_logic.DEFAULT_FAISS_INDEX_DIR
         # or could be made a configurable option here too if desired.
         # For now, using the one defined in askig_build_logic for consistency during build.
-        db_target_directory = askig_build_logic.DEFAULT_CHROMA_DB_DIR
+        db_target_directory = askig_build_logic.DEFAULT_FAISS_INDEX_DIR
         
         askig_build_logic.perform_build(
             blog_repo_path=blog_path, 

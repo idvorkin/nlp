@@ -23,7 +23,7 @@ class GoogleThinkingLevel(Enum):
 
 def get_embeddings_model():
     """
-    Returns an embeddings model for use with Chroma DB.
+    Returns an embeddings model for use with the FAISS index.
     Currently using OpenAI's embeddings model.
     """
     from langchain_openai import OpenAIEmbeddings

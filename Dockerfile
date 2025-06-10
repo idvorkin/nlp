@@ -22,7 +22,7 @@ RUN pipenv install
 COPY *py .
 
 # HACK Copy Vector store
-COPY blog.chroma.db blog.chroma.db
+COPY blog.faiss blog.faiss
 
 
 
