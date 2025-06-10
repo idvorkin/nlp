@@ -1,5 +1,6 @@
 from pathlib import Path
 import subprocess
+import os
 from langchain_core.language_models.chat_models import (
     BaseChatModel,
 )
@@ -182,69 +183,73 @@ def get_model(
 
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
-
-        model = ChatGoogleGenerativeAI(model="gemini-2.5-pro-preview-06-05")
+        api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
+        model = ChatGoogleGenerativeAI(
+            model="gemini-2.5-pro-preview-06-05", google_api_key=api_key
+        )
     elif google_flash:
         from langchain_google_genai import ChatGoogleGenerativeAI
-
-        model = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20")
+        api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
+        model = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash-preview-05-20", google_api_key=api_key
+        )
     elif google_think:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
+        api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash-preview-05-20",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {
-                        "thinking_budget": GoogleThinkingLevel.LOW.value
-                    }
+                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.LOW.value}
                 }
             },
+            google_api_key=api_key,
         )
         # Add custom attribute to track thinking level
         model._thinking_level = "LOW"  # type: ignore
     elif google_think_low:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
+        api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash-preview-05-20",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {
-                        "thinking_budget": GoogleThinkingLevel.LOW.value
-                    }
+                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.LOW.value}
                 }
             },
+            google_api_key=api_key,
         )
         # Add custom attribute to track thinking level
         model._thinking_level = "LOW"  # type: ignore
     elif google_think_medium:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
+        api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash-preview-05-20",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {
-                        "thinking_budget": GoogleThinkingLevel.MEDIUM.value
-                    }
+                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.MEDIUM.value}
                 }
             },
+            google_api_key=api_key,
         )
         # Add custom attribute to track thinking level
         model._thinking_level = "MEDIUM"  # type: ignore
     elif google_think_high:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
+        api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash-preview-05-20",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {
-                        "thinking_budget": GoogleThinkingLevel.HIGH.value
-                    }
+                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.HIGH.value}
                 }
             },
+            google_api_key=api_key,
         )
         # Add custom attribute to track thinking level
         model._thinking_level = "HIGH"  # type: ignore

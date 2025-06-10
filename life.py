@@ -629,14 +629,17 @@ You task it to write a report based on the journal entry that is going to be pas
 
     # should now be done!
     pych_report: GetPychiatristReport = await do_invoke  # noqa
-    (Path.home() / "tmp/journal_report/latest.json").write_text(
-        pych_report.model_dump_json(indent=2)
-    )
+
+    # Ensure tmp/journal_report directory exists before writing files
+    latest_path = Path.home() / "tmp/journal_report/latest.json"
+    latest_path.parent.mkdir(parents=True, exist_ok=True)
+    latest_path.write_text(pych_report.model_dump_json(indent=2))
 
     report_date = pych_report.Date.strftime("%Y-%m-%d")
 
-    perma_path = journal_report_path(report_date, model=model_name)
-    (Path.home() / perma_path).write_text(pych_report.model_dump_json(indent=2))
+    perma_path = Path(journal_report_path(report_date, model=model_name))
+    perma_path.parent.mkdir(parents=True, exist_ok=True)
+    perma_path.write_text(pych_report.model_dump_json(indent=2))
     print(pych_report.model_dump_json())
     print(perma_path)
 
