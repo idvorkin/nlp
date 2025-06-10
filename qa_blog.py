@@ -12,7 +12,7 @@ from rich import print
 from typing import List, Optional
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 import langchain_helper
 from langchain import (
     text_splitter,
@@ -52,27 +52,27 @@ app = typer.Typer(no_args_is_help=True)
 console = Console()
 
 bot = discord.Bot()
-CHROMA_DB_NAME = "blog.chroma.db"
-DEFAULT_CHROMA_DB_DIR = CHROMA_DB_NAME
-ALTERNATE_CHROMA_DB_DIR = os.path.expanduser(f"~/gits/nlp/{CHROMA_DB_NAME}")
+FAISS_DB_DIR = "blog.faiss"
+DEFAULT_FAISS_DB_DIR = FAISS_DB_DIR
+ALTERNATE_FAISS_DB_DIR = os.path.expanduser(f"~/gits/nlp/{FAISS_DB_DIR}")
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 g_tracer: Optional[LangChainTracer] = None
 # embeddings = OpenAIEmbeddings()
 
 
-def get_chroma_db():
-    if os.path.exists(DEFAULT_CHROMA_DB_DIR):
-        db_dir = DEFAULT_CHROMA_DB_DIR
+def get_faiss_db():
+    if os.path.exists(DEFAULT_FAISS_DB_DIR):
+        db_dir = DEFAULT_FAISS_DB_DIR
     else:
-        ic(f"Using alternate blog database location: {ALTERNATE_CHROMA_DB_DIR}")
-        db_dir = ALTERNATE_CHROMA_DB_DIR
+        ic(f"Using alternate blog database location: {ALTERNATE_FAISS_DB_DIR}")
+        db_dir = ALTERNATE_FAISS_DB_DIR
 
     if not os.path.exists(db_dir):
         raise Exception(
-            f"Blog database not found in {DEFAULT_CHROMA_DB_DIR} or {ALTERNATE_CHROMA_DB_DIR}"
+            f"Blog database not found in {DEFAULT_FAISS_DB_DIR} or {ALTERNATE_FAISS_DB_DIR}"
         )
 
-    return Chroma(persist_directory=db_dir, embedding_function=embeddings)
+    return FAISS.load_local(db_dir, embeddings)
 
 
 class DebugInfo(BaseModel):
@@ -224,9 +224,8 @@ def build():
 
     # Build the index and persist it
     # Weird, used to have a .save, now covered by persistant_directory
-    Chroma.from_documents(
-        deduped_chunks, embeddings, persist_directory=DEFAULT_CHROMA_DB_DIR
-    )
+    db = FAISS.from_documents(deduped_chunks, embeddings)
+    db.save_local(DEFAULT_FAISS_DB_DIR)
 
 
 @app.command()
@@ -260,22 +259,24 @@ def fixup_markdown_path(src):
     return fixup_ig66_path_to_url(fixup_markdown_path_to_url(src))
 
 
-g_blog_content_db = get_chroma_db()
-g_all_documents = g_blog_content_db.get()
+g_blog_content_db = get_faiss_db()
+_docs = list(g_blog_content_db.docstore._dict.values())
+g_all_documents = {
+    "documents": [d.page_content for d in _docs],
+    "metadatas": [d.metadata for d in _docs],
+}
 
 
 def has_whole_document(path):
-    all_documents = g_blog_content_db.get()
-    for m in all_documents["metadatas"]:
-        if m["source"] == path and m["is_entire_document"]:
+    for m in g_all_documents["metadatas"]:
+        if m.get("source") == path and m.get("is_entire_document"):
             return True
     return False
 
 
 def get_document(path) -> Document:
-    all_documents = g_blog_content_db.get()
-    for i, m in enumerate(all_documents["metadatas"]):
-        if m["source"] == path and m["is_entire_document"]:
+    for i, m in enumerate(g_all_documents["metadatas"]):
+        if m.get("source") == path and m.get("is_entire_document"):
             return Document(page_content=g_all_documents["documents"][i], metadata=m)
     raise Exception(f"{path} document found")
 

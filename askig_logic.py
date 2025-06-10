@@ -9,7 +9,7 @@ from typing import List, Optional
 from langchain.callbacks.tracers.langchain import LangChainTracer
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain.prompts.chat import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -29,9 +29,9 @@ from askig_models import (
 )  # Import models
 
 # --- Constants and Globals ---
-CHROMA_DB_NAME = "blog.chroma.db"
-DEFAULT_CHROMA_DB_DIR = CHROMA_DB_NAME  # Relative to where this script/module is run
-ALTERNATE_CHROMA_DB_DIR = os.path.expanduser(f"~/gits/nlp/{CHROMA_DB_NAME}")
+FAISS_DB_DIR = "blog.faiss"
+DEFAULT_FAISS_DB_DIR = FAISS_DB_DIR  # Relative to where this script/module is run
+ALTERNATE_FAISS_DB_DIR = os.path.expanduser(f"~/gits/nlp/{FAISS_DB_DIR}")
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 g_tracer: Optional[LangChainTracer] = (
@@ -39,12 +39,12 @@ g_tracer: Optional[LangChainTracer] = (
 )
 
 g_blog_content_db = None
-g_all_documents = None  # To store all docs from Chroma, reducing .get() calls
+g_all_documents = None  # To store all docs from FAISS, avoiding repeated loads
 g_debug_info = DebugInfo()  # Initialize with default DebugInfo
 
 
 # --- Database Functions ---
-def get_chroma_db():
+def get_faiss_db():
     global g_blog_content_db, g_all_documents
 
     if g_blog_content_db is not None:
@@ -58,30 +58,33 @@ def get_chroma_db():
         return g_blog_content_db
 
     # Determine DB directory
-    # This assumes iwhere.py (and its 'build' command) creates the DB in DEFAULT_CHROMA_DB_DIR
-    # or the user ensures it's in ALTERNATE_CHROMA_DB_DIR.
-    if os.path.exists(DEFAULT_CHROMA_DB_DIR):
-        db_dir = DEFAULT_CHROMA_DB_DIR
-    elif os.path.exists(ALTERNATE_CHROMA_DB_DIR):
+    # This assumes iwhere.py (and its 'build' command) creates the DB in DEFAULT_FAISS_DB_DIR
+    # or the user ensures it's in ALTERNATE_FAISS_DB_DIR.
+    if os.path.exists(DEFAULT_FAISS_DB_DIR):
+        db_dir = DEFAULT_FAISS_DB_DIR
+    elif os.path.exists(ALTERNATE_FAISS_DB_DIR):
         logger.info(
-            f"Using alternate blog database location: {ALTERNATE_CHROMA_DB_DIR}"
+            f"Using alternate blog database location: {ALTERNATE_FAISS_DB_DIR}"
         )
-        db_dir = ALTERNATE_CHROMA_DB_DIR
+        db_dir = ALTERNATE_FAISS_DB_DIR
     else:
         # If this logic file is run standalone without iwhere.py's build having run,
         # or without the DB being in a known location, this will be an issue.
         # For an MCP server, it's assumed the DB exists.
         raise Exception(
-            f"Blog database not found in {DEFAULT_CHROMA_DB_DIR} or {ALTERNATE_CHROMA_DB_DIR}. "
+            f"Blog database not found in {DEFAULT_FAISS_DB_DIR} or {ALTERNATE_FAISS_DB_DIR}. "
             "Please ensure the database is built and accessible."
         )
 
-    logger.info(f"Loading Chroma database from: {db_dir}")
-    g_blog_content_db = Chroma(persist_directory=db_dir, embedding_function=embeddings)
-    # Fetch all documents once and store them if Chroma.get() is expensive
-    # This might consume a lot of memory for very large DBs.
-    logger.info("Fetching all documents from Chroma DB into memory...")
-    g_all_documents = g_blog_content_db.get()
+    logger.info(f"Loading FAISS database from: {db_dir}")
+    g_blog_content_db = FAISS.load_local(db_dir, embeddings)
+    # Fetch all documents once and store them
+    logger.info("Fetching all documents from FAISS DB into memory...")
+    docs = list(g_blog_content_db.docstore._dict.values())
+    g_all_documents = {
+        "documents": [d.page_content for d in docs],
+        "metadatas": [d.metadata for d in docs],
+    }
     logger.info(f"Fetched {len(g_all_documents['documents'])} documents into memory.")
     return g_blog_content_db
 
@@ -92,7 +95,7 @@ def has_whole_document(path: str) -> bool:
         logger.warning(
             "g_all_documents is None in has_whole_document. Attempting to load DB."
         )
-        get_chroma_db()  # Attempt to load
+        get_faiss_db()  # Attempt to load
         if g_all_documents is None:  # Still None
             logger.error("Failed to load g_all_documents in has_whole_document.")
             return False
@@ -109,7 +112,7 @@ def get_document(path: str) -> Document:
         logger.warning(
             "g_all_documents is None in get_document. Attempting to load DB."
         )
-        get_chroma_db()  # Attempt to load
+        get_faiss_db()  # Attempt to load
         if g_all_documents is None:  # Still None
             logger.error(
                 f"Failed to load g_all_documents. Cannot find document for path '{path}'."
@@ -223,12 +226,12 @@ async def iask_logic(
     timing.end_overall_init()
 
     timing.start_db_load()
-    db = get_chroma_db()
+    db = get_faiss_db()
     timing.end_db_load()
     if db is None:
         raise Exception(
-            "Blog database (Chroma) not loaded."
-        )  # Should be caught by get_chroma_db
+            "Blog database (FAISS) not loaded."
+        )  # Should be caught by get_faiss_db
 
     timing.start_rag()
     # Simulating k=4*facts as in original iwhere.py, then filtering.
@@ -369,10 +372,10 @@ async def iask_where_logic(
     timing.end_overall_init()
 
     timing.start_db_load()
-    db = get_chroma_db()
+    db = get_faiss_db()
     timing.end_db_load()
     if db is None:
-        raise Exception("Blog database (Chroma) not loaded.")
+        raise Exception("Blog database (FAISS) not loaded.")
 
     timing.start_rag()
     docs_and_scores = await db.asimilarity_search_with_relevance_scores(

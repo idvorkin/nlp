@@ -30,7 +30,7 @@ from langchain.schema.output_parser import StrOutputParser
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.progress import track
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 # from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
 
 
@@ -436,7 +436,7 @@ def insights():
 
 
 tmp = Path("~/tmp")
-chroma_path_igor_journal = Path("~/tmp/igor_journal_chroma_2")
+faiss_path_igor_journal = Path("~/tmp/igor_journal_faiss")
 
 
 def journal_entry_to_document(entry: igor_journal.JournalEntry):
@@ -450,19 +450,15 @@ def build_index_for_journal():
     journal_entries = [igor_journal.JournalEntry(date) for date in valid_dates]
     documents = [journal_entry_to_document(j) for j in journal_entries]
 
-    search_index = Chroma.from_documents(
-        documents, embeddings, persist_directory=str(chroma_path_igor_journal)
-    )
-    search_index.persist()
+    search_index = FAISS.from_documents(documents, embeddings)
+    search_index.save_local(str(faiss_path_igor_journal))
 
 
 @app.command()
 def closest_journal_entries_stdin(
     count: int = 15,
 ):
-    index = Chroma(
-        persist_directory=str(chroma_path_igor_journal), embedding_function=embeddings
-    )
+    index = FAISS.load_local(str(faiss_path_igor_journal), embeddings)
 
     str_stdin = "".join(sys.stdin.readlines())
     nearest_documents = index.similarity_search_with_score(str_stdin, k=count)
@@ -490,9 +486,7 @@ def closest_journal_entries(
     if not entry.is_valid():
         raise FileNotFoundError(f"No Entry for {date_journal_for} ")
 
-    index = Chroma(
-        persist_directory=str(chroma_path_igor_journal), embedding_function=embeddings
-    )
+    index = FAISS.load_local(str(faiss_path_igor_journal), embeddings)
 
     nearest_documents = index.similarity_search_with_score(
         "\n".join(entry.body()), k=count

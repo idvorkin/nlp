@@ -19,7 +19,6 @@ dependencies = [
     "langchain_community",
     "langchain-openai",
     "langchain-groq",
-    "langchain-chroma",
     "pandas",
     "dspy",
     "elevenlabs",
@@ -51,7 +50,7 @@ dependencies = [
     "asyncer",
     "html2text",
     "fastapi",
-    "chromadb",
+    "faiss-cpu",
     "beautifulsoup4",
     "azure-cosmos",
     "torch; sys_platform == 'darwin'", # Can't afford to install it on my cloud VM's too massive
