@@ -120,6 +120,9 @@ dev-dependencies = [
     "nbdime",
 ]
 
+[tool.ruff]
+extend-exclude = ["*.ipynb"]
+
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [

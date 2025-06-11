@@ -126,9 +126,21 @@ def chunk_documents_recursive(
 
             for chunk_text in temp_chunks:
                 token_count = num_tokens_from_string(chunk_text)
-                if token_count > 8000:  # OpenAI's embeddings limit per chunk
-                    logger.warning(
-                        f"Recursive chunk too large after splitting: {token_count} tokens. Skipping. Source: {document.metadata.get('source', 'unknown')}"
+                        total_skipped += 1
+                        continue
+                    if token_count > 8000:
+                        total_skipped += 1
+                        continue
+                    output_chunks.append(
+                        Document(
+                            page_content=chunk_text,
+                            metadata={
+                                "source": source_file,
+                                "chunk_method": "recursive_md_split_error",
+                                "is_entire_document": len(temp_recursive_chunks) == 1,
+                            },
+                        )
+                    )
                     )
                     total_skipped += 1
                     continue
@@ -201,8 +213,6 @@ def chunk_documents_as_md(
                                 "is_entire_document": len(temp_recursive_chunks) == 1,
                             },
                         )
-                    )
-                continue  # Move to next document
 
             # Proceed with Markdown splitting
             try:
