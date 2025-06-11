@@ -51,54 +51,41 @@ def should_exclude_path(path_str: str) -> bool:
     return False
 
 
-def get_blog_content(blog_repo_path: str = "~/blog"):
-    """Yields Documents from markdown files in the specified path, excluding EXCLUDED_DIRS."""
-    repo_path = pathlib.Path(os.path.expanduser(blog_repo_path))
-    logger.info(f"Scanning for markdown files in {repo_path}")
-    logger.info(f"Excluding directories: {EXCLUDED_DIRS}")
+class BlogContentManager:
+    """Handles file system interactions for loading and scanning blog markdown files."""
+    ALLOWED_TOP_LEVEL_DIRS = {"_d", "_posts", "_td"}
 
-    markdown_files = []
-    skipped_dirs = set()
+    def __init__(self, blog_repo_path: str = "~/blog"):
+        self.blog_repo_path = os.path.expanduser(blog_repo_path)
+        self.excluded_dirs = [
+            "zz-chop-logs", "chop-logs", "cursor-logs", "node_modules", "__pycache__", ".git", ".venv", ".cursor"
+        ]
 
-    for root, dirs, files in os.walk(repo_path):
-        original_dirs = dirs.copy()
-        # Modify dirs in-place to prevent os.walk from traversing excluded ones
-        dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
+    def list_markdown_files(self):
+        """Yield markdown file paths only in allowed top-level directories."""
+        for root, dirs, files in os.walk(self.blog_repo_path):
+            # Only allow traversal into allowed top-level dirs
+            rel_root = os.path.relpath(root, self.blog_repo_path)
+            parts = rel_root.split(os.sep)
+            if parts[0] not in self.ALLOWED_TOP_LEVEL_DIRS and rel_root != ".":
+                # Don't descend into disallowed dirs
+                dirs.clear()
+                continue
+            # Exclude unwanted directories at any level
+            dirs[:] = [d for d in dirs if d not in self.excluded_dirs]
+            for file in files:
+                if file.endswith(".md") and (parts[0] in self.ALLOWED_TOP_LEVEL_DIRS):
+                    yield os.path.join(root, file)
 
-        skipped_this_level = set(original_dirs) - set(dirs)
-        if skipped_this_level:
-            skipped_dirs.update(skipped_this_level)
-            logger.debug(
-                f"At {root}, skipping subdirectories: {', '.join(skipped_this_level)}"
-            )
-
-        for file_name in files:
-            if file_name.endswith(".md"):
-                full_path = pathlib.Path(root) / file_name
-                # Check if the full_path itself (not just a parent dir) should be excluded
-                # This is usually redundant if parent dirs are excluded, but good for direct file checks.
-                if not should_exclude_path(str(full_path)):
-                    markdown_files.append(full_path)
-                else:
-                    logger.debug(f"Excluding specific file: {full_path}")
-
-    logger.info(
-        f"Found {len(markdown_files)} markdown files for indexing after filtering."
-    )
-    if skipped_dirs:
-        logger.info(
-            f"Overall skipped directory names during scan: {', '.join(skipped_dirs)}"
-        )
-
-    for markdown_file_path in markdown_files:
-        try:
-            with open(markdown_file_path, "r", encoding="utf-8") as f:
-                yield Document(
-                    page_content=f.read(),
-                    metadata={"source": str(markdown_file_path.relative_to(repo_path))},
-                )
-        except Exception as e:
-            logger.error(f"Error reading {markdown_file_path}: {e}")
+    def load_documents(self):
+        """Yield Document objects for each markdown file."""
+        for md_path in self.list_markdown_files():
+            try:
+                with open(md_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                yield Document(page_content=content, metadata={"source": md_path})
+            except Exception as e:
+                logger.error(f"Error reading {md_path}: {e}")
 
 
 def chunk_documents_recursive(
@@ -126,22 +113,7 @@ def chunk_documents_recursive(
 
             for chunk_text in temp_chunks:
                 token_count = num_tokens_from_string(chunk_text)
-                        total_skipped += 1
-                        continue
-                    if token_count > 8000:
-                        total_skipped += 1
-                        continue
-                    output_chunks.append(
-                        Document(
-                            page_content=chunk_text,
-                            metadata={
-                                "source": source_file,
-                                "chunk_method": "recursive_md_split_error",
-                                "is_entire_document": len(temp_recursive_chunks) == 1,
-                            },
-                        )
-                    )
-                    )
+                if token_count > 8000:
                     total_skipped += 1
                     continue
                 output_chunks.append(
@@ -150,8 +122,7 @@ def chunk_documents_recursive(
                         metadata={
                             "chunk_method": "recursive_char",
                             "source": document.metadata["source"],
-                            "is_entire_document": len(temp_chunks)
-                            == 1,  # True if this document was not split further by this recursive step
+                            "is_entire_document": len(temp_chunks) == 1,
                         },
                     )
                 )
@@ -213,6 +184,7 @@ def chunk_documents_as_md(
                                 "is_entire_document": len(temp_recursive_chunks) == 1,
                             },
                         )
+                    )
 
             # Proceed with Markdown splitting
             try:
@@ -224,9 +196,7 @@ def chunk_documents_as_md(
                 temp_recursive_chunks = text_splitter.RecursiveCharacterTextSplitter(
                     chunk_size=chunk_size_cfg, chunk_overlap=chunk_size_cfg // 4
                 ).split_text(document.page_content)
-                for chunk_text in (
-                    temp_recursive_chunks
-                ):  # Fallback recursive splitting for this document.
+                for chunk_text in temp_recursive_chunks:
                     token_count = num_tokens_from_string(chunk_text)
                     if token_count > 8000:
                         total_skipped += 1
@@ -409,11 +379,7 @@ def chunk_documents_as_md_large(
         f"MD large chunking: processed {total_merged_docs_processed} documents suitable for this strategy."
     )
     if total_skipped_individual_chunks > 0:
-                    db = FAISS.load_local(
-                        db_persist_directory,
-                        embeddings_model,
-                        allow_dangerous_deserialization=True,
-                    )
+        logger.info(
             f"MD large chunking: skipped {total_skipped_individual_chunks} individual sub-chunks that were too large."
         )
     return output_merged_chunks
@@ -504,11 +470,9 @@ def perform_build(
     logger.info(f"Database will be persisted to: {db_persist_directory}")
 
     # Initialize embeddings model
-    # This assumes langchain_helper.get_embeddings_model() exists and returns the correct model
-    # e.g., return OpenAIEmbeddings(model="text-embedding-3-large")
     try:
         embeddings_model = langchain_helper.get_embeddings_model()
-        if embeddings_model is None:  # Check if the helper could fail and return None
+        if embeddings_model is None:
             raise ValueError("langchain_helper.get_embeddings_model() returned None")
     except Exception as e:
         logger.error(
@@ -516,14 +480,15 @@ def perform_build(
         )
         raise
 
-    raw_documents = list(get_blog_content(blog_repo_path))
+    # Use BlogContentManager to load documents
+    content_manager = BlogContentManager(blog_repo_path)
+    raw_documents = list(content_manager.load_documents())
     logger.info(f"Loaded {len(raw_documents)} raw documents from source.")
 
     if not raw_documents:
         logger.warning(
             "No documents found to process. Build will result in an empty database."
         )
-        # Create the directory anyway, so the CLI doesn't fail later if it expects it.
         os.makedirs(db_persist_directory, exist_ok=True)
         logger.info(f"Empty database initialized at {db_persist_directory}")
         return
@@ -531,14 +496,12 @@ def perform_build(
     all_chunks = []
     logger.info("Starting document chunking process...")
 
-    # Strategy 1: Markdown Chunks (with recursive fallback for docs without headers)
     md_chunks = chunk_documents_as_md(raw_documents, chunk_size_cfg=chunk_size_tokens)
     all_chunks.extend(md_chunks)
     logger.info(
         f"Generated {len(md_chunks)} chunks using Markdown header splitting (with fallbacks). Total: {len(all_chunks)}"
     )
 
-    # Strategy 2: Larger Merged Markdown Chunks (for docs with headers)
     md_large_chunks = chunk_documents_as_md_large(
         raw_documents, chunk_size_cfg=chunk_size_tokens
     )
@@ -547,7 +510,6 @@ def perform_build(
         f"Generated {len(md_large_chunks)} using merged Markdown strategy. Total: {len(all_chunks)}"
     )
 
-    # Strategy 3: Pure Recursive Chunks (as a general catch-all or for non-MD heavy content)
     recursive_chunks_list = chunk_documents_recursive(
         raw_documents, chunk_size_cfg=chunk_size_tokens
     )
@@ -577,7 +539,8 @@ def perform_build(
 
     os.makedirs(db_persist_directory, exist_ok=True)
 
-    db = None
+    # Use VectorDBManager for all DB operations
+    db_manager = VectorDBManager(db_persist_directory, embeddings_model)
     logger.info(
         f"Embedding and ingesting chunks into FAISS DB at {db_persist_directory} in batches of {batch_size_for_embedding}"
     )
@@ -588,9 +551,7 @@ def perform_build(
 
     try:
         for i, batch_of_chunks in enumerate(batch_generator):
-            if (
-                not batch_of_chunks
-            ):  # Should not happen if process_chunks_in_batches handles empty list
+            if not batch_of_chunks:
                 logger.warning(f"Batch {i + 1} is empty. Skipping.")
                 continue
 
@@ -599,17 +560,17 @@ def perform_build(
             )
             if i == 0:
                 logger.info("Creating new FAISS database with the first batch.")
-                db = FAISS.from_documents(batch_of_chunks, embeddings_model)
-                db.save_local(db_persist_directory)
+                db_manager.create_db(batch_of_chunks)
+                db_manager.save_db()
             else:
-                if db is None:  # Should not happen after first batch if db was created.
+                if db_manager.db is None:
                     logger.warning(
                         "FAISS DB instance is None after the first batch. Attempting to reconnect."
                     )
-                    db = FAISS.load_local(db_persist_directory, embeddings_model)
+                    db_manager.load_db()
                 logger.info(f"Adding batch {i + 1} to existing FAISS database.")
-                db.add_documents(batch_of_chunks)
-                db.save_local(db_persist_directory)
+                db_manager.add_vectors(batch_of_chunks)
+                db_manager.save_db()
 
             logger.info(f"Batch {i + 1} successfully processed and added to DB.")
 
@@ -617,9 +578,8 @@ def perform_build(
         logger.error(
             f"An error occurred during database building (embedding/ingestion phase): {e}"
         )
-        logger.exception("Traceback for build error:")  # Logs full traceback
-        # Depending on error, db might be partially created.
-        raise  # Re-throw to indicate build failure
+        logger.exception("Traceback for build error:")
+        raise
 
     logger.info(
         f"Successfully built and persisted the blog database at {db_persist_directory}"
@@ -634,3 +594,35 @@ def perform_build(
 #     logger.info("askig_build_logic.py loaded for testing")
 #     # Example test call (ensure DB dir exists or is handled):
 #     # perform_build(blog_repo_path="~/blog", db_persist_directory="./test_blog.chroma.db", batch_size_for_embedding=5)
+
+
+class VectorDBManager:
+    """Handles FAISS vector database creation, loading, saving, and adding vectors."""
+    def __init__(self, db_persist_directory: str, embeddings_model):
+        self.db_persist_directory = db_persist_directory
+        self.embeddings_model = embeddings_model
+        self.db = None
+
+    def create_db(self, documents):
+        from langchain_community.vectorstores import FAISS
+        self.db = FAISS.from_documents(documents, self.embeddings_model)
+        return self.db
+
+    def load_db(self):
+        from langchain_community.vectorstores import FAISS
+        self.db = FAISS.load_local(
+            self.db_persist_directory,
+            self.embeddings_model,
+            allow_dangerous_deserialization=True,
+        )
+        return self.db
+
+    def add_vectors(self, documents):
+        if self.db is None:
+            raise ValueError("DB not initialized. Call create_db or load_db first.")
+        self.db.add_documents(documents)
+
+    def save_db(self):
+        if self.db is None:
+            raise ValueError("DB not initialized. Call create_db or load_db first.")
+        self.db.save_local(self.db_persist_directory)
