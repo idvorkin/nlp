@@ -10,6 +10,7 @@
 #     "langchain-core",
 #     "langchain-community",
 #     "langchain-openai",
+#     "langchain-groq",
 #     "faiss-cpu",
 #     "openai",
 #     # "fastapi", # FastAPI import removed as the local server instance is removed.
@@ -133,6 +134,13 @@ def chunk_md(
         print(f"Error processing {path}: {e}")
 
 
+def select_model_for_cli(model: str | None, fast: bool) -> str:
+    """DRY helper to select the model name for CLI commands."""
+    if model:
+        return model
+    return "llama" if fast else "openai"
+
+
 # --- Updated Typer commands to use askig_logic --- (These remain as they were in the previous step)
 @app.command()
 def ask(
@@ -144,16 +152,28 @@ def ask(
     ] = 20,
     debug: bool = typer.Option(False),
     model: Annotated[
-        str, typer.Option(help="Model to use: openai, claude, llama, google, etc.")
-    ] = "openai",
+        str,
+        typer.Option(
+            help="Model to use: openai, claude, llama, google, etc. (default: llama if --fast, openai if --no-fast)"
+        ),
+    ] = None,
+    fast: Annotated[
+        bool,
+        typer.Option(
+            help="Use a fast local model (llama). Default: True", is_flag=True
+        ),
+    ] = True,
 ):
     """Ask a question about Igor's blog content."""
     if debug:
         logger.info(
-            f"CLI 'ask' called with: question='{question}', facts={facts}, model='{model}', debug={debug}"
+            f"CLI 'ask' called with: question='{question}', facts={facts}, model='{model}', debug={debug}, fast={fast}"
         )
+    model_to_use = select_model_for_cli(model, fast)
     try:
-        response = asyncio.run(askig_logic.iask_logic(question, facts, debug, model))
+        response = asyncio.run(
+            askig_logic.iask_logic(question, facts, debug, model_to_use)
+        )
         print(response)
     except Exception as e:
         logger.error(f"CLI 'ask' command failed: {e}")
@@ -170,17 +190,27 @@ def where(
     ] = 20,
     debug: Annotated[bool, typer.Option(help="Show debugging information")] = False,
     model: Annotated[
-        str, typer.Option(help="Model to use: openai, claude, llama, google, etc.")
-    ] = "openai",
+        str,
+        typer.Option(
+            help="Model to use: openai, claude, llama, google, etc. (default: llama if --fast, openai if --no-fast)"
+        ),
+    ] = None,
+    fast: Annotated[
+        bool,
+        typer.Option(
+            help="Use a fast local model (llama). Default: True", is_flag=True
+        ),
+    ] = True,
 ):
     """Suggest where to add new blog content about a topic."""
     if debug:
         logger.info(
-            f"CLI 'where' called with: topic='{topic}', num_docs={num_docs}, model='{model}', debug={debug}"
+            f"CLI 'where' called with: topic='{topic}', num_docs={num_docs}, model='{model}', debug={debug}, fast={fast}"
         )
+    model_to_use = select_model_for_cli(model, fast)
     try:
         response = asyncio.run(
-            askig_logic.iask_where_logic(topic, num_docs, debug, model)
+            askig_logic.iask_where_logic(topic, num_docs, debug, model_to_use)
         )
         print(response)
     except Exception as e:
