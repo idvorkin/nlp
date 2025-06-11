@@ -5,11 +5,13 @@ from icecream import ic
 import os
 import json
 from typing import List, Optional
+import time
+import warnings
 
 from langchain.callbacks.tracers.langchain import LangChainTracer
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain.prompts.chat import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -28,10 +30,15 @@ from askig_models import (
     BlogPlacementSuggestion,
 )  # Import models
 
+# Suppress the relevance score warning from LangChain/FAISS since we normalize scores afterward
+warnings.filterwarnings(
+    "ignore", message="Relevance scores must be between 0 and 1", category=UserWarning
+)
+
 # --- Constants and Globals ---
-CHROMA_DB_NAME = "blog.chroma.db"
-DEFAULT_CHROMA_DB_DIR = CHROMA_DB_NAME  # Relative to where this script/module is run
-ALTERNATE_CHROMA_DB_DIR = os.path.expanduser(f"~/gits/nlp/{CHROMA_DB_NAME}")
+FAISS_DB_DIR = "blog.faiss"
+DEFAULT_FAISS_DB_DIR = FAISS_DB_DIR  # Relative to where this script/module is run
+ALTERNATE_FAISS_DB_DIR = os.path.expanduser(f"~/gits/nlp/{FAISS_DB_DIR}")
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 g_tracer: Optional[LangChainTracer] = (
@@ -39,12 +46,12 @@ g_tracer: Optional[LangChainTracer] = (
 )
 
 g_blog_content_db = None
-g_all_documents = None  # To store all docs from Chroma, reducing .get() calls
+g_all_documents = None  # To store all docs from FAISS, avoiding repeated loads
 g_debug_info = DebugInfo()  # Initialize with default DebugInfo
 
 
 # --- Database Functions ---
-def get_chroma_db():
+def get_faiss_db():
     global g_blog_content_db, g_all_documents
 
     if g_blog_content_db is not None:
@@ -58,30 +65,33 @@ def get_chroma_db():
         return g_blog_content_db
 
     # Determine DB directory
-    # This assumes iwhere.py (and its 'build' command) creates the DB in DEFAULT_CHROMA_DB_DIR
-    # or the user ensures it's in ALTERNATE_CHROMA_DB_DIR.
-    if os.path.exists(DEFAULT_CHROMA_DB_DIR):
-        db_dir = DEFAULT_CHROMA_DB_DIR
-    elif os.path.exists(ALTERNATE_CHROMA_DB_DIR):
-        logger.info(
-            f"Using alternate blog database location: {ALTERNATE_CHROMA_DB_DIR}"
-        )
-        db_dir = ALTERNATE_CHROMA_DB_DIR
+    # This assumes iwhere.py (and its 'build' command) creates the DB in DEFAULT_FAISS_DB_DIR
+    # or the user ensures it's in ALTERNATE_FAISS_DB_DIR.
+    if os.path.exists(DEFAULT_FAISS_DB_DIR):
+        db_dir = DEFAULT_FAISS_DB_DIR
+    elif os.path.exists(ALTERNATE_FAISS_DB_DIR):
+        logger.info(f"Using alternate blog database location: {ALTERNATE_FAISS_DB_DIR}")
+        db_dir = ALTERNATE_FAISS_DB_DIR
     else:
         # If this logic file is run standalone without iwhere.py's build having run,
         # or without the DB being in a known location, this will be an issue.
         # For an MCP server, it's assumed the DB exists.
         raise Exception(
-            f"Blog database not found in {DEFAULT_CHROMA_DB_DIR} or {ALTERNATE_CHROMA_DB_DIR}. "
+            f"Blog database not found in {DEFAULT_FAISS_DB_DIR} or {ALTERNATE_FAISS_DB_DIR}. "
             "Please ensure the database is built and accessible."
         )
 
-    logger.info(f"Loading Chroma database from: {db_dir}")
-    g_blog_content_db = Chroma(persist_directory=db_dir, embedding_function=embeddings)
-    # Fetch all documents once and store them if Chroma.get() is expensive
-    # This might consume a lot of memory for very large DBs.
-    logger.info("Fetching all documents from Chroma DB into memory...")
-    g_all_documents = g_blog_content_db.get()
+    logger.info(f"Loading FAISS database from: {db_dir}")
+    g_blog_content_db = FAISS.load_local(
+        db_dir, embeddings, allow_dangerous_deserialization=True
+    )
+    # Fetch all documents once and store them
+    logger.info("Fetching all documents from FAISS DB into memory...")
+    docs = list(g_blog_content_db.docstore._dict.values())
+    g_all_documents = {
+        "documents": [d.page_content for d in docs],
+        "metadatas": [d.metadata for d in docs],
+    }
     logger.info(f"Fetched {len(g_all_documents['documents'])} documents into memory.")
     return g_blog_content_db
 
@@ -92,7 +102,7 @@ def has_whole_document(path: str) -> bool:
         logger.warning(
             "g_all_documents is None in has_whole_document. Attempting to load DB."
         )
-        get_chroma_db()  # Attempt to load
+        get_faiss_db()  # Attempt to load
         if g_all_documents is None:  # Still None
             logger.error("Failed to load g_all_documents in has_whole_document.")
             return False
@@ -109,7 +119,7 @@ def get_document(path: str) -> Document:
         logger.warning(
             "g_all_documents is None in get_document. Attempting to load DB."
         )
-        get_chroma_db()  # Attempt to load
+        get_faiss_db()  # Attempt to load
         if g_all_documents is None:  # Still None
             logger.error(
                 f"Failed to load g_all_documents. Cannot find document for path '{path}'."
@@ -207,6 +217,20 @@ def get_model_for_name(model_name: str) -> BaseChatModel:
     return langchain_helper.get_model(openai=True)
 
 
+def normalize_scores(docs_and_scores):
+    """Normalize similarity scores to [0, 1] for downstream compatibility."""
+    if not docs_and_scores:
+        return docs_and_scores
+    scores = [score for _, score in docs_and_scores]
+    min_score, max_score = min(scores), max(scores)
+    if max_score == min_score:
+        return [(doc, 1.0) for doc, _ in docs_and_scores]
+    return [
+        (doc, float((score - min_score) / (max_score - min_score)))
+        for doc, score in docs_and_scores
+    ]
+
+
 # --- Core Logic ---
 async def iask_logic(
     question: str, facts: int = 20, debug: bool = False, model: str = "openai"
@@ -214,6 +238,7 @@ async def iask_logic(
     global g_debug_info  # Allow modification of the global
     timing = TimingStats()
     timing.start_overall_init()
+    start_time = time.time()
 
     llm = get_model_for_name(model)
     model_name_used = langchain_helper.get_model_name(llm)
@@ -223,19 +248,18 @@ async def iask_logic(
     timing.end_overall_init()
 
     timing.start_db_load()
-    db = get_chroma_db()
+    db = get_faiss_db()
     timing.end_db_load()
     if db is None:
         raise Exception(
-            "Blog database (Chroma) not loaded."
-        )  # Should be caught by get_chroma_db
+            "Blog database (FAISS) not loaded."
+        )  # Should be caught by get_faiss_db
 
     timing.start_rag()
-    # Simulating k=4*facts as in original iwhere.py, then filtering.
-    # Consider if the k value should be directly `facts` or if the multiplier is important.
     docs_and_scores = await db.asimilarity_search_with_relevance_scores(
         question, k=4 * facts
     )
+    docs_and_scores = normalize_scores(docs_and_scores)  # Normalize to [0, 1]
     timing.end_rag()
 
     if debug:
@@ -348,10 +372,19 @@ Your answer should include sources like those listed below. The source files are
     timing.end_post_llm()
 
     timing.finish()
+    end_time = time.time()
+    total_time = end_time - start_time
+
     if debug:
         timing.print_stats()  # Print stats if debug is on
 
-    return response
+    # Add timing stats to response in HTML comments
+    timing_stats = format_timing_stats(timing, total_time, len(facts_to_inject))
+    response_with_timing = f"""{response}
+
+{timing_stats}"""
+
+    return response_with_timing
 
 
 async def iask_where_logic(
@@ -360,6 +393,7 @@ async def iask_where_logic(
     global g_debug_info  # Allow modification
     timing = TimingStats()
     timing.start_overall_init()
+    start_time = time.time()
 
     llm = get_model_for_name(model)
     model_name_used = langchain_helper.get_model_name(llm)
@@ -369,15 +403,16 @@ async def iask_where_logic(
     timing.end_overall_init()
 
     timing.start_db_load()
-    db = get_chroma_db()
+    db = get_faiss_db()
     timing.end_db_load()
     if db is None:
-        raise Exception("Blog database (Chroma) not loaded.")
+        raise Exception("Blog database (FAISS) not loaded.")
 
     timing.start_rag()
     docs_and_scores = await db.asimilarity_search_with_relevance_scores(
         topic, k=num_docs
     )
+    docs_and_scores = normalize_scores(docs_and_scores)  # Normalize to [0, 1]
     timing.end_rag()
 
     if debug:
@@ -441,44 +476,30 @@ File paths should always start with either "_d/" or "_posts/".
     chain = prompt_template | llm | parser
 
     timing.start_backlinks_load()
-    # Path to back-links.json should be configurable or reliably located
-    # For now, using the hardcoded path from original iwhere.py
     backlinks_file_path = (
         pathlib.Path.home() / "gits/idvorkin.github.io/back-links.json"
     )
-    backlinks_content = ""
-    if backlinks_file_path.exists():
-        backlinks_content = backlinks_file_path.read_text()
-    else:
-        logger.warning(f"back-links.json not found at {backlinks_file_path}")
+    backlinks_content = backlinks_file_path.read_text()
     timing.end_backlinks_load()
 
-    g_debug_info.documents = facts_to_inject  # Or a subset if too large
-    g_debug_info.count_tokens = timing.token_count
-    g_debug_info.question = topic  # Store topic as question for debug
-    g_debug_info.model = model_name_used
-
     timing.start_llm()
-    # The PydanticOutputParser will attempt to parse the LLM output into BlogPlacementSuggestion
-    parsed_result: BlogPlacementSuggestion = await chain.ainvoke(
+    result = await chain.ainvoke(
         {"topic": topic, "context": context, "backlinks": backlinks_content}
     )
     timing.end_llm()
+    end_time = time.time()
+    total_time = end_time - start_time
 
-    timing.start_post_llm()
     if debug:
-        ic(
-            f"LLM inference completed in {timing.llm_end - timing.llm_start:.2f} seconds"
-        )
+        ic("LLM Response:", result)
 
-    # Format the parsed_result into the string format expected by the original iwhere.py
-    response_str = f"""
+    response = f"""
 RECOMMENDED LOCATIONS:
 
 PRIMARY LOCATION:
-File Path: {parsed_result.primary_location.markdown_path}
-Location: {parsed_result.primary_location.location}
-Reasoning: {parsed_result.primary_location.reasoning}
+File Path: {result.primary_location.markdown_path}
+Location: {result.primary_location.location}
+Reasoning: {result.primary_location.reasoning}
 
 ALTERNATIVE LOCATIONS:
 {
@@ -488,25 +509,46 @@ File Path: {loc.markdown_path}
 Location: {loc.location}
 Reasoning: {loc.reasoning}
 '''
-            for i, loc in enumerate(parsed_result.alternative_locations)
+            for i, loc in enumerate(result.alternative_locations)
         )
     }
 
 ADDITIONAL SUGGESTIONS:
 
 Structuring Tips:
-{chr(10).join(f"• {tip}" for tip in parsed_result.structuring_tips)}
+{chr(10).join(f"• {tip}" for tip in result.structuring_tips)}
 
 Organization Tips:
-{chr(10).join(f"• {tip}" for tip in parsed_result.organization_tips)}
+{chr(10).join(f"• {tip}" for tip in result.organization_tips)}
+
+{
+        format_timing_stats(
+            timing,
+            total_time,
+            len(facts_to_inject),
+            timing.backlinks_load_end - timing.backlinks_load_start,
+        )
+    }
 """
-    timing.end_post_llm()
+    return response
 
-    timing.finish()
-    if debug:
-        timing.print_stats()
 
-    return response_str
+def format_timing_stats(
+    timing: TimingStats,
+    total_time: float,
+    num_documents: int,
+    backlinks_time: float = None,
+) -> str:
+    """DRY helper to format timing stats consistently across functions."""
+    backlinks_part = (
+        f", Backlinks: {backlinks_time:.2f}s" if backlinks_time is not None else ""
+    )
+    return f"""<!--
+Timing: {total_time:.2f} seconds (overall)
+Model: {timing.model_name}
+Documents: {num_documents}, Tokens: {timing.token_count}
+DB load: {timing.db_load_end - timing.db_load_start:.2f}s, RAG: {timing.rag_end - timing.rag_start:.2f}s, Doc prep: {timing.doc_prep_end - timing.doc_prep_start:.2f}s, LLM: {timing.llm_end - timing.llm_start:.2f}s{backlinks_part}
+-->"""
 
 
 # Example of how to initialize logger if this file is run directly (e.g., for testing)
