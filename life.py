@@ -565,7 +565,7 @@ async def async_journal_for_year():
 
 async def async_journal_report(journal_for, launch_fx, days, file=None):
     # Get my closest journal for the day:
-    
+
     if file and file.exists():
         # Read from the provided file
         user_text = file.read_text()
@@ -579,7 +579,7 @@ async def async_journal_report(journal_for, launch_fx, days, file=None):
             capture_output=True,
         )
         user_text = completed_process.stdout
-    
+
     # Escape any curly braces in the user text to prevent f-string parsing errors
     user_text = user_text.replace("{", "{{").replace("}", "}}")
 
@@ -607,13 +607,13 @@ You task it to write a report based on the journal entry that is going to be pas
         ],
     )
 
-    model = langchain_helper.get_model(openai=True)
+    model = langchain_helper.get_model(google=True)
     model_name = langchain_helper.get_model_name(model)
     ic(model_name)
     # HACK need to pass function calling, tillt his is fixed.
     # https://github.com/langchain-ai/langchain/releases/tag/langchain-openai%3D%3D0.3.0
     chain = prompt | model.with_structured_output(
-        GetPychiatristReport, method="function_calling"
+        GetPychiatristReport
     )
 
     corourtine = chain.ainvoke({"model": model_name})
