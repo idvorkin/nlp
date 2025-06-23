@@ -367,7 +367,7 @@ def changes(
     gist: bool = True,
     openai: bool = True,
     claude: bool = True,
-    google: bool = False,
+    google: bool = True,
     google_flash: bool = True,
     google_think: bool = typer.Option(
         True, help="Google Gemini 2.5 Flash with thinking (8192 tokens - MEDIUM level)"
@@ -417,9 +417,7 @@ def changes(
 
     # If no models are selected, provide a helpful error message
     if not llms:
-        print(
-            "Error: No models selected. Please enable at least one model."
-        )
+        print("Error: No models selected. Please enable at least one model.")
         return
 
     achanges_params = llms, before, after, gist, only, verbose
