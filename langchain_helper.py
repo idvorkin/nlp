@@ -185,7 +185,7 @@ def get_model(
         from langchain_google_genai import ChatGoogleGenerativeAI
         api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-pro-preview-06-05", google_api_key=api_key
+            model="gemini-2.5-pro", google_api_key=api_key
         )
     elif google_flash:
         from langchain_google_genai import ChatGoogleGenerativeAI
