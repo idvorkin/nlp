@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 app = typer.Typer(no_args_is_help=True)
 
 # Use the correct Gemini model name directly
-model_to_use = "gemini-2.5-pro-preview-06-05"
+model_to_use = "gemini-2.5-pro"
 
 
 # Annoying, ell can't take a base64 input of a file, lets use gemini raw for that
