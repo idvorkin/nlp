@@ -157,7 +157,7 @@ Clearly state if this change breaks existing behavior and what consumers must do
     return prompt
 
 
-async def a_build_commit(oneline: bool = False, fast: bool = False):
+async def a_build_commit(oneline: bool = False, fast: bool = False, kimi: bool = True):
     user_text = "".join(sys.stdin.readlines())
     # Filter out diffs from files that should be skipped
     filtered_text = filter_diff_content(user_text)
@@ -170,7 +170,12 @@ async def a_build_commit(oneline: bool = False, fast: bool = False):
         llms = [langchain_helper.get_model(llama=True)]
     else:
         llms = langchain_helper.get_models(
-            openai=True, google=True, o4_mini=True, claude=True, openai_mini=True
+            openai=True,
+            google=True,
+            o4_mini=True,
+            claude=True,
+            openai_mini=True,
+            kimi=kimi,
         )
         tokens = num_tokens_from_string(filtered_text)
         if tokens < 32_000:
@@ -245,9 +250,12 @@ def build_commit(
     fast: bool = typer.Option(
         False, "--fast", help="Use Llama only once for faster processing"
     ),
+    kimi: bool = typer.Option(
+        True, "--kimi/--no-kimi", help="Use Kimi model (default: enabled)"
+    ),
 ):
     def run_build():
-        result = asyncio.run(a_build_commit(oneline, fast))
+        result = asyncio.run(a_build_commit(oneline, fast, kimi))
         if result != 0:
             raise typer.Exit(code=result)
 

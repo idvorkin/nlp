@@ -33,6 +33,8 @@ def init_ell():
     anthropic = Anthropic()
     # Add the deepseek model registration
     ell.config.register_model("deepseek-r1-distill-llama-70b", default_client=groq)
+    # Add Kimi model registration
+    ell.config.register_model("moonshotai/kimi-k2-instruct", default_client=groq)
     ell.config.register_model("claude-3-7-sonnet-20250219", default_client=anthropic)
 
 
@@ -43,12 +45,13 @@ def get_ell_model(
     claude: bool = False,
     llama: bool = False,
     llama_vision: bool = False,
+    kimi: bool = False,
 ) -> str:
     """
     Select and return the appropriate ELL model based on the provided flags.
     """
     # if more then one is true, exit and fail
-    count_true = sum([openai, google, claude, llama, openai_cheap, llama_vision])
+    count_true = sum([openai, google, claude, llama, openai_cheap, llama_vision, kimi])
     if count_true > 1:
         print("Only one model can be selected")
         exit(1)
@@ -64,6 +67,8 @@ def get_ell_model(
         return "llama-3.2-90b-vision-preview"
     elif llama:
         return "meta-llama/llama-4-maverick-17b-128e-instruct"
+    elif kimi:
+        return "moonshotai/kimi-k2-instruct"
     elif openai_cheap:
         return "gpt-4o-mini"
     else:
