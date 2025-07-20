@@ -1,4 +1,5 @@
 from unittest.mock import Mock
+import pytest
 from langchain_helper import get_model_name, get_model, GoogleThinkingLevel
 
 
@@ -225,9 +226,14 @@ def test_get_models_with_kimi():
     assert "moonshotai/kimi-k2-instruct" not in model_names_no_kimi
 
 
+@pytest.mark.slow
 def test_kimi_model_creation():
     """Test that Kimi model is properly created with correct ChatGroq configuration."""
+    import os
     from langchain_groq import ChatGroq
+
+    if not os.getenv("GROQ_API_KEY"):
+        pytest.skip("GROQ_API_KEY not available")
 
     kimi_model = get_model(kimi=True)
     assert isinstance(kimi_model, ChatGroq)
