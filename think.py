@@ -8,10 +8,8 @@ from typing import List
 from datetime import datetime, timedelta
 from langchain_core import messages
 from github_helper import get_latest_github_commit_url, get_repo_info
-from typing import List
 from langchain_core.language_models import BaseChatModel
 from langchain.schema.output_parser import StrOutputParser
-from langchain_core.language_models import BaseChatModel
 
 import typer
 from langchain.prompts import ChatPromptTemplate
@@ -29,11 +27,10 @@ import requests
 from bs4 import BeautifulSoup
 
 
-
-
 class ModelTiming(BaseModel):
     analysis_duration: timedelta
     summary_duration: timedelta
+
 
 class AnalysisResult(BaseModel):
     analysis: str
@@ -42,6 +39,7 @@ class AnalysisResult(BaseModel):
     summary_duration: timedelta | None = None
     summary_content: str = ""  # Store the actual summary content
 
+
 class AnalysisBody(BaseModel):
     body: str
     artifacts: List[AnalysisResult]
@@ -49,9 +47,11 @@ class AnalysisBody(BaseModel):
     total_summary_time: timedelta
     exa_results: str = ""
 
+
 class CategoryInfo(BaseModel):
     categories: List[str]
     description: str
+
 
 class GroupOfPoints(BaseModel):
     Description: str
@@ -85,7 +85,7 @@ class AnalysisQuestions:
         return [
             "Summary",
             "Implications and Impact",
-            "Most Novel Ideas" "Most Interesting Ideas" "Reflection Questions",
+            "Most Novel IdeasMost Interesting IdeasReflection Questions",
         ]
 
     @staticmethod
@@ -191,7 +191,9 @@ def make_summary_prompt(content: str, sections: List[str]):
 
 
 # Helper function for parallel summary generation
-async def generate_model_summary(llm, summary_prompt, header, output_dir, analysis_duration):
+async def generate_model_summary(
+    llm, summary_prompt, header, output_dir, analysis_duration
+):
     model_name = langchain_helper.get_model_name(llm)
     start_time = datetime.now()
     try:
@@ -204,18 +206,22 @@ async def generate_model_summary(llm, summary_prompt, header, output_dir, analys
             return None
 
         # Clean up the summary content
-        summary_content = summary.content if hasattr(summary, 'content') else summary
-        
+        summary_content = summary.content if hasattr(summary, "content") else summary
+
         # Handle case where summary is a list (from Gemini)
         if isinstance(summary_content, list):
             # Take the second element which typically contains the actual summary
-            summary_content = summary_content[1] if len(summary_content) > 1 else summary_content[0]
+            summary_content = (
+                summary_content[1] if len(summary_content) > 1 else summary_content[0]
+            )
 
         # Remove markdown code block tags and thinking process
-        summary_content = re.sub(r'```markdown\n|\n```', '', summary_content)
+        summary_content = re.sub(r"```markdown\n|\n```", "", summary_content)
         if '["' in summary_content:  # Check for thinking process
             # Extract just the markdown content after the thinking process
-            summary_content = summary_content.split('```markdown\n')[-1].split('\n```')[0]
+            summary_content = summary_content.split("```markdown\n")[-1].split("\n```")[
+                0
+            ]
 
         summary_path = output_dir / f"summary_{sanitize_filename(model_name)}.md"
         summary_text = f"""# Model Summary by {model_name}
@@ -226,7 +232,11 @@ Summary Duration: {summary_duration.total_seconds():.2f} seconds
 {summary_content}
 """
         summary_path.write_text(summary_text)
-        return summary_path, summary_duration, summary_content  # Return the summary content
+        return (
+            summary_path,
+            summary_duration,
+            summary_content,
+        )  # Return the summary content
     except Exception as e:
         ic(f"Error generating summary for {model_name}: {e}")
         error_content = f"Error generating summary for {model_name}: {e}"
@@ -242,8 +252,9 @@ Summary Duration: N/A
         return summary_path, None, error_content
 
 
-
-def get_categories_and_description(core_problems: bool, writer: bool, interests: bool) -> CategoryInfo:
+def get_categories_and_description(
+    core_problems: bool, writer: bool, interests: bool
+) -> CategoryInfo:
     categories = AnalysisQuestions.default()
     category_desc = "default questions"
 
@@ -259,7 +270,10 @@ def get_categories_and_description(core_problems: bool, writer: bool, interests:
 
     return CategoryInfo(categories=categories, description=category_desc)
 
-async def generate_analysis_body(user_text: str, categories: List[str], llms: List[BaseChatModel], path: str = "") -> AnalysisBody:
+
+async def generate_analysis_body(
+    user_text: str, categories: List[str], llms: List[BaseChatModel], path: str = ""
+) -> AnalysisBody:
     def do_llm_think(llm):
         return (
             prompt_think_about_document(user_text, categories=categories)
@@ -274,7 +288,13 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
             analyzed_artifacts.append(result[0])  # Unpack the single result
         except Exception as e:
             ic(f"Error analyzing with {langchain_helper.get_model_name(llm)}: {e}")
-            analyzed_artifacts.append((f"Error analyzing with {langchain_helper.get_model_name(llm)}: {e}", llm, timedelta()))
+            analyzed_artifacts.append(
+                (
+                    f"Error analyzing with {langchain_helper.get_model_name(llm)}: {e}",
+                    llm,
+                    timedelta(),
+                )
+            )
 
     results = [
         AnalysisResult(analysis=analysis, llm=llm, duration=duration)
@@ -324,70 +344,97 @@ async def generate_analysis_body(user_text: str, categories: List[str], llms: Li
 """
 
     return AnalysisBody(
-        body=body, 
+        body=body,
         artifacts=results,
         total_analysis_time=total_analysis_time,
         total_summary_time=timedelta(),  # Initialize with zero, will be updated later
-        exa_results=exa_content
+        exa_results=exa_content,
     )
 
-def create_overview_content(header: str, analysis_body: AnalysisBody, model_summaries: List[Path]) -> str:
+
+def create_overview_content(
+    header: str, analysis_body: AnalysisBody, model_summaries: List[Path]
+) -> str:
     # Start with the header
     overview = f"{header}\n\n"
-    
+
     # Add analysis files link
     overview += "- [Complete Analysis](#file-b_think-md)\n"
-    
+
     # Add timing breakdown table without a header
     overview += "\n| Model | Analysis (seconds) | Summary (seconds) | Analysis Size (KB) | Summary Size (KB) |\n"
     overview += "|-------|-------------------|------------------|------------------|------------------|\n"
-    
+
     # Sort by model name
-    sorted_results = sorted(analysis_body.artifacts, 
-                          key=lambda x: langchain_helper.get_model_name(x.llm).lower())
+    sorted_results = sorted(
+        analysis_body.artifacts,
+        key=lambda x: langchain_helper.get_model_name(x.llm).lower(),
+    )
 
     # Initialize totals
     total_analysis_size = 0
     total_summary_size = 0
-    
+
     for result in sorted_results:
         model_name = langchain_helper.get_model_name(result.llm)
-        safe_name = sanitize_filename(model_name).lower().replace('.', '-')
+        safe_name = sanitize_filename(model_name).lower().replace(".", "-")
         model_link = f"[{model_name}](#file-summary_{safe_name}-md)"
-        
+
         # Calculate sizes in KB
         analysis_size = len(result.analysis) / 1024
-        summary_size = len(result.summary_content) / 1024 if result.summary_content else 0
-        
+        summary_size = (
+            len(result.summary_content) / 1024 if result.summary_content else 0
+        )
+
         # Add to totals
         total_analysis_size += analysis_size
         total_summary_size += summary_size
-        
+
         # Format durations and sizes
         analysis_duration = f"{result.duration.total_seconds():.2f}"
-        summary_duration = f"{result.summary_duration.total_seconds():.2f}" if result.summary_duration else "N/A"
+        summary_duration = (
+            f"{result.summary_duration.total_seconds():.2f}"
+            if result.summary_duration
+            else "N/A"
+        )
         analysis_kb = f"{analysis_size:.1f}"
         summary_kb = f"{summary_size:.1f}"
-        
+
         overview += f"| {model_link} | {analysis_duration} | {summary_duration} | {analysis_kb} | {summary_kb} |\n"
-    
+
     # Add totals row without separator
     overview += f"| **Total** | | | **{total_analysis_size:.1f}** | **{total_summary_size:.1f}** |\n"
-    
+
     if analysis_body.exa_results:
         overview += "\n| Source | Content |\n"
         overview += "|--------|----------|\n"
         overview += "| Exa Search | See [Complete Analysis](#file-b_think-md) |\n"
-    
+
     return overview
 
+
 async def a_think(
-    gist: bool, writer: bool, path: str, core_problems: bool, interests: bool
+    gist: bool,
+    writer: bool,
+    path: str,
+    core_problems: bool,
+    interests: bool,
+    kimi: bool,
 ):
     output_dir = Path("~/tmp").expanduser()
     repo_info = get_repo_info()  # Default False for getting source file URL
     output_dir.mkdir(parents=True, exist_ok=True)
-    llms = langchain_helper.get_models(openai=True, claude=True, google=True, google_think=True, deepseek=True, o4_mini=True, google_flash=True, openai_mini=True)
+    llms = langchain_helper.get_models(
+        openai=True,
+        claude=True,
+        google=True,
+        google_think=True,
+        deepseek=True,
+        o4_mini=True,
+        google_flash=True,
+        openai_mini=True,
+        kimi=kimi,
+    )
 
     user_text = openai_wrapper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)
@@ -414,7 +461,6 @@ async def a_think(
         else ""
     )
 
-
     today = datetime.now().strftime("%Y-%m-%d")
     header = f"""
 *🧠 via [think.py]({get_latest_github_commit_url(repo_info.name, "think.py")}) - {today} - using {category_info.description}* <br/>
@@ -422,7 +468,9 @@ async def a_think(
 """
 
     ic("starting to think", tokens)
-    analysis_body = await generate_analysis_body(user_text, category_info.categories, llms, path)
+    analysis_body = await generate_analysis_body(
+        user_text, category_info.categories, llms, path
+    )
     output_text = header + "\n" + analysis_body.body
 
     # Create the main analysis file
@@ -436,7 +484,7 @@ async def a_think(
             make_summary_prompt(analysis_body.body, category_info.categories),
             header,
             output_dir,
-            result.duration
+            result.duration,
         )
         for result in analysis_body.artifacts
     ]
@@ -445,24 +493,27 @@ async def a_think(
         for summary in await asyncio.gather(*model_summary_tasks)
         if summary is not None
     ]
-    
+
     # Unpack the results - now including summary content
     model_summaries = [path for path, _, _ in summary_results]
-    summary_durations = [duration for _, duration, _ in summary_results]
-    
+
     # Update analysis results with summary content
     for result, (_, duration, content) in zip(analysis_body.artifacts, summary_results):
         result.summary_duration = duration
         result.summary_content = content
 
     # Calculate total summary time and update analysis results
-    total_summary_time = sum((duration for _, duration, _ in summary_results), timedelta())
-    
+    total_summary_time = sum(
+        (duration for _, duration, _ in summary_results), timedelta()
+    )
+
     # Update the analysis results with summary durations
     for result, (_, duration, _) in zip(analysis_body.artifacts, summary_results):
         result.summary_duration = duration
-    
-    analysis_body.total_analysis_time = sum((r.duration for r in analysis_body.artifacts), timedelta())
+
+    analysis_body.total_analysis_time = sum(
+        (r.duration for r in analysis_body.artifacts), timedelta()
+    )
     analysis_body.total_summary_time = total_summary_time
 
     # Create overview file with actual timings
@@ -470,11 +521,11 @@ async def a_think(
     overview_filename = "a_overview"
     if title:
         # Clean the title by removing parentheses and extra spaces
-        clean_title = title.strip('() ')
+        clean_title = title.strip("() ")
         # Convert to filename-safe format
-        clean_title = sanitize_filename(clean_title).lower().replace(' ', '-')
+        clean_title = sanitize_filename(clean_title).lower().replace(" ", "-")
         overview_filename = f"a_{clean_title}--overview"
-    
+
     overview_path = output_dir / f"{overview_filename}.md"
     overview_content = create_overview_content(header, analysis_body, model_summaries)
     overview_path.write_text(overview_content)
@@ -486,7 +537,7 @@ async def a_think(
         # Get the title to use in gist description
         gist_description = f"think - {title.strip('() ')}" if title else "think"
         # Clean up description by removing any newlines and truncating if too long
-        gist_description = gist_description.replace('\n', ' ')[:100]
+        gist_description = gist_description.replace("\n", " ")[:100]
         # Use to_gist_multiple with description
         langchain_helper.to_gist_multiple(files_to_gist, description=gist_description)
     else:
@@ -508,6 +559,9 @@ def think(
     core_problems: bool = False,  # Use core problems answers
     writer: bool = False,  # Use core problems answers
     interests: bool = False,  # Use core problems answers
+    kimi: bool = typer.Option(
+        True, "--kimi/--no-kimi", help="Use Kimi model (default: enabled)"
+    ),
     path: str = typer.Argument(None),
 ):
     langchain_helper.langsmith_trace_if_requested(
@@ -519,6 +573,7 @@ def think(
                 path=path,
                 core_problems=core_problems,
                 interests=interests,
+                kimi=kimi,
             )
         ),
     )

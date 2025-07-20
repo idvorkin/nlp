@@ -1,0 +1,6 @@
+{
+	"permissions": {
+		"allow": ["Can you find github issues", "Bash(gh issue list:*)"],
+		"deny": []
+	}
+}

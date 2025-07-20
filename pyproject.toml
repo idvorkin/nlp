@@ -116,7 +116,6 @@ venv = ".venv"
 dev-dependencies = [
     "jupyterlab>=4.2",
     "jupyterlab-lsp",
-    "jupyter_contrib_nbextensions",
     "nbdime",
 ]
 

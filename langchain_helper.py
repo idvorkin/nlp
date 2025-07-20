@@ -98,6 +98,7 @@ def get_models(
     google_think_low: bool = False,
     google_think_medium: bool = False,
     google_think_high: bool = False,
+    kimi: bool = False,
 ) -> List[BaseChatModel]:
     ret = []
 
@@ -137,6 +138,9 @@ def get_models(
     if openai_mini:
         ret.append(get_model(openai_mini=True))
 
+    if kimi:
+        ret.append(get_model(kimi=True))
+
     return ret
 
 
@@ -154,6 +158,7 @@ def get_model(
     google_think_low: bool = False,
     google_think_medium: bool = False,
     google_think_high: bool = False,
+    kimi: bool = False,
 ) -> BaseChatModel:
     """
     See changes in diff
@@ -172,6 +177,7 @@ def get_model(
             google_think_low,
             google_think_medium,
             google_think_high,
+            kimi,
         ]
     )
     if count_true > 1:
@@ -183,12 +189,12 @@ def get_model(
 
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI
+
         api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
-        model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-pro", google_api_key=api_key
-        )
+        model = ChatGoogleGenerativeAI(model="gemini-2.5-pro", google_api_key=api_key)
     elif google_flash:
         from langchain_google_genai import ChatGoogleGenerativeAI
+
         api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash-preview-05-20", google_api_key=api_key
@@ -201,7 +207,9 @@ def get_model(
             model="gemini-2.5-flash-preview-05-20",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.LOW.value}
+                    "thinking_config": {
+                        "thinking_budget": GoogleThinkingLevel.LOW.value
+                    }
                 }
             },
             google_api_key=api_key,
@@ -216,7 +224,9 @@ def get_model(
             model="gemini-2.5-flash-preview-05-20",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.LOW.value}
+                    "thinking_config": {
+                        "thinking_budget": GoogleThinkingLevel.LOW.value
+                    }
                 }
             },
             google_api_key=api_key,
@@ -231,7 +241,9 @@ def get_model(
             model="gemini-2.5-flash-preview-05-20",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.MEDIUM.value}
+                    "thinking_config": {
+                        "thinking_budget": GoogleThinkingLevel.MEDIUM.value
+                    }
                 }
             },
             google_api_key=api_key,
@@ -246,7 +258,9 @@ def get_model(
             model="gemini-2.5-flash-preview-05-20",
             model_kwargs={
                 "generation_config": {
-                    "thinking_config": {"thinking_budget": GoogleThinkingLevel.HIGH.value}
+                    "thinking_config": {
+                        "thinking_budget": GoogleThinkingLevel.HIGH.value
+                    }
                 }
             },
             google_api_key=api_key,
@@ -268,6 +282,10 @@ def get_model(
         from langchain_groq import ChatGroq
 
         model = ChatGroq(model_name="deepseek-r1-distill-llama-70b")
+    elif kimi:
+        from langchain_groq import ChatGroq
+
+        model = ChatGroq(model_name="moonshotai/kimi-k2-instruct")
     elif o4_mini:
         from langchain_openai.chat_models import ChatOpenAI
 
