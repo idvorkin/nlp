@@ -85,7 +85,9 @@ class AnalysisQuestions:
         return [
             "Summary",
             "Implications and Impact",
-            "Most Novel IdeasMost Interesting IdeasReflection Questions",
+            "Most Novel Ideas",
+            "Most Interesting Ideas",
+            "Reflection Questions",
         ]
 
     @staticmethod
