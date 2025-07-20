@@ -45,7 +45,7 @@ def get_ell_model(
     claude: bool = False,
     llama: bool = False,
     llama_vision: bool = False,
-    kimi: bool = False,
+    kimi: bool = True,
 ) -> str:
     """
     Select and return the appropriate ELL model based on the provided flags.
