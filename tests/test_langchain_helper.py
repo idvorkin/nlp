@@ -173,9 +173,12 @@ def test_get_model_name_no_thinking_level_attribute():
     assert get_model_name(model) == expected
 
 
+@pytest.mark.slow
 def test_get_model_name_integration_with_real_models():
     """Integration test using actual get_model function to ensure real models work correctly."""
-    # Test regular Google model
+    import os
+
+    # Test regular Google model (doesn't need API key)
     google_model = get_model(google_flash=True)
     google_name = get_model_name(google_model)
     assert "gemini-2.5-flash-preview-05-20" in google_name
@@ -197,15 +200,23 @@ def test_get_model_name_integration_with_real_models():
     assert "thinking-HIGH" in think_high_name
     assert "gemini-2.5-flash-preview-05-20-thinking-HIGH" == think_high_name
 
-    # Test Kimi model
+    # Test Kimi model (needs API key)
+    if not os.getenv("GROQ_API_KEY"):
+        pytest.skip("GROQ_API_KEY not available for Kimi test")
+
     kimi_model = get_model(kimi=True)
     kimi_name = get_model_name(kimi_model)
     assert "moonshotai/kimi-k2-instruct" == kimi_name
 
 
+@pytest.mark.slow
 def test_get_models_with_kimi():
     """Test that get_models includes Kimi when kimi=True."""
+    import os
     from langchain_helper import get_models
+
+    if not os.getenv("GROQ_API_KEY"):
+        pytest.skip("GROQ_API_KEY not available")
 
     # Test with kimi enabled
     models_with_kimi = get_models(kimi=True)

@@ -8,7 +8,11 @@
 			"Bash(gh api:*)",
 			"Bash(ls:*)",
 			"Bash(find:*)",
-			"Bash(just:*)"
+			"Bash(just:*)",
+			"WebFetch(domain:github.com)",
+			"Bash(uv run pytest:*)",
+			"Bash(gh run view:*)",
+			"Bash(uv sync:*)"
 		],
 		"deny": []
 	}

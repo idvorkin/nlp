@@ -234,8 +234,14 @@ def test_kimi_model_registration():
         pytest.skip("ELL not available for testing")
 
 
+@pytest.mark.slow
 def test_kimi_langchain_integration():
     """Test that Kimi integrates properly with LangChain."""
+    import os
+
+    if not os.getenv("GROQ_API_KEY"):
+        pytest.skip("GROQ_API_KEY not available")
+
     try:
         from langchain_helper import get_model, get_model_name
         from langchain_groq import ChatGroq
