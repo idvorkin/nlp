@@ -124,6 +124,10 @@ extend-exclude = ["*.ipynb"]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "slow: marks tests as slow (deselected by default)",
+]
+addopts = "-m 'not slow'"
 filterwarnings = [
     # Suppress Pydantic deprecation warnings from dependencies
     "ignore:`min_items` is deprecated and will be removed, use `min_length` instead:DeprecationWarning:pydantic.*",
