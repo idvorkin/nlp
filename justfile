@@ -18,6 +18,42 @@ fast-test:
 test-watch:
     uv run ptw -- -v
 
+# Run Kimi-specific tests (fast)
+test-kimi:
+    uv run pytest tests/test_ell_helper.py::test_get_ell_model_kimi -v
+    uv run pytest tests/test_langchain_helper.py -k "kimi" -v
+
+# Run Kimi integration tests (slow, requires GROQ_API_KEY)
+test-kimi-slow:
+    uv run pytest tests/test_kimi_integration_slow.py -s -v
+
+# Run all Kimi tests (fast + slow)
+test-kimi-all: test-kimi test-kimi-slow
+
+# Run e2e tests
+test-e2e:
+    uv run pytest tests/e2e/ -s -v
+
+# Run GitHub Actions locally using act (simulates CI environment)
+test-ci:
+    act -j test
+
+# Run GitHub Actions locally with verbose output
+test-ci-verbose:
+    act -j test -v
+
+# Run GitHub Actions locally with specific architecture (for M1/M2 Macs)
+test-ci-amd64:
+    act -j test --container-architecture linux/amd64
+
+# List all available GitHub Actions workflows
+list-workflows:
+    act -l
+
+# Run GitHub Actions simulation script (alternative to act)
+test-github-sim:
+    ./scripts/test-github-actions-locally.sh
+
 # Run twillio dev server
 twillio-dev:
     modal serve twillo_serve::modal_app

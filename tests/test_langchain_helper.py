@@ -1,4 +1,5 @@
 from unittest.mock import Mock
+import pytest
 from langchain_helper import get_model_name, get_model, GoogleThinkingLevel
 
 
@@ -172,9 +173,12 @@ def test_get_model_name_no_thinking_level_attribute():
     assert get_model_name(model) == expected
 
 
+@pytest.mark.slow
 def test_get_model_name_integration_with_real_models():
     """Integration test using actual get_model function to ensure real models work correctly."""
-    # Test regular Google model
+    import os
+
+    # Test regular Google model (doesn't need API key)
     google_model = get_model(google_flash=True)
     google_name = get_model_name(google_model)
     assert "gemini-2.5-flash-preview-05-20" in google_name
@@ -195,3 +199,53 @@ def test_get_model_name_integration_with_real_models():
     think_high_name = get_model_name(google_think_high)
     assert "thinking-HIGH" in think_high_name
     assert "gemini-2.5-flash-preview-05-20-thinking-HIGH" == think_high_name
+
+    # Test Kimi model (needs API key)
+    if not os.getenv("GROQ_API_KEY"):
+        pytest.skip("GROQ_API_KEY not available for Kimi test")
+
+    kimi_model = get_model(kimi=True)
+    kimi_name = get_model_name(kimi_model)
+    assert "moonshotai/kimi-k2-instruct" == kimi_name
+
+
+@pytest.mark.slow
+def test_get_models_with_kimi():
+    """Test that get_models includes Kimi when kimi=True."""
+    import os
+    from langchain_helper import get_models
+
+    if not os.getenv("GROQ_API_KEY"):
+        pytest.skip("GROQ_API_KEY not available")
+
+    # Test with kimi enabled
+    models_with_kimi = get_models(kimi=True)
+    assert len(models_with_kimi) == 1
+    kimi_model = models_with_kimi[0]
+    assert get_model_name(kimi_model) == "moonshotai/kimi-k2-instruct"
+
+    # Test with multiple models including kimi
+    models_multi = get_models(openai=True, kimi=True)
+    assert len(models_multi) == 2
+    model_names = [get_model_name(m) for m in models_multi]
+    assert "moonshotai/kimi-k2-instruct" in model_names
+
+    # Test without kimi (default)
+    models_without_kimi = get_models(openai=True)
+    assert len(models_without_kimi) == 1
+    model_names_no_kimi = [get_model_name(m) for m in models_without_kimi]
+    assert "moonshotai/kimi-k2-instruct" not in model_names_no_kimi
+
+
+@pytest.mark.slow
+def test_kimi_model_creation():
+    """Test that Kimi model is properly created with correct ChatGroq configuration."""
+    import os
+    from langchain_groq import ChatGroq
+
+    if not os.getenv("GROQ_API_KEY"):
+        pytest.skip("GROQ_API_KEY not available")
+
+    kimi_model = get_model(kimi=True)
+    assert isinstance(kimi_model, ChatGroq)
+    assert kimi_model.model_name == "moonshotai/kimi-k2-instruct"
