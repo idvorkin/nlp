@@ -1,0 +1,15 @@
+{
+	"permissions": {
+		"allow": [
+			"Can you find github issues",
+			"Bash(gh issue list:*)",
+			"Bash(gh pr view:*)",
+			"Bash(gh pr comment:*)",
+			"Bash(gh api:*)",
+			"Bash(ls:*)",
+			"Bash(find:*)",
+			"Bash(just:*)"
+		],
+		"deny": []
+	}
+}

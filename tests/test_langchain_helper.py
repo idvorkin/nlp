@@ -195,3 +195,40 @@ def test_get_model_name_integration_with_real_models():
     think_high_name = get_model_name(google_think_high)
     assert "thinking-HIGH" in think_high_name
     assert "gemini-2.5-flash-preview-05-20-thinking-HIGH" == think_high_name
+
+    # Test Kimi model
+    kimi_model = get_model(kimi=True)
+    kimi_name = get_model_name(kimi_model)
+    assert "moonshotai/kimi-k2-instruct" == kimi_name
+
+
+def test_get_models_with_kimi():
+    """Test that get_models includes Kimi when kimi=True."""
+    from langchain_helper import get_models
+
+    # Test with kimi enabled
+    models_with_kimi = get_models(kimi=True)
+    assert len(models_with_kimi) == 1
+    kimi_model = models_with_kimi[0]
+    assert get_model_name(kimi_model) == "moonshotai/kimi-k2-instruct"
+
+    # Test with multiple models including kimi
+    models_multi = get_models(openai=True, kimi=True)
+    assert len(models_multi) == 2
+    model_names = [get_model_name(m) for m in models_multi]
+    assert "moonshotai/kimi-k2-instruct" in model_names
+
+    # Test without kimi (default)
+    models_without_kimi = get_models(openai=True)
+    assert len(models_without_kimi) == 1
+    model_names_no_kimi = [get_model_name(m) for m in models_without_kimi]
+    assert "moonshotai/kimi-k2-instruct" not in model_names_no_kimi
+
+
+def test_kimi_model_creation():
+    """Test that Kimi model is properly created with correct ChatGroq configuration."""
+    from langchain_groq import ChatGroq
+
+    kimi_model = get_model(kimi=True)
+    assert isinstance(kimi_model, ChatGroq)
+    assert kimi_model.model_name == "moonshotai/kimi-k2-instruct"
