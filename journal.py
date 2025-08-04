@@ -1,4 +1,14 @@
-#!python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# dependencies = [
+#   "typer",
+#   "rich",
+#   "requests",
+#   "icecream",
+#   "google-generativeai",
+#   "pymupdf"
+# ]
+# ///
 
 import typer
 import rich
@@ -8,6 +18,9 @@ import requests
 from pathlib import Path
 from icecream import ic
 from urllib.parse import urlparse
+import fitz  # PyMuPDF for PDF manipulation
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List, Tuple
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -15,16 +28,15 @@ app = typer.Typer(no_args_is_help=True)
 model_to_use = "gemini-2.5-pro"
 
 
-# Annoying, ell can't take a base64 input of a file, lets use gemini raw for that
-gemini_prompt = """
+# Transcription prompt (without analysis)
+transcription_prompt = """
 ### **1. Context**
 You are a **professional archivist and transcription specialist** with years of experience decoding handwritten text. Your expertise includes accurately transcribing challenging handwriting from PDF documents, preserving the original structure, and providing deeper analysis of the text's meaning.
 
 ---
 
 ### **2. Goal**
-- **Primary Objective**: Deliver an **accurate**, **well-formatted**, and **insightful** transcription of a PDF containing handwritten text.
-- **Secondary Objective**: Provide a concise analysis highlighting the document's key points, tasks, and any potential ambiguities.
+- **Primary Objective**: Deliver an **accurate** and **well-formatted** transcription of a PDF containing handwritten text.
 
 ---
 
@@ -101,10 +113,37 @@ Adhere to these rules meticulously:
 
 ---
 
-### **4. Analysis Section (End of Transcription)**
-After the transcription, provide a **comprehensive analysis**:
+### **4. Final Output Format**
+**Transcription only** (following all formatting and accuracy guidelines).
 
+---
 
+### **5. Example of Expected Transcription Snippet**
+```
+1. [Bullet Point]
+   - Sub-bullet: Additional details
+
+| Task          | Due Date       | Priority |
+|---------------|----------------|----------|
+| Draft Report  | 2024-12-20     | High     |
+| Review Budget | [illegible]    | Low      |
+
+[guess: uncertainWord]
+
+---
+Page: 2 of 5 - 2024-12-21
+---
+
+Heading Level 2
+1. 1. 1.
+```
+"""
+
+# Analysis prompt (runs on complete transcription)
+analysis_prompt = """
+You are analyzing a transcribed journal document. Based on the complete transcription provided, create a comprehensive analysis.
+
+### **Analysis Section Requirements**
 
 1. **Summary**
    - A short paragraph summarizing the overall content of the document.
@@ -139,62 +178,55 @@ After the transcription, provide a **comprehensive analysis**:
    - Use sequential numbering (1, 2, 3, etc.) for all numbered lists.
 
 7. **Expanded Acronyms**
-   - List any acronyms you expanded in the transcription (for verification).
+   - List any acronyms that were expanded in the transcription (for verification).
 
 8. **Proper Nouns**
    - List any proper nouns identified in the document.
-
----
-
-### **5. Final Output Format**
-1. **Transcription** (following all formatting and accuracy guidelines).
-2. **Analysis Section** (using the headings described above).
-
----
-
-### **6. Example of Expected Transcription Snippet**
-```
-1. [Bullet Point]
-   - Sub-bullet: Additional details
-
-| Task          | Due Date       | Priority |
-|---------------|----------------|----------|
-| Draft Report  | 2024-12-20     | High     |
-| Review Budget | [illegible]    | Low      |
-
-[guess: uncertainWord]
-
----
-Page: 2 of 5 - 2024-12-21
----
-
-Heading Level 2
-1. 1. 1.
-```
-
-**Analysis Section**
-- **Summary**: A concise overview of the document.
-- **Key Insights**: Observations…
-- **Action Items**:
-  1. Item from `[]` in the text
-  2. Another item from `[]` in the text
-
-…and so on.
-    """
+"""
 
 
-def gemini_transcribe(pdf_path: str, page_breaks: bool = False):
+def split_pdf_into_chunks(pdf_path: str, pages_per_chunk: int = 10) -> List[bytes]:
+    """Split a PDF into chunks of specified pages."""
+    doc = fitz.open(pdf_path)
+    chunks = []
+
+    total_pages = len(doc)
+    for start_page in range(0, total_pages, pages_per_chunk):
+        end_page = min(start_page + pages_per_chunk, total_pages)
+
+        # Create a new PDF with just these pages
+        new_doc = fitz.open()
+        for page_num in range(start_page, end_page):
+            new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+
+        # Convert to bytes
+        pdf_bytes = new_doc.tobytes()
+        chunks.append((start_page + 1, end_page, pdf_bytes))  # 1-indexed for display
+        new_doc.close()
+
+    doc.close()
+    return chunks
+
+
+def transcribe_chunk(
+    chunk_data: Tuple[int, int, bytes], page_breaks: bool = False
+) -> Tuple[int, int, str]:
+    """Transcribe a single PDF chunk."""
+    start_page, end_page, pdf_bytes = chunk_data
     import google.generativeai as genai
 
     try:
         # Configure the API key
         genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 
-        # Read PDF file
-        pdf_data = Path(pdf_path).read_bytes()
-
         # Add page_breaks parameter to prompt
-        prompt = gemini_prompt + f"\nPAGE_BREAKS: {'true' if page_breaks else 'false'}"
+        prompt = (
+            transcription_prompt
+            + f"\nPAGE_BREAKS: {'true' if page_breaks else 'false'}"
+        )
+        prompt += (
+            f"\n\nNOTE: This is pages {start_page} to {end_page} of a larger document."
+        )
 
         # Configure generation parameters
         generation_config = {
@@ -203,28 +235,166 @@ def gemini_transcribe(pdf_path: str, page_breaks: bool = False):
             "top_p": 0.95,
         }
 
-        # Initialize the model with safety filters disabled
+        # Initialize the model
         model = genai.GenerativeModel(
             model_name=model_to_use,
             generation_config=generation_config,
             safety_settings=None,
         )
 
-        # Create a multipart content with text and PDF
+        # Create content with PDF bytes
         contents = [
             {"text": prompt},
-            {"inline_data": {"mime_type": "application/pdf", "data": pdf_data}},
+            {"inline_data": {"mime_type": "application/pdf", "data": pdf_bytes}},
         ]
 
         # Generate response
-        ic("starting", model_to_use)
+        rich.print(f"[yellow]Transcribing pages {start_page}-{end_page}...[/yellow]")
         response = model.generate_content(contents)
 
-        # Log usage metadata if available
-        if hasattr(response, "usage_metadata"):
-            ic(response.usage_metadata)
+        return (start_page, end_page, response.text)
+    except Exception as e:
+        rich.print(
+            f"[red]Error transcribing pages {start_page}-{end_page}: {str(e)}[/red]"
+        )
+        return (
+            start_page,
+            end_page,
+            f"[Error transcribing pages {start_page}-{end_page}]",
+        )
+
+
+def analyze_transcription(transcription: str) -> str:
+    """Run analysis on the complete transcription."""
+    import google.generativeai as genai
+
+    try:
+        # Configure the API key
+        genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+
+        # Configure generation parameters
+        generation_config = {
+            "max_output_tokens": 8192,
+            "temperature": 1,
+            "top_p": 0.95,
+        }
+
+        # Initialize the model
+        model = genai.GenerativeModel(
+            model_name=model_to_use,
+            generation_config=generation_config,
+            safety_settings=None,
+        )
+
+        # Create content
+        prompt = (
+            analysis_prompt + "\n\n### Transcription to analyze:\n\n" + transcription
+        )
+
+        # Generate response
+        rich.print("[yellow]Running analysis on complete transcription...[/yellow]")
+        response = model.generate_content(prompt)
 
         return response.text
+    except Exception as e:
+        rich.print(f"[red]Error during analysis: {str(e)}[/red]")
+        return f"[Error during analysis: {str(e)}]"
+
+
+def gemini_transcribe(pdf_path: str, page_breaks: bool = False):
+    """Transcribe a PDF file, splitting into chunks if larger than 10 pages."""
+    import google.generativeai as genai
+
+    try:
+        # Check PDF page count
+        doc = fitz.open(pdf_path)
+        page_count = len(doc)
+        doc.close()
+
+        rich.print(f"[cyan]PDF has {page_count} pages[/cyan]")
+
+        if page_count <= 10:
+            # Small PDF, process as before
+            rich.print("[green]Processing as single document...[/green]")
+
+            # Configure the API key
+            genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+
+            # Read PDF file
+            pdf_data = Path(pdf_path).read_bytes()
+
+            # Add page_breaks parameter to prompt
+            prompt = (
+                transcription_prompt
+                + f"\nPAGE_BREAKS: {'true' if page_breaks else 'false'}"
+            )
+
+            # Configure generation parameters
+            generation_config = {
+                "max_output_tokens": 8192,
+                "temperature": 1,
+                "top_p": 0.95,
+            }
+
+            # Initialize the model
+            model = genai.GenerativeModel(
+                model_name=model_to_use,
+                generation_config=generation_config,
+                safety_settings=None,
+            )
+
+            # Create content
+            contents = [
+                {"text": prompt},
+                {"inline_data": {"mime_type": "application/pdf", "data": pdf_data}},
+            ]
+
+            # Generate response
+            response = model.generate_content(contents)
+            transcription = response.text
+
+            # Run analysis
+            analysis = analyze_transcription(transcription)
+
+            return f"{transcription}\n\n---\n\n## Analysis\n\n{analysis}"
+
+        else:
+            # Large PDF, split and process in parallel
+            rich.print(
+                f"[green]Splitting into {(page_count + 9) // 10} chunks of 10 pages each...[/green]"
+            )
+
+            # Split PDF into chunks
+            chunks = split_pdf_into_chunks(pdf_path, pages_per_chunk=10)
+
+            # Process chunks in parallel
+            transcriptions = []
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                # Submit all chunks for processing
+                future_to_chunk = {
+                    executor.submit(transcribe_chunk, chunk, page_breaks): chunk
+                    for chunk in chunks
+                }
+
+                # Collect results as they complete
+                for future in as_completed(future_to_chunk):
+                    start_page, end_page, transcription = future.result()
+                    transcriptions.append((start_page, transcription))
+                    rich.print(
+                        f"[green]✓ Completed pages {start_page}-{end_page}[/green]"
+                    )
+
+            # Sort by page number and combine
+            transcriptions.sort(key=lambda x: x[0])
+            combined_transcription = "\n\n".join([t[1] for t in transcriptions])
+
+            rich.print("[cyan]All chunks transcribed, running analysis...[/cyan]")
+
+            # Run analysis on complete transcription
+            analysis = analyze_transcription(combined_transcription)
+
+            return f"{combined_transcription}\n\n---\n\n## Analysis\n\n{analysis}"
+
     except Exception as e:
         ic(f"Error during transcription: {str(e)}")
         raise
