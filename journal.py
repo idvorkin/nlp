@@ -250,7 +250,7 @@ def transcribe_chunk(
 
         # Generate response
         rich.print(f"[yellow]Transcribing pages {start_page}-{end_page}...[/yellow]")
-        response = model.generate_content(contents)
+        response = model.generate_content(contents, request_options={"timeout": 600})
 
         return (start_page, end_page, response.text)
     except Exception as e:
@@ -293,7 +293,7 @@ def analyze_transcription(transcription: str) -> str:
 
         # Generate response
         rich.print("[yellow]Running analysis on complete transcription...[/yellow]")
-        response = model.generate_content(prompt)
+        response = model.generate_content(prompt, request_options={"timeout": 600})
 
         return response.text
     except Exception as e:
@@ -350,7 +350,9 @@ def gemini_transcribe(pdf_path: str, page_breaks: bool = False):
             ]
 
             # Generate response
-            response = model.generate_content(contents)
+            response = model.generate_content(
+                contents, request_options={"timeout": 600}
+            )
             transcription = response.text
 
             # Run analysis
