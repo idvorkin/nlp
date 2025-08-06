@@ -103,8 +103,8 @@ class APIError(TranscriptionError):
     """Error calling external API"""
 
 
-class FileNotFoundError(TranscriptionError):
-    """File not found or inaccessible"""
+class PDFNotFoundError(TranscriptionError):
+    """PDF file not found or inaccessible"""
 
 
 class InvalidURLError(TranscriptionError):
@@ -561,7 +561,7 @@ def download_pdf_from_url(url: str) -> str:
         response.raise_for_status()
     except requests.exceptions.HTTPError as e:
         if response.status_code == 404:
-            raise FileNotFoundError(f"PDF not found at URL: {url}")
+            raise PDFNotFoundError(f"PDF not found at URL: {url}")
         elif response.status_code == 403:
             raise APIError(f"Access denied to PDF: {url}")
         else:
@@ -659,7 +659,7 @@ def transcribe(
             # Handle local file
             pdf_path = os.path.expanduser(pdf)
             if not os.path.exists(pdf_path):
-                raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+                raise PDFNotFoundError(f"PDF file not found: {pdf_path}")
 
         # Transcribe PDF
         result = service.transcribe_pdf(pdf_path, page_breaks)
