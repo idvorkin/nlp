@@ -32,3 +32,7 @@ just --list  # Show available commands
 ```
 
 Refer to `zz-chop-conventions/dev-setup/justfile.md` for detailed justfile usage patterns.
+
+## Git Guidelines
+
+**IMPORTANT: NEVER use git push --force or git push -f. Always use regular git push to preserve commit history.**
