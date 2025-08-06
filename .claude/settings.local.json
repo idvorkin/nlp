@@ -1,0 +1,6 @@
+{
+	"permissions": {
+		"allow": ["Bash(./journal.py:*)", "Bash(gh pr view:*)"],
+		"deny": []
+	}
+}
