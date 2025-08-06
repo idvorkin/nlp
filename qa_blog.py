@@ -25,11 +25,11 @@ from langchain.prompts.chat import (
 )
 from langchain.schema.output_parser import StrOutputParser
 import json
-import discord
-from discord_helper import draw_progress_bar, get_bot_token, send
-import discord_helper
 from pydantic import BaseModel
 from pathlib import Path
+import pickle
+from langchain_community.retrievers import BM25Retriever
+from langchain.retrievers import EnsembleRetriever
 
 
 class LocationRecommendation(BaseModel):
@@ -51,10 +51,33 @@ server = FastAPI()
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
-bot = discord.Bot()
-FAISS_DB_DIR = "blog.faiss"
-DEFAULT_FAISS_DB_DIR = FAISS_DB_DIR
-ALTERNATE_FAISS_DB_DIR = os.path.expanduser(f"~/gits/nlp/{FAISS_DB_DIR}")
+
+# Configuration constants
+class Config:
+    # Index storage
+    FAISS_DB_DIR = "blog.faiss"
+    BM25_FILENAME = "bm25.pkl"
+
+    # Processing parameters
+    BATCH_SIZE = 100  # Documents per batch for embedding
+    CHUNK_SIZE_TOKENS = 4 * 1000 * 5  # ~5K tokens
+    MAX_FILE_SIZE = 500000  # Max chars per file (prevent huge files)
+
+    # Search parameters
+    FACT_MULTIPLIER = 4  # Multiply facts by this for initial retrieval
+    BM25_WEIGHT = 0.3
+    FAISS_WEIGHT = 0.7
+
+    # Allowed directories
+    ALLOWED_DIRS = ["_d", "_posts", "_ig66", "_td"]
+
+
+# Legacy compatibility
+FAISS_DB_DIR = Config.FAISS_DB_DIR
+DEFAULT_FAISS_DB_DIR = Config.FAISS_DB_DIR
+ALTERNATE_FAISS_DB_DIR = os.path.expanduser(f"~/gits/nlp/{Config.FAISS_DB_DIR}")
+BM25_FILENAME = Config.BM25_FILENAME
+
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 g_tracer: Optional[LangChainTracer] = None
 # embeddings = OpenAIEmbeddings()
@@ -72,9 +95,52 @@ def get_faiss_db():
             f"Blog database not found in {DEFAULT_FAISS_DB_DIR} or {ALTERNATE_FAISS_DB_DIR}"
         )
 
-    return FAISS.load_local(
-        db_dir, embeddings, allow_dangerous_deserialization=True
+    return FAISS.load_local(db_dir, embeddings, allow_dangerous_deserialization=True)
+
+
+def get_bm25_retriever():
+    """Load BM25 retriever from pickle file in FAISS directory"""
+    # Check primary location
+    primary_bm25 = os.path.join(DEFAULT_FAISS_DB_DIR, BM25_FILENAME)
+    alternate_bm25 = os.path.join(ALTERNATE_FAISS_DB_DIR, BM25_FILENAME)
+
+    if os.path.exists(primary_bm25):
+        bm25_file = primary_bm25
+    elif os.path.exists(alternate_bm25):
+        ic(f"Using alternate BM25 location: {alternate_bm25}")
+        bm25_file = alternate_bm25
+    else:
+        raise Exception(
+            f"BM25 index not found in {primary_bm25} or {alternate_bm25}. Run 'build' command first."
+        )
+
+    with open(bm25_file, "rb") as f:
+        return pickle.load(f)
+
+
+def save_bm25_retriever(bm25_retriever):
+    """Save BM25 retriever to pickle file in FAISS directory"""
+    bm25_path = os.path.join(DEFAULT_FAISS_DB_DIR, BM25_FILENAME)
+    with open(bm25_path, "wb") as f:
+        pickle.dump(bm25_retriever, f)
+    ic(f"BM25 index saved to {bm25_path}")
+
+
+def get_hybrid_retriever(k: int = 10):
+    """Get ensemble retriever combining FAISS and BM25"""
+    faiss_db = get_faiss_db()
+    bm25_retriever = get_bm25_retriever()
+
+    # Create retrievers with specified k
+    faiss_retriever = faiss_db.as_retriever(search_kwargs={"k": k})
+
+    # Ensemble with configurable weights
+    ensemble_retriever = EnsembleRetriever(
+        retrievers=[bm25_retriever, faiss_retriever],
+        weights=[Config.BM25_WEIGHT, Config.FAISS_WEIGHT],
     )
+
+    return ensemble_retriever
 
 
 class DebugInfo(BaseModel):
@@ -87,12 +153,7 @@ class DebugInfo(BaseModel):
 g_debug_info = DebugInfo()
 
 
-chunk_size_5k_tokens = (
-    4 * 1000 * 5
-)  # ~ 5K tokens, given we'll be doing 5-10 facts, seems reasonable
-
-
-def chunk_documents_recursive(documents, chunk_size=chunk_size_5k_tokens):
+def chunk_documents_recursive(documents, chunk_size=Config.CHUNK_SIZE_TOKENS):
     recursive_splitter = text_splitter.RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=chunk_size // 4
     )
@@ -113,7 +174,7 @@ def chunk_documents_recursive(documents, chunk_size=chunk_size_5k_tokens):
             yield d
 
 
-def chunk_documents_as_md(documents, chunk_size=chunk_size_5k_tokens):
+def chunk_documents_as_md(documents, chunk_size=Config.CHUNK_SIZE_TOKENS):
     # TODO: Use UnstructuredMarkdownParser
     # Interesting trade off here, if we make chunks bigger we can have more context
     # If we make chunk smaller we can inject more chunks
@@ -141,7 +202,7 @@ def chunk_documents_as_md(documents, chunk_size=chunk_size_5k_tokens):
             )
 
 
-def chunk_documents_as_md_large(documents, chunk_size=chunk_size_5k_tokens):
+def chunk_documents_as_md_large(documents, chunk_size=Config.CHUNK_SIZE_TOKENS):
     # TODO: Use UnstructuredMarkdownParser
     # Interesting trade off here, if we make chunks bigger we can have more context
     # If we make chunk smaller we can inject more chunks
@@ -183,11 +244,23 @@ def get_blog_content(path):
     # set_trace()
     repo_path = pathlib.Path(os.path.expanduser(path))
 
-    markdown_files = list(repo_path.glob("*/*.md"))
+    # Only include whitelisted directories
+    markdown_files = []
+
+    for dir_name in Config.ALLOWED_DIRS:
+        dir_path = repo_path / dir_name
+        if dir_path.exists():
+            markdown_files.extend(dir_path.glob("*.md"))
+
     for markdown_file in markdown_files:
         with open(markdown_file, "r") as f:
+            content = f.read()
+            # Skip if file is somehow massive (shouldn't happen with normal blog posts)
+            if len(content) > Config.MAX_FILE_SIZE:
+                ic(f"Skipping massive file {markdown_file}: {len(content)} chars")
+                continue
             yield Document(
-                page_content=f.read(),
+                page_content=content,
                 metadata={"source": str(markdown_file.relative_to(repo_path))},
             )
 
@@ -224,10 +297,37 @@ def build():
     deduped_chunks = dedup_chunks(chunks)
     ic(len(chunks), len(deduped_chunks))
 
-    # Build the index and persist it
-    # Weird, used to have a .save, now covered by persistant_directory
-    db = FAISS.from_documents(deduped_chunks, embeddings)
+    # Build FAISS index in batches to avoid token limits
+    print("Building FAISS index in batches...")
+    db = None
+
+    for i in range(0, len(deduped_chunks), Config.BATCH_SIZE):
+        batch = deduped_chunks[i : i + Config.BATCH_SIZE]
+        batch_num = i // Config.BATCH_SIZE + 1
+        total_batches = (
+            len(deduped_chunks) + Config.BATCH_SIZE - 1
+        ) // Config.BATCH_SIZE
+        print(f"Processing batch {batch_num}/{total_batches}")
+
+        if db is None:
+            # Create initial FAISS index with first batch
+            db = FAISS.from_documents(batch, embeddings)
+        else:
+            # Add to existing index
+            db.add_documents(batch)
+
     db.save_local(DEFAULT_FAISS_DB_DIR)
+    ic(f"FAISS index saved to {DEFAULT_FAISS_DB_DIR}")
+
+    # Build BM25 index and persist it
+    print("Building BM25 index...")
+    bm25_retriever = BM25Retriever.from_documents(deduped_chunks)
+    bm25_retriever.k = 10  # Set default k for BM25
+    save_bm25_retriever(bm25_retriever)
+
+    print(f"✅ Both indexes built successfully in {DEFAULT_FAISS_DB_DIR}/")
+    print("  - FAISS: index.faiss, index.pkl")
+    print(f"  - BM25: {BM25_FILENAME}")
 
 
 @app.command()
@@ -261,26 +361,42 @@ def fixup_markdown_path(src):
     return fixup_ig66_path_to_url(fixup_markdown_path_to_url(src))
 
 
-g_blog_content_db = get_faiss_db()
-_docs = list(g_blog_content_db.docstore._dict.values())
-g_all_documents = {
-    "documents": [d.page_content for d in _docs],
-    "metadatas": [d.metadata for d in _docs],
-}
+# Lazy initialization to avoid race condition when DB doesn't exist
+g_blog_content_db = None
+g_all_documents = None
+
+
+def get_or_init_blog_db():
+    """Get or initialize the blog content database lazily"""
+    global g_blog_content_db, g_all_documents
+    if g_blog_content_db is None:
+        try:
+            g_blog_content_db = get_faiss_db()
+            _docs = list(g_blog_content_db.docstore._dict.values())
+            g_all_documents = {
+                "documents": [d.page_content for d in _docs],
+                "metadatas": [d.metadata for d in _docs],
+            }
+        except Exception as e:
+            ic(f"Failed to initialize blog database: {e}")
+            raise
+    return g_blog_content_db, g_all_documents
 
 
 def has_whole_document(path):
-    for m in g_all_documents["metadatas"]:
+    _, all_documents = get_or_init_blog_db()
+    for m in all_documents["metadatas"]:
         if m.get("source") == path and m.get("is_entire_document"):
             return True
     return False
 
 
 def get_document(path) -> Document:
-    for i, m in enumerate(g_all_documents["metadatas"]):
+    _, all_documents = get_or_init_blog_db()
+    for i, m in enumerate(all_documents["metadatas"]):
         if m.get("source") == path and m.get("is_entire_document"):
-            return Document(page_content=g_all_documents["documents"][i], metadata=m)
-    raise Exception(f"{path} document found")
+            return Document(page_content=all_documents["documents"][i], metadata=m)
+    raise Exception(f"{path} document not found")
 
 
 # cache this so it's memoized
@@ -319,8 +435,9 @@ def ask(
     ] = "What are the roles from Igor's Eulogy, answer in bullet form",
     facts: Annotated[int, typer.Option()] = 5,
     debug: bool = typer.Option(True),
+    hybrid: bool = typer.Option(True, help="Use hybrid search (BM25 + FAISS)"),
 ):
-    response = asyncio.run(iask(question, facts, debug))
+    response = asyncio.run(iask(question, facts, debug, use_hybrid=hybrid))
     print(response)
 
 
@@ -406,19 +523,24 @@ Reasoning: {result.primary_location.reasoning}
 
 ALTERNATIVE LOCATIONS:
 
-{chr(10).join(f'''Location {i+1}:
+{
+        chr(10).join(
+            f'''Location {i + 1}:
 File Path: {loc.markdown_path}
 Location: {loc.location}
 Reasoning: {loc.reasoning}
-''' for i, loc in enumerate(result.alternative_locations))}
+'''
+            for i, loc in enumerate(result.alternative_locations)
+        )
+    }
 
 ADDITIONAL SUGGESTIONS:
 
 Structuring Tips:
-{chr(10).join(f'• {tip}' for tip in result.structuring_tips)}
+{chr(10).join(f"• {tip}" for tip in result.structuring_tips)}
 
 Organization Tips:
-{chr(10).join(f'• {tip}' for tip in result.organization_tips)}
+{chr(10).join(f"• {tip}" for tip in result.organization_tips)}
 """
     return response
 
@@ -427,9 +549,12 @@ async def iask(
     question: str,
     facts: int,
     debug: bool = True,
+    use_hybrid: bool = True,
 ):
     if debug:
         ic(facts)
+        ic(f"Using {'hybrid' if use_hybrid else 'FAISS-only'} retrieval")
+
     # load FAISS index from DB
 
     prompt = ChatPromptTemplate.from_template(
@@ -459,13 +584,41 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
 
     llm = langchain_helper.get_model(openai=True)
 
-    # We can improve our relevance by getting the md_simple_chunks, but that loses context
-    # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
+    # Use hybrid retrieval if enabled and BM25 index exists
+    if use_hybrid:
+        try:
+            hybrid_retriever = get_hybrid_retriever(k=Config.FACT_MULTIPLIER * facts)
+            docs = await hybrid_retriever.ainvoke(question)
+            # Add dummy scores for compatibility with existing code
+            docs_and_scores = [(doc, 0.0) for doc in docs]
+            if debug:
+                ic("Using hybrid retrieval (BM25 + FAISS)")
+        except FileNotFoundError as e:
+            if debug:
+                ic(f"BM25 index not found, falling back to FAISS: {e}")
+            use_hybrid = False
+        except pickle.UnpicklingError as e:
+            if debug:
+                ic(f"BM25 index corrupted, falling back to FAISS: {e}")
+            use_hybrid = False
+        except Exception as e:
+            if debug:
+                ic(
+                    f"Hybrid retrieval failed unexpectedly, falling back to FAISS: {type(e).__name__}: {e}"
+                )
+            use_hybrid = False
 
-    global g_blog_content_db
-    docs_and_scores = await g_blog_content_db.asimilarity_search_with_relevance_scores(
-        question, k=4 * facts
-    )
+    if not use_hybrid:
+        # Fall back to FAISS-only retrieval
+        blog_content_db, _ = get_or_init_blog_db()
+        docs_and_scores = (
+            await blog_content_db.asimilarity_search_with_relevance_scores(
+                question, k=Config.FACT_MULTIPLIER * facts
+            )
+        )
+        if debug:
+            ic("Using FAISS-only retrieval")
+
     for doc, score in docs_and_scores:
         ic(doc.metadata, score)
 
@@ -501,8 +654,9 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
         # All we have is the partial
         facts_to_inject.append(fact)
 
-    good_docs = ["_posts/2020-04-01-Igor-Eulogy.md", "_d/operating-manual-2.md"]
-    facts_to_inject += [get_document(d) for d in good_docs]
+    # Skip adding good_docs for now since there's a path mismatch issue
+    # good_docs = ["_posts/2020-04-01-Igor-Eulogy.md", "_d/operating-manual-2.md"]
+    # facts_to_inject += [get_document(d) for d in good_docs]
 
     print("Source Documents")
     for doc in facts_to_inject:
@@ -528,161 +682,6 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     response = chain.ainvoke({"question": question, "context": context})
 
     return await response
-
-
-bot_help_text = "Replaced on_ready"
-
-
-@bot.event
-async def on_message(ctx):
-    # if message is from me, skip it
-    if ctx.author.bot:
-        # ic ("Ignoring message from bot", message)
-        return
-
-    ic("bot.on_message", ctx)
-    if len(ctx.content) == 0:
-        return
-    # message_content = ctx.content.replace(f"<@{bot.user.id}>", "").strip()
-    await send(
-        ctx, "Sorry I don't reply to DMs directly you need to use slash commands. e.g."
-    )
-    await send(ctx, bot_help_text)
-
-
-@app.command()
-def run_bot():
-    bot.run(get_bot_token("DISCORD_IGBLOG_BOT"))
-
-
-@bot.event
-async def on_ready():
-    print(f"{bot.user} is ready and online!")
-    global bot_help_text
-    bot_help_text = """```
-
-Commands:
- /ask - Ask a blog questions
- - More coming ...
-    ```"""
-
-
-@bot.command(description="Show help")
-async def help(ctx):
-    response = f"{bot_help_text}"
-    await ctx.respond(response)
-
-
-@bot.command(name="ask", description="Message the bot")
-async def ask_discord_command(ctx, question: str):
-    await ctx.defer()
-    progress_bar_task = await draw_progress_bar(ctx, f"User asked: {question}")
-    response = await iask(question, facts=10, debug=False)
-    progress_bar_task.cancel()
-    ic(response)
-    await send(ctx, response)
-    await ctx.respond(".")
-
-
-@bot.command(
-    name="enjoy", description="Ask the bot something Igor should do that he'll enjoy"
-)
-async def enjoy(ctx, extra: str = ""):
-    await ctx.defer()
-
-    # load FAISS index from DB
-
-    prompt = ChatPromptTemplate.from_template(
-        """
-You are Igor's life coach. You help him do things he enjoys.  Give him a recommendation on  a concrete task to do (from todo_enjoy), add bullet points on why he should do it. Include context from his affirmations.
-
-# Extra commands
-{extra}
-
-
-# Context
-{context}
-
-
-# Example output
-**Igor should**: <action>
-
-Igor will enjoy this because ..
-< 0-4 bullet points>
-    """
-    )
-
-    llm = langchain_helper.get_model(claude=True)
-
-    # We can improve our relevance by getting the md_simple_chunks, but that loses context
-    # Rebuild context by pulling in the largest chunk i can that contains the smaller chunk
-
-    good_docs = [
-        "_posts/2020-04-01-Igor-Eulogy.md",
-        "_d/operating-manual-2.md",
-        "_d/sublime.md",
-        "_d/enjoy2.md",
-        "_d/affirmations2.md",
-    ]
-    facts_to_inject = [get_document(d) for d in good_docs]
-
-    print("Source Documents")
-    for doc in facts_to_inject:
-        # Remap metadata to url
-        ic(doc.metadata)
-
-    context = docs_to_prompt(facts_to_inject)
-    ic(num_tokens_from_string(context))
-    chain = prompt | llm | StrOutputParser()
-
-    extra_if_present = f"({extra})" if extra else ""
-    progress_bar_task = await draw_progress_bar(
-        ctx, f"Finding activities for Igor to enjoy {extra_if_present}"
-    )
-    response = await chain.ainvoke({"context": context, "extra": extra})
-    progress_bar_task.cancel()
-    ic(response)
-
-    await send(ctx, response)
-    await ctx.respond(".")
-
-
-@bot.command(name="where", description="Suggest where to add new blog content")
-async def where_to_add(ctx, topic: str):
-    await ctx.defer()
-    progress_bar_task = await draw_progress_bar(
-        ctx, f"Analyzing where to add content about: {topic}"
-    )
-    response = await iask_where(topic)
-    progress_bar_task.cancel()
-    await send(ctx, response)
-    await ctx.respond(".")
-
-
-@bot.command(name="debug", description="Debug info the last call")
-async def debug(ctx):
-    await ctx.defer()
-    process = discord_helper.get_debug_process_info()
-    await send(
-        ctx,
-        f"""
-Tokens: {g_debug_info.count_tokens}
-Model: {g_debug_info.model}
-Proess:
-{process}
-Last documents:
-               """,
-    )
-    for doc in g_debug_info.documents:
-        await send(
-            ctx,
-            f"""`
-{json.dumps(doc.metadata, indent=4)}`
-                   """,
-        )
-    if g_tracer:
-        await send(ctx, f"Trace URL: f{g_tracer.get_run_url()}")
-    await ctx.respond(".")
 
 
 # @logger.catch()

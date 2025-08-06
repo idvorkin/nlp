@@ -1,6 +1,21 @@
 {
 	"permissions": {
-		"allow": ["Bash(./journal.py:*)", "Bash(gh pr view:*)"],
+		"allow": [
+			"Bash(./journal.py:*)",
+			"Bash(gh pr view:*)",
+			"Bash(gh api:*)",
+			"Bash(python -m pytest -xvs)",
+			"Bash(just test:*)",
+			"Bash(just lint)",
+			"Bash(just:*)",
+			"Bash(gh pr comment:*)",
+			"Bash(git add:*)",
+			"Bash(git commit:*)",
+			"Bash(git checkout:*)",
+			"Bash(git push:*)",
+			"Bash(git pull:*)",
+			"Bash(uv run:*)"
+		],
 		"deny": []
 	}
 }
