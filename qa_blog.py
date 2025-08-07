@@ -383,6 +383,30 @@ def get_or_init_blog_db():
     return g_blog_content_db, g_all_documents
 
 
+async def get_blog_db_for_search(question: str, k: int, debug: bool = False):
+    """
+    DRY helper to get documents from blog database for similarity search.
+    Used by both iask and iask_where functions.
+
+    Args:
+        question: The query string
+        k: Number of documents to retrieve
+        debug: Whether to show debug output
+
+    Returns:
+        Tuple of (docs_and_scores, blog_content_db)
+    """
+    blog_content_db, _ = get_or_init_blog_db()
+    docs_and_scores = await blog_content_db.asimilarity_search_with_relevance_scores(
+        question, k=k
+    )
+    if debug:
+        ic("Retrieved documents and scores:")
+        for doc, score in docs_and_scores:
+            ic(doc.metadata, score)
+    return docs_and_scores, blog_content_db
+
+
 def has_whole_document(path):
     _, all_documents = get_or_init_blog_db()
     for m in all_documents["metadatas"]:
@@ -488,13 +512,9 @@ File paths should always start with either "_d/" or "_posts/".
     )
 
     llm = langchain_helper.get_model(openai=True)
-    docs_and_scores = await g_blog_content_db.asimilarity_search_with_relevance_scores(
-        topic, k=8
-    )
-    if debug:
-        ic("Retrieved documents and scores:")
-        for doc, score in docs_and_scores:
-            ic(doc.metadata, score)
+
+    # Use DRY helper for database access
+    docs_and_scores, _ = await get_blog_db_for_search(topic, k=8, debug=debug)
 
     facts_to_inject = [doc for doc, _ in docs_and_scores]
     context = docs_to_prompt(facts_to_inject)
@@ -610,11 +630,8 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
 
     if not use_hybrid:
         # Fall back to FAISS-only retrieval
-        blog_content_db, _ = get_or_init_blog_db()
-        docs_and_scores = (
-            await blog_content_db.asimilarity_search_with_relevance_scores(
-                question, k=Config.FACT_MULTIPLIER * facts
-            )
+        docs_and_scores, _ = await get_blog_db_for_search(
+            question, k=Config.FACT_MULTIPLIER * facts, debug=False
         )
         if debug:
             ic("Using FAISS-only retrieval")
