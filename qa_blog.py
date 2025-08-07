@@ -10,6 +10,7 @@ import typer
 import os
 from rich import print
 from typing import List, Optional
+import time
 from langchain.docstore.document import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -26,7 +27,6 @@ from langchain.prompts.chat import (
 from langchain.schema.output_parser import StrOutputParser
 import json
 from pydantic import BaseModel
-from pathlib import Path
 import pickle
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
@@ -461,24 +461,28 @@ def ask(
     debug: bool = typer.Option(True),
     hybrid: bool = typer.Option(True, help="Use hybrid search (BM25 + FAISS)"),
 ):
+    start_time = time.perf_counter()
     response = asyncio.run(iask(question, facts, debug, use_hybrid=hybrid))
+    elapsed_time = time.perf_counter() - start_time
+
     print(response)
+    if debug:
+        print(f"\n⏱️  Query completed in {elapsed_time:.2f} seconds")
 
 
 async def iask_where(topic: str, debug: bool = False):
+    """Suggest where to add new blog content - simplified to match iask pattern"""
+    if debug:
+        ic(f"Finding placement for topic: {topic}")
+
+    # Simplified prompt without backlinks file dependency
     prompt = ChatPromptTemplate.from_template(
         """
 You are an expert blog organization consultant. You help Igor organize his blog content effectively.
-Use chain of thought reasoning to suggest where new content about a topic should be added.
 
 Topic to add: {topic}
 
-Here is the current layout of the blog
-<blog_information>
-    {backlinks}
-</blog_information>
-
-Here is the current blog structure and content for reference:
+Based on the following blog content, suggest where this new content should be added:
 
 <blog_chunks>
 {context}
@@ -486,28 +490,15 @@ Here is the current blog structure and content for reference:
 
 Think through this step by step:
 1. What is the main theme/purpose of this content?
-2. What existing categories/sections might be relevant?
-3. Are there similar topics already covered somewhere?
-4. Should this be its own post or part of existing content?
+2. What existing posts/sections are most relevant?
+3. Should this be its own post or part of existing content?
 
-Return your response as a JSON object matching this Pydantic model:
+Provide a clear recommendation with:
+- PRIMARY LOCATION: The best place to add this content (file path and section)
+- ALTERNATIVE LOCATIONS: 2-3 other good options
+- REASONING: Why these locations make sense
 
-```python
-class LocationRecommendation:
-    location: str      # Where to put the content (section name/header)
-    markdown_path: str # The full markdown file path (e.g. "_d/joy.md" or "_posts/something.md")
-    reasoning: str     # Why this location makes sense
-
-class BlogPlacementSuggestion:
-    primary_location: LocationRecommendation
-    alternative_locations: List[LocationRecommendation]
-    structuring_tips: List[str]    # List of tips for content structure
-    organization_tips: List[str]    # List of tips for organization
-```
-
-Ensure your response is valid JSON that matches this schema exactly.
-When suggesting locations, always include both the section within the file and the complete markdown file path relative to the blog root.
-File paths should always start with either "_d/" or "_posts/".
+Keep your response practical and actionable.
     """
     )
 
@@ -519,50 +510,21 @@ File paths should always start with either "_d/" or "_posts/".
     facts_to_inject = [doc for doc, _ in docs_and_scores]
     context = docs_to_prompt(facts_to_inject)
 
-    from langchain.output_parsers import PydanticOutputParser
-
-    parser = PydanticOutputParser(pydantic_object=BlogPlacementSuggestion)
-
-    chain = prompt | llm | parser
-    backlinks_content = (
-        Path.home() / "gits/idvorkin.github.io/back-links.json"
-    ).read_text()
-    result = await chain.ainvoke(
-        {"topic": topic, "context": context, "backlinks": backlinks_content}
-    )
     if debug:
-        ic("LLM Response:", result)
+        ic(f"Context tokens: {num_tokens_from_string(context)}")
 
-    response = f"""
-RECOMMENDED LOCATIONS:
+    chain = prompt | llm | StrOutputParser()
 
-PRIMARY LOCATION:
-File Path: {result.primary_location.markdown_path}
-Location: {result.primary_location.location}
-Reasoning: {result.primary_location.reasoning}
+    try:
+        result = await chain.ainvoke({"topic": topic, "context": context})
+        if debug:
+            ic("LLM Response received")
+    except Exception as e:
+        if debug:
+            ic(f"Error in iask_where: {e}")
+        result = f"Error: Could not generate placement suggestion - {str(e)}"
 
-ALTERNATIVE LOCATIONS:
-
-{
-        chr(10).join(
-            f'''Location {i + 1}:
-File Path: {loc.markdown_path}
-Location: {loc.location}
-Reasoning: {loc.reasoning}
-'''
-            for i, loc in enumerate(result.alternative_locations)
-        )
-    }
-
-ADDITIONAL SUGGESTIONS:
-
-Structuring Tips:
-{chr(10).join(f"• {tip}" for tip in result.structuring_tips)}
-
-Organization Tips:
-{chr(10).join(f"• {tip}" for tip in result.organization_tips)}
-"""
-    return response
+    return result
 
 
 async def iask(
@@ -712,8 +674,13 @@ def where(
     debug: Annotated[bool, typer.Option(help="Show debugging information")] = False,
 ):
     """Suggest where to add new blog content about a topic"""
+    start_time = time.perf_counter()
     response = asyncio.run(iask_where(topic, debug))
+    elapsed_time = time.perf_counter() - start_time
+
     print(response)
+    if debug:
+        print(f"\n⏱️  Query completed in {elapsed_time:.2f} seconds")
 
 
 if __name__ == "__main__":
