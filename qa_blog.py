@@ -460,20 +460,29 @@ def ask(
     facts: Annotated[int, typer.Option()] = 5,
     debug: bool = typer.Option(True),
     hybrid: bool = typer.Option(True, help="Use hybrid search (BM25 + FAISS)"),
+    fast: bool = typer.Option(False, help="Use fast GPT-OSS model"),
 ):
     start_time = time.perf_counter()
-    response = asyncio.run(iask(question, facts, debug, use_hybrid=hybrid))
+    response, timings = asyncio.run(
+        iask(question, facts, debug, use_hybrid=hybrid, use_fast=fast)
+    )
     elapsed_time = time.perf_counter() - start_time
 
     print(response)
-    if debug:
-        print(f"\n⏱️  Query completed in {elapsed_time:.2f} seconds")
+    timing_str = " | ".join(
+        [f"{stage}: {duration:.2f}s" for stage, duration in timings.items()]
+    )
+    print(f"\n⏱️  {timing_str} | Total: {elapsed_time:.2f}s")
 
 
-async def iask_where(topic: str, debug: bool = False):
+async def iask_where(topic: str, debug: bool = False, use_fast: bool = False):
     """Suggest where to add new blog content - simplified to match iask pattern"""
+    timings = {}
+
     if debug:
         ic(f"Finding placement for topic: {topic}")
+        if use_fast:
+            ic("Using fast GPT-OSS model")
 
     # Simplified prompt without backlinks file dependency
     prompt = ChatPromptTemplate.from_template(
@@ -502,19 +511,33 @@ Keep your response practical and actionable.
     """
     )
 
-    llm = langchain_helper.get_model(openai=True)
+    # Model selection timing
+    model_start = time.perf_counter()
+    if use_fast:
+        llm = langchain_helper.get_model(gpt_oss=True)
+    else:
+        llm = langchain_helper.get_model(openai=True)
+    timings["Model initialization"] = time.perf_counter() - model_start
 
+    # Document retrieval timing
+    retrieval_start = time.perf_counter()
     # Use DRY helper for database access
     docs_and_scores, _ = await get_blog_db_for_search(topic, k=8, debug=debug)
+    timings["Document retrieval"] = time.perf_counter() - retrieval_start
 
+    # Context preparation timing
+    context_start = time.perf_counter()
     facts_to_inject = [doc for doc, _ in docs_and_scores]
     context = docs_to_prompt(facts_to_inject)
+    timings["Context preparation"] = time.perf_counter() - context_start
 
     if debug:
         ic(f"Context tokens: {num_tokens_from_string(context)}")
 
     chain = prompt | llm | StrOutputParser()
 
+    # LLM inference timing
+    llm_start = time.perf_counter()
     try:
         result = await chain.ainvoke({"topic": topic, "context": context})
         if debug:
@@ -523,8 +546,9 @@ Keep your response practical and actionable.
         if debug:
             ic(f"Error in iask_where: {e}")
         result = f"Error: Could not generate placement suggestion - {str(e)}"
+    timings["LLM inference"] = time.perf_counter() - llm_start
 
-    return result
+    return result, timings
 
 
 async def iask(
@@ -532,10 +556,15 @@ async def iask(
     facts: int,
     debug: bool = True,
     use_hybrid: bool = True,
+    use_fast: bool = False,
 ):
+    timings = {}
+
     if debug:
         ic(facts)
         ic(f"Using {'hybrid' if use_hybrid else 'FAISS-only'} retrieval")
+        if use_fast:
+            ic("Using fast GPT-OSS model")
 
     # load FAISS index from DB
 
@@ -564,7 +593,16 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     """
     )
 
-    llm = langchain_helper.get_model(openai=True)
+    # Model selection timing
+    model_start = time.perf_counter()
+    if use_fast:
+        llm = langchain_helper.get_model(gpt_oss=True)
+    else:
+        llm = langchain_helper.get_model(openai=True)
+    timings["Model initialization"] = time.perf_counter() - model_start
+
+    # Document retrieval timing
+    retrieval_start = time.perf_counter()
 
     # Use hybrid retrieval if enabled and BM25 index exists
     if use_hybrid:
@@ -597,6 +635,11 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
         )
         if debug:
             ic("Using FAISS-only retrieval")
+
+    timings["Document retrieval"] = time.perf_counter() - retrieval_start
+
+    # Context preparation timing
+    context_start = time.perf_counter()
 
     for doc, score in docs_and_scores:
         ic(doc.metadata, score)
@@ -633,6 +676,8 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
         # All we have is the partial
         facts_to_inject.append(fact)
 
+    timings["Context preparation"] = time.perf_counter() - context_start
+
     # Skip adding good_docs for now since there's a path mismatch issue
     # good_docs = ["_posts/2020-04-01-Igor-Eulogy.md", "_d/operating-manual-2.md"]
     # facts_to_inject += [get_document(d) for d in good_docs]
@@ -658,9 +703,12 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     g_debug_info.question = question
     g_debug_info.model = langchain_helper.get_model_name(llm)
 
-    response = chain.ainvoke({"question": question, "context": context})
+    # LLM inference timing
+    llm_start = time.perf_counter()
+    response = await chain.ainvoke({"question": question, "context": context})
+    timings["LLM inference"] = time.perf_counter() - llm_start
 
-    return await response
+    return response, timings
 
 
 # @logger.catch()
@@ -672,15 +720,18 @@ def app_wrap_loguru():
 def where(
     topic: Annotated[str, typer.Argument(help="Topic to find placement for")],
     debug: Annotated[bool, typer.Option(help="Show debugging information")] = False,
+    fast: Annotated[bool, typer.Option(help="Use fast GPT-OSS model")] = False,
 ):
     """Suggest where to add new blog content about a topic"""
     start_time = time.perf_counter()
-    response = asyncio.run(iask_where(topic, debug))
+    response, timings = asyncio.run(iask_where(topic, debug, use_fast=fast))
     elapsed_time = time.perf_counter() - start_time
 
     print(response)
-    if debug:
-        print(f"\n⏱️  Query completed in {elapsed_time:.2f} seconds")
+    timing_str = " | ".join(
+        [f"{stage}: {duration:.2f}s" for stage, duration in timings.items()]
+    )
+    print(f"\n⏱️  {timing_str} | Total: {elapsed_time:.2f}s")
 
 
 if __name__ == "__main__":
