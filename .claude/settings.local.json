@@ -16,7 +16,11 @@
 			"Bash(git pull:*)",
 			"Bash(uv run:*)",
 			"Bash(gh pr create:*)",
-			"Bash(python -m pytest tests/test_faiss_loads.py -v)"
+			"Bash(python -m pytest tests/test_faiss_loads.py -v)",
+			"Bash(python qa_blog.py:*)",
+			"Bash(qa_blog ask:*)",
+			"Bash(qa_blog:*)",
+			"Bash(gh pr:*)"
 		],
 		"deny": []
 	}
