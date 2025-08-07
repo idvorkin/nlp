@@ -157,7 +157,7 @@ Clearly state if this change breaks existing behavior and what consumers must do
     return prompt
 
 
-async def a_build_commit(oneline: bool = False, fast: bool = False, kimi: bool = True):
+async def a_build_commit(oneline: bool = False, fast: bool = False, kimi: bool = True, gpt_oss: bool = True):
     user_text = "".join(sys.stdin.readlines())
     # Filter out diffs from files that should be skipped
     filtered_text = filter_diff_content(user_text)
@@ -172,10 +172,9 @@ async def a_build_commit(oneline: bool = False, fast: bool = False, kimi: bool =
         llms = langchain_helper.get_models(
             openai=True,
             google=True,
-            o4_mini=True,
             claude=True,
-            openai_mini=True,
             kimi=kimi,
+            gpt_oss=gpt_oss,
         )
         tokens = num_tokens_from_string(filtered_text)
         if tokens < 32_000:
@@ -253,9 +252,12 @@ def build_commit(
     kimi: bool = typer.Option(
         True, "--kimi/--no-kimi", help="Use Kimi model (default: enabled)"
     ),
+    gpt_oss: bool = typer.Option(
+        True, "--gpt-oss/--no-gpt-oss", help="Use GPT-OSS-120B model (default: enabled)"
+    ),
 ):
     def run_build():
-        result = asyncio.run(a_build_commit(oneline, fast, kimi))
+        result = asyncio.run(a_build_commit(oneline, fast, kimi, gpt_oss))
         if result != 0:
             raise typer.Exit(code=result)
 

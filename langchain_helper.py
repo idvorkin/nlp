@@ -99,6 +99,7 @@ def get_models(
     google_think_medium: bool = False,
     google_think_high: bool = False,
     kimi: bool = False,
+    gpt_oss: bool = False,
 ) -> List[BaseChatModel]:
     ret = []
 
@@ -141,6 +142,9 @@ def get_models(
     if kimi:
         ret.append(get_model(kimi=True))
 
+    if gpt_oss:
+        ret.append(get_model(gpt_oss=True))
+
     return ret
 
 
@@ -159,6 +163,7 @@ def get_model(
     google_think_medium: bool = False,
     google_think_high: bool = False,
     kimi: bool = False,
+    gpt_oss: bool = False,
 ) -> BaseChatModel:
     """
     See changes in diff
@@ -178,6 +183,8 @@ def get_model(
             google_think_medium,
             google_think_high,
             kimi,
+            gpt_oss,
+            openai_mini,
         ]
     )
     if count_true > 1:
@@ -286,6 +293,10 @@ def get_model(
         from langchain_groq import ChatGroq
 
         model = ChatGroq(model_name="moonshotai/kimi-k2-instruct")
+    elif gpt_oss:
+        from langchain_groq import ChatGroq
+
+        model = ChatGroq(model_name="openai/gpt-oss-120b")
     elif o4_mini:
         from langchain_openai.chat_models import ChatOpenAI
 
