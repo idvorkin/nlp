@@ -422,6 +422,7 @@ async def a_think(
     core_problems: bool,
     interests: bool,
     kimi: bool,
+    gpt_oss: bool,
 ):
     output_dir = Path("~/tmp").expanduser()
     repo_info = get_repo_info()  # Default False for getting source file URL
@@ -430,12 +431,9 @@ async def a_think(
         openai=True,
         claude=True,
         google=True,
-        google_think=True,
-        deepseek=True,
-        o4_mini=True,
-        google_flash=True,
-        openai_mini=True,
+        google_think_medium=True,
         kimi=kimi,
+        gpt_oss=gpt_oss,
     )
 
     user_text = openai_wrapper.get_text_from_path_or_stdin(path)
@@ -564,6 +562,9 @@ def think(
     kimi: bool = typer.Option(
         True, "--kimi/--no-kimi", help="Use Kimi model (default: enabled)"
     ),
+    gpt_oss: bool = typer.Option(
+        True, "--gpt-oss/--no-gpt-oss", help="Use GPT-OSS-120B model (default: enabled)"
+    ),
     path: str = typer.Argument(None),
 ):
     langchain_helper.langsmith_trace_if_requested(
@@ -576,6 +577,7 @@ def think(
                 core_problems=core_problems,
                 interests=interests,
                 kimi=kimi,
+                gpt_oss=gpt_oss,
             )
         ),
     )
