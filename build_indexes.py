@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build FAISS and BM25 indexes for blog with proper chunking"""
 
+import os
 import pickle
 from langchain_community.retrievers import BM25Retriever
 from langchain_community.vectorstores import FAISS
@@ -75,10 +76,11 @@ def build_indexes():
     bm25_retriever = BM25Retriever.from_documents(filtered_chunks)
     bm25_retriever.k = 10
 
-    # Save BM25 index
-    with open("blog_bm25.pkl", "wb") as f:
+    # Save BM25 index in same directory as FAISS
+    bm25_path = os.path.join("blog.faiss", "bm25.pkl")
+    with open(bm25_path, "wb") as f:
         pickle.dump(bm25_retriever, f)
-    print("✅ BM25 index saved to blog_bm25.pkl")
+    print(f"✅ BM25 index saved to {bm25_path}")
 
     print("\n✨ Both indexes built successfully!")
     return len(filtered_chunks)
