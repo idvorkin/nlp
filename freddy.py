@@ -132,7 +132,7 @@ def generic_negative():
     ic_flat_response(response)
 
 
-@ell.complex(model="gpt-4o", temperature=0.7)
+@ell.complex(model="gpt-5", temperature=0.7)
 def prompt_senior_engineer_bot(message_history: list[ell.Message]) -> list[ell.Message]:
     llm_system_message = """ You are going to roleplay Joe, a senior engineer at Meta who is not great at giving feedback. 
     You are giving feedback to Bob, an e3 engineer at Meta. Who you worked with

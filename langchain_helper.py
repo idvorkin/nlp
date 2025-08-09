@@ -304,7 +304,7 @@ def get_model(
     elif openai_mini:
         from langchain_openai.chat_models import ChatOpenAI
 
-        model = ChatOpenAI(model="gpt-4.1-mini", model_kwargs={})
+        model = ChatOpenAI(model="gpt-5-mini", model_kwargs={})
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
