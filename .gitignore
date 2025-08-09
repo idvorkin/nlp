@@ -100,3 +100,6 @@ uv.lock
 .cursor/rules/_*.mdc
 # SpecStory explanation file
 .specstory/.what-is-this.md
+
+# Claude local settings
+.claude/settings.local.json
