@@ -7,16 +7,23 @@ import dspy
 # Create Typer app following conventions
 app = typer.Typer()
 
+
 @logger.catch()
 def app_wrap_loguru():
     app()
 
 
-default_model = "openai/gpt-4o"
+default_model = "openai/gpt-5"
+
+
 @app.command()
 def main(
-    prompt: Annotated[str, typer.Argument(help="Prompt to test with DSPy")] = "What is machine learning?",
-    model: Annotated[str, typer.Option(help=f"Model to use (default: {default_model})")] = default_model,
+    prompt: Annotated[
+        str, typer.Argument(help="Prompt to test with DSPy")
+    ] = "What is machine learning?",
+    model: Annotated[
+        str, typer.Option(help=f"Model to use (default: {default_model})")
+    ] = default_model,
 ):
     """
     Play with DSPy functionality
@@ -37,9 +44,10 @@ def main(
     # Run the program
     qa = BasicQA()
     result = qa(prompt)
-    
+
     logger.info(f"Input prompt: {prompt}")
     logger.info(f"Response: {result}")
+
 
 if __name__ == "__main__":
     app_wrap_loguru()

@@ -70,9 +70,9 @@ def get_ell_model(
     elif kimi:
         return "moonshotai/kimi-k2-instruct"
     elif openai_cheap:
-        return "gpt-4o-mini"
+        return "gpt-5-mini"
     else:
-        return "gpt-4.1-2025-04-14"  # Using the new model version
+        return "gpt-5"
 
 
 def is_port_in_use(port):
