@@ -105,8 +105,8 @@ def format_csv_output(llm_output: str) -> str:
 async def a_fix(path: str, chunk_size: int, lines_per_chunk: int):
     from langchain_openai.chat_models import ChatOpenAI
 
-    llm = ChatOpenAI(model="gpt-4o")
-    # llm = ChatOpenAI(model="gpt-4o-mini")
+    llm = ChatOpenAI(model="gpt-5")
+    # llm = ChatOpenAI(model="gpt-5-mini")
     ic(llm)
     # llm = langchain_helper.get_model(openai=True)
 
