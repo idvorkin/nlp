@@ -157,14 +157,19 @@ Clearly state if this change breaks existing behavior and what consumers must do
     return prompt
 
 
-async def a_build_commit(oneline: bool = False, fast: bool = False, kimi: bool = True, gpt_oss: bool = True):
+async def a_build_commit(
+    oneline: bool = False, fast: bool = False, kimi: bool = True, gpt_oss: bool = True
+):
     user_text = "".join(sys.stdin.readlines())
     # Filter out diffs from files that should be skipped
     filtered_text = filter_diff_content(user_text)
 
     if fast:
-        # Use R1 (deepseek) only once for fast mode
-        llms = [langchain_helper.get_model(llama=True)]
+        # Use Llama 4 and GPT-OSS for fast mode
+        llms = [
+            langchain_helper.get_model(llama=True),
+            langchain_helper.get_model(gpt_oss=True),
+        ]
     elif oneline:
         # For oneline, just use Llama
         llms = [langchain_helper.get_model(llama=True)]
@@ -247,7 +252,7 @@ def build_commit(
         help="Generate a single-line commit message using Llama only",
     ),
     fast: bool = typer.Option(
-        False, "--fast", help="Use Llama only once for faster processing"
+        False, "--fast", help="Use Llama 4 and GPT-OSS for faster processing"
     ),
     kimi: bool = typer.Option(
         True, "--kimi/--no-kimi", help="Use Kimi model (default: enabled)"
