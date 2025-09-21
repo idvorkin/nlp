@@ -165,10 +165,11 @@ async def a_build_commit(
     filtered_text = filter_diff_content(user_text)
 
     if fast:
-        # Use Llama 4 and GPT-OSS for fast mode
+        # Use Llama 4, GPT-OSS, and Kimi for fast mode
         llms = [
             langchain_helper.get_model(llama=True),
             langchain_helper.get_model(gpt_oss=True),
+            langchain_helper.get_model(kimi=True),
         ]
     elif oneline:
         # For oneline, just use Llama
@@ -199,9 +200,12 @@ async def a_build_commit(
 
     describe_diffs = await langchain_helper.async_run_on_llms(describe_diff, llms)
 
+    # Sort by duration (slowest first)
+    describe_diffs_sorted = sorted(describe_diffs, key=lambda x: x[2], reverse=True)
+
     successful_results = 0
 
-    for result, llm, duration in describe_diffs:
+    for result, llm, duration in describe_diffs_sorted:
         model_name = langchain_helper.get_model_name(llm)
 
         try:
