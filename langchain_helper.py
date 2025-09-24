@@ -25,7 +25,11 @@ class GoogleThinkingLevel(Enum):
 
 
 class OpenAIResponsesWrapper(BaseChatModel):
-    """Wrapper to use OpenAI Responses API with LangChain chat interface"""
+    """Wrapper to use OpenAI Responses API (v1/responses) with LangChain chat interface
+
+    The Responses API is OpenAI's new stateful API that preserves reasoning state
+    across turns, specifically designed for GPT-5 models including GPT-5-Codex.
+    """
 
     model: str = "gpt-5-codex"
     model_name: str = "gpt-5-codex"  # For compatibility with get_model_name
@@ -46,17 +50,18 @@ class OpenAIResponsesWrapper(BaseChatModel):
         if not client:
             raise ValueError("OpenAI client not available")
 
-        # Make Responses API call
-        response = client.completions.create(
+        # Make Responses API call (v1/responses - new stateful API for GPT-5)
+        # Note: GPT-5-Codex doesn't support temperature parameter
+        response = client.responses.create(
             model=self.model,
-            prompt=prompt,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
+            input=prompt,  # Responses API uses 'input' instead of 'prompt'
+            max_output_tokens=self.max_tokens,  # Responses API uses 'max_output_tokens'
             **kwargs
         )
 
         # Return in expected format
-        return self._create_chat_result(response.choices[0].text)
+        # Responses API returns 'output_text' instead of 'choices[0].text'
+        return self._create_chat_result(response.output_text)
 
     def _messages_to_prompt(self, messages) -> str:
         """Convert LangChain messages to a single prompt string"""
