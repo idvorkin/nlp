@@ -28,6 +28,7 @@ class OpenAIResponsesWrapper(BaseChatModel):
     """Wrapper to use OpenAI Responses API with LangChain chat interface"""
 
     model: str = "gpt-5-codex"
+    model_name: str = "gpt-5-codex"  # For compatibility with get_model_name
     temperature: float = 0.7
     max_tokens: int = 4096
 
@@ -35,7 +36,7 @@ class OpenAIResponsesWrapper(BaseChatModel):
     def _llm_type(self) -> str:
         return "openai-responses"
 
-    def _generate(self, messages: List[Any], **kwargs) -> Any:
+    def _generate(self, messages: List[Any], stop=None, run_manager=None, **kwargs) -> Any:
         """Convert chat messages to Responses API format and generate"""
         # Convert messages to single prompt
         prompt = self._messages_to_prompt(messages)
@@ -373,8 +374,6 @@ def get_model(
     elif gpt5_codex:
         # Use custom wrapper for Responses API
         model = OpenAIResponsesWrapper(model="gpt-5-codex")
-        # Add identifier for get_model_name
-        model.model_name = "gpt-5-codex"  # type: ignore
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
