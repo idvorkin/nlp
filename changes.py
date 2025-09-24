@@ -383,11 +383,14 @@ def changes(
     ),
     llama: bool = True,
     o4_mini: bool = True,
-    fast: bool = typer.Option(False, help="Fast analysis using only Llama model"),
+    fast: bool = typer.Option(
+        False, help="Fast analysis using Llama and GPT-OSS models"
+    ),
     only: str = None,
     verbose: bool = False,
+    gpt_oss: bool = True,
 ):
-    # If fast is True, override other model selections to use only llama
+    # If fast is True, override other model selections to use llama and gpt_oss
     if fast:
         openai = False
         claude = False
@@ -398,9 +401,10 @@ def changes(
         google_think_medium = False
         google_think_high = False
         llama = True
+        gpt_oss = True
         o4_mini = False
         if verbose:
-            print("Fast mode: using only Llama model for quick analysis")
+            print("Fast mode: using Llama and GPT-OSS models for quick analysis")
 
     llms = langchain_helper.get_models(
         openai=openai,
@@ -413,6 +417,7 @@ def changes(
         google_think_high=google_think_high,
         o4_mini=o4_mini,
         llama=llama,
+        gpt_oss=gpt_oss,
     )
 
     # If no models are selected, provide a helpful error message
