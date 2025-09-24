@@ -158,22 +158,27 @@ Clearly state if this change breaks existing behavior and what consumers must do
 
 
 async def a_build_commit(
-    oneline: bool = False, fast: bool = False, kimi: bool = True, gpt_oss: bool = True
+    oneline: bool = False, fast: bool = False, kimi: bool = True, gpt_oss: bool = True, gpt5_codex: bool = False
 ):
     user_text = "".join(sys.stdin.readlines())
     # Filter out diffs from files that should be skipped
     filtered_text = filter_diff_content(user_text)
 
     if fast:
-        # Use Llama 4, GPT-OSS, and Kimi for fast mode
+        # Include GPT-5-Codex in fast mode for code-optimized results
         llms = [
             langchain_helper.get_model(llama=True),
             langchain_helper.get_model(gpt_oss=True),
             langchain_helper.get_model(kimi=True),
         ]
+        if gpt5_codex:
+            llms.append(langchain_helper.get_model(gpt5_codex=True))
     elif oneline:
-        # For oneline, just use Llama
-        llms = [langchain_helper.get_model(llama=True)]
+        # For oneline, optionally use GPT-5-Codex if specified
+        if gpt5_codex:
+            llms = [langchain_helper.get_model(gpt5_codex=True)]
+        else:
+            llms = [langchain_helper.get_model(llama=True)]
     else:
         llms = langchain_helper.get_models(
             openai=True,
@@ -181,6 +186,7 @@ async def a_build_commit(
             claude=True,
             kimi=kimi,
             gpt_oss=gpt_oss,
+            gpt5_codex=gpt5_codex,
         )
         tokens = num_tokens_from_string(filtered_text)
         if tokens < 32_000:
@@ -264,9 +270,13 @@ def build_commit(
     gpt_oss: bool = typer.Option(
         True, "--gpt-oss/--no-gpt-oss", help="Use GPT-OSS-120B model (default: enabled)"
     ),
+    gpt5_codex: bool = typer.Option(
+        False, "--gpt5-codex/--no-gpt5-codex",
+        help="Use GPT-5-Codex model optimized for code (default: disabled)"
+    ),
 ):
     def run_build():
-        result = asyncio.run(a_build_commit(oneline, fast, kimi, gpt_oss))
+        result = asyncio.run(a_build_commit(oneline, fast, kimi, gpt_oss, gpt5_codex))
         if result != 0:
             raise typer.Exit(code=result)
 

@@ -4,6 +4,8 @@ import os
 from langchain_core.language_models.chat_models import (
     BaseChatModel,
 )
+from langchain_core.messages import AIMessage
+from typing import List, Any
 import openai_wrapper
 from icecream import ic
 from types import FrameType
@@ -20,6 +22,63 @@ class GoogleThinkingLevel(Enum):
     LOW = 1024  # Light reasoning for simple tasks
     MEDIUM = 8192  # Moderate reasoning for complex tasks
     HIGH = 24576  # Maximum reasoning for very complex tasks
+
+
+class OpenAIResponsesWrapper(BaseChatModel):
+    """Wrapper to use OpenAI Responses API with LangChain chat interface"""
+
+    model: str = "gpt-5-codex"
+    temperature: float = 0.7
+    max_tokens: int = 4096
+
+    @property
+    def _llm_type(self) -> str:
+        return "openai-responses"
+
+    def _generate(self, messages: List[Any], **kwargs) -> Any:
+        """Convert chat messages to Responses API format and generate"""
+        # Convert messages to single prompt
+        prompt = self._messages_to_prompt(messages)
+
+        # Get OpenAI client
+        client = openai_wrapper.get_client()
+        if not client:
+            raise ValueError("OpenAI client not available")
+
+        # Make Responses API call
+        response = client.completions.create(
+            model=self.model,
+            prompt=prompt,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            **kwargs
+        )
+
+        # Return in expected format
+        return self._create_chat_result(response.choices[0].text)
+
+    def _messages_to_prompt(self, messages) -> str:
+        """Convert LangChain messages to a single prompt string"""
+        prompt_parts = []
+
+        for msg in messages:
+            if hasattr(msg, 'content'):
+                if msg.__class__.__name__ == 'SystemMessage':
+                    prompt_parts.append(f"Instructions:\n{msg.content}")
+                elif msg.__class__.__name__ == 'HumanMessage':
+                    prompt_parts.append(f"Input:\n{msg.content}")
+                elif msg.__class__.__name__ == 'AIMessage':
+                    prompt_parts.append(f"Response:\n{msg.content}")
+
+        # Add explicit instruction for response
+        prompt_parts.append("\nGenerate a commit message based on the above diff:")
+
+        return "\n\n".join(prompt_parts)
+
+    def _create_chat_result(self, text: str):
+        """Create a chat result from text response"""
+        from langchain_core.outputs import ChatGeneration, ChatResult
+        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=text))])
 
 
 def get_embeddings_model():
@@ -100,6 +159,7 @@ def get_models(
     google_think_high: bool = False,
     kimi: bool = False,
     gpt_oss: bool = False,
+    gpt5_codex: bool = False,  # NEW
 ) -> List[BaseChatModel]:
     ret = []
 
@@ -145,6 +205,9 @@ def get_models(
     if gpt_oss:
         ret.append(get_model(gpt_oss=True))
 
+    if gpt5_codex:
+        ret.append(get_model(gpt5_codex=True))
+
     return ret
 
 
@@ -164,6 +227,7 @@ def get_model(
     google_think_high: bool = False,
     kimi: bool = False,
     gpt_oss: bool = False,
+    gpt5_codex: bool = False,  # NEW
 ) -> BaseChatModel:
     """
     See changes in diff
@@ -185,6 +249,7 @@ def get_model(
             kimi,
             gpt_oss,
             openai_mini,
+            gpt5_codex,  # NEW
         ]
     )
     if count_true > 1:
@@ -305,6 +370,11 @@ def get_model(
         from langchain_openai.chat_models import ChatOpenAI
 
         model = ChatOpenAI(model="gpt-5-mini", model_kwargs={})
+    elif gpt5_codex:
+        # Use custom wrapper for Responses API
+        model = OpenAIResponsesWrapper(model="gpt-5-codex")
+        # Add identifier for get_model_name
+        model.model_name = "gpt-5-codex"  # type: ignore
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
