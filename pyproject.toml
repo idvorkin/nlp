@@ -115,8 +115,8 @@ diarize = "diarize:app"
 venvPath = "."
 venv = ".venv"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "jupyterlab>=4.2",
     "jupyterlab-lsp",
     "nbdime",
