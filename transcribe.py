@@ -1,5 +1,14 @@
-#!python3
-
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "typer",
+#     "loguru",
+#     "rich",
+#     "icecream",
+#     "assemblyai",
+# ]
+# ///
 
 from datetime import datetime
 import typer
