@@ -71,6 +71,7 @@ dependencies = [
     "pymupdf",
     "validators",
     "rank-bm25>=0.2.2",
+    "langchain-xai",
 ]
 
 [tool.setuptools]

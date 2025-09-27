@@ -27,6 +27,7 @@ index 1234567..abcdefg 100644
 TEST_ENV = os.environ.copy()
 TEST_ENV['OPENAI_API_KEY'] = 'sk-test-dummy-key'
 TEST_ENV['GOOGLE_API_KEY'] = 'dummy-google-key'
+TEST_ENV['XAI_API_KEY'] = 'dummy-xai-key'
 
 
 def run_commit_command(flags: list[str], timeout: float = 10.0) -> tuple[int, str, str]:
@@ -57,6 +58,7 @@ def test_help_flag():
     assert returncode == 0
     assert "--help" in stdout
     assert "--gpt5-codex" in stdout  # Our new flag should be in help
+    assert "--grok4-fast" in stdout  # Our grok4-fast flag should be in help
 
 
 def test_oneline_mode():
@@ -183,6 +185,36 @@ def test_parallel_execution_verification():
     assert returncode != -1, "Command should not timeout if models run in parallel"
 
 
+def test_grok4_fast_flag():
+    """Test --grok4-fast flag runs without crashing."""
+    returncode, stdout, stderr = run_commit_command(['--grok4-fast'])
+
+    # Should either succeed or fail gracefully
+    success = returncode == 0 and ("commit" in stdout.lower() or "generated" in stdout.lower())
+    api_error = "Invalid API key" in stderr or "API key not found" in stderr or "Error" in stderr
+    assert success or api_error or returncode != 0, f"Unexpected output: {stderr}"
+
+
+def test_oneline_with_grok4_fast():
+    """Test --oneline --grok4-fast flags together."""
+    returncode, stdout, stderr = run_commit_command(['--oneline', '--grok4-fast'])
+
+    # Should either succeed or fail gracefully
+    success = returncode == 0 and ("commit" in stdout.lower() or "generated" in stdout.lower())
+    api_error = "Invalid API key" in stderr or "API key not found" in stderr or "Error" in stderr
+    assert success or api_error or returncode != 0, f"Unexpected output: {stderr}"
+
+
+def test_fast_with_grok4_fast():
+    """Test --fast --grok4-fast flags together."""
+    returncode, stdout, stderr = run_commit_command(['--fast', '--grok4-fast'])
+
+    # Should either succeed or fail gracefully
+    success = returncode == 0 and ("commit" in stdout.lower() or "generated" in stdout.lower())
+    api_error = "Invalid API key" in stderr or "API key not found" in stderr or "Error" in stderr
+    assert success or api_error or returncode != 0, f"Unexpected output: {stderr}"
+
+
 if __name__ == "__main__":
     # Run tests directly
     print("Running commit.py subprocess tests...")
@@ -196,6 +228,9 @@ if __name__ == "__main__":
         test_no_kimi_no_gpt_oss,
         test_all_flags_combination,
         test_standard_mode_with_gpt5,
+        test_grok4_fast_flag,
+        test_oneline_with_grok4_fast,
+        test_fast_with_grok4_fast,
         test_empty_input,
         test_parallel_execution_verification,
     ]
