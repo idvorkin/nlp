@@ -166,6 +166,7 @@ def get_models(
     kimi: bool = False,
     gpt_oss: bool = False,
     gpt5_codex: bool = False,  # NEW
+    grok4_fast: bool = False,  # NEW
 ) -> List[BaseChatModel]:
     ret = []
 
@@ -214,6 +215,9 @@ def get_models(
     if gpt5_codex:
         ret.append(get_model(gpt5_codex=True))
 
+    if grok4_fast:
+        ret.append(get_model(grok4_fast=True))
+
     return ret
 
 
@@ -234,6 +238,7 @@ def get_model(
     kimi: bool = False,
     gpt_oss: bool = False,
     gpt5_codex: bool = False,  # NEW
+    grok4_fast: bool = False,  # NEW
 ) -> BaseChatModel:
     """
     See changes in diff
@@ -256,6 +261,7 @@ def get_model(
             gpt_oss,
             openai_mini,
             gpt5_codex,  # NEW
+            grok4_fast,  # NEW
         ]
     )
     if count_true > 1:
@@ -379,6 +385,14 @@ def get_model(
     elif gpt5_codex:
         # Use custom wrapper for Responses API
         model = OpenAIResponsesWrapper(model="gpt-5-codex")
+    elif grok4_fast:
+        from langchain_xai import ChatXAI
+
+        model = ChatXAI(
+            model="grok-4-fast",
+            temperature=0,
+            max_tokens=None,
+        )
     else:
         from langchain_openai.chat_models import ChatOpenAI
 
