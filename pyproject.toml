@@ -10,7 +10,7 @@ dependencies = [
     "icecream",
     "ipython",
     "ell-ai",
-    "alembic", # Missing dependany in ell-ai
+    "alembic",
     "rich",
     "pydantic",
     "loguru",

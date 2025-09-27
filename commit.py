@@ -158,28 +158,23 @@ Clearly state if this change breaks existing behavior and what consumers must do
 
 
 async def a_build_commit(
-    oneline: bool = False, fast: bool = False, kimi: bool = True, gpt_oss: bool = True, gpt5_codex: bool = False, grok4_fast: bool = False
+    oneline: bool = False, fast: bool = False, kimi: bool = True, gpt_oss: bool = True, grok4_fast: bool = True
 ):
     user_text = "".join(sys.stdin.readlines())
     # Filter out diffs from files that should be skipped
     filtered_text = filter_diff_content(user_text)
 
     if fast:
-        # Include GPT-5-Codex in fast mode for code-optimized results
+        # Include Grok-4-Fast in fast mode for optimized results
         llms = [
             langchain_helper.get_model(llama=True),
             langchain_helper.get_model(gpt_oss=True),
             langchain_helper.get_model(kimi=True),
+            langchain_helper.get_model(grok4_fast=True),
         ]
-        if gpt5_codex:
-            llms.append(langchain_helper.get_model(gpt5_codex=True))
-        if grok4_fast:
-            llms.append(langchain_helper.get_model(grok4_fast=True))
     elif oneline:
-        # For oneline, optionally use GPT-5-Codex or grok4-fast if specified
-        if gpt5_codex:
-            llms = [langchain_helper.get_model(gpt5_codex=True)]
-        elif grok4_fast:
+        # For oneline, optionally use grok4-fast if specified
+        if grok4_fast:
             llms = [langchain_helper.get_model(grok4_fast=True)]
         else:
             llms = [langchain_helper.get_model(llama=True)]
@@ -190,7 +185,6 @@ async def a_build_commit(
             claude=True,
             kimi=kimi,
             gpt_oss=gpt_oss,
-            gpt5_codex=gpt5_codex,
             grok4_fast=grok4_fast,
         )
         tokens = num_tokens_from_string(filtered_text)
@@ -275,17 +269,13 @@ def build_commit(
     gpt_oss: bool = typer.Option(
         True, "--gpt-oss/--no-gpt-oss", help="Use GPT-OSS-120B model (default: enabled)"
     ),
-    gpt5_codex: bool = typer.Option(
-        False, "--gpt5-codex/--no-gpt5-codex",
-        help="Use GPT-5-Codex model optimized for code (default: disabled)"
-    ),
     grok4_fast: bool = typer.Option(
-        False, "--grok4-fast/--no-grok4-fast",
-        help="Use XAI Grok-4-Fast model (default: disabled)"
+        True, "--grok4-fast/--no-grok4-fast",
+        help="Use XAI Grok-4-Fast model (default: enabled)"
     ),
 ):
     def run_build():
-        result = asyncio.run(a_build_commit(oneline, fast, kimi, gpt_oss, gpt5_codex, grok4_fast))
+        result = asyncio.run(a_build_commit(oneline, fast, kimi, gpt_oss, grok4_fast))
         if result != 0:
             raise typer.Exit(code=result)
 
