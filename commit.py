@@ -165,12 +165,11 @@ async def a_build_commit(
     filtered_text = filter_diff_content(user_text)
 
     if fast:
-        # Include Grok-4-Fast in fast mode for optimized results
+        # Fast mode uses only llama, gpt-oss, and kimi
         llms = [
             langchain_helper.get_model(llama=True),
             langchain_helper.get_model(gpt_oss=True),
             langchain_helper.get_model(kimi=True),
-            langchain_helper.get_model(grok4_fast=True),
         ]
     elif oneline:
         # For oneline, optionally use grok4-fast if specified
