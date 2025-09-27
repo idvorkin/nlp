@@ -391,7 +391,7 @@ def get_model(
         model = ChatXAI(
             model="grok-4-fast",
             temperature=0,
-            max_tokens=None,
+            max_tokens=2_000_000,  # Set to grok-4-fast's large context window
         )
     else:
         from langchain_openai.chat_models import ChatOpenAI

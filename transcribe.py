@@ -127,7 +127,7 @@ def fetch_youtube_captions(url: str) -> Optional[str]:
         return None
 
 
-def chunk_text(text: str, max_tokens: int = 30000) -> List[str]:
+def chunk_text(text: str, max_tokens: int = 30_000) -> List[str]:
     """Split text into chunks that fit within token limits
 
     Default chunk size is 30k tokens to leave room for output with
@@ -167,10 +167,11 @@ def get_llm_for_model(model_name: str):
         "llama": {"llama": True},
         "openai": {"openai": True},
         "openai_mini": {"openai_mini": True},
-        "gpt_oss": {"gpt_oss": True}  # Add gpt-oss-120b
+        "gpt_oss": {"gpt_oss": True},
+        "grok4_fast": {"grok4_fast": True}  # Add grok-4-fast
     }
 
-    params = model_map.get(model_name, {"gpt_oss": True})  # Default to gpt_oss
+    params = model_map.get(model_name, {"grok4_fast": True})  # Default to grok4_fast
     return langchain_helper.get_model(**params)
 
 
@@ -191,7 +192,7 @@ async def process_chunk_with_retry(chain, chunk_num: int) -> str:
             match = re.search(r'try again in ([\d.]+)ms', str(e))
             if match:
                 wait_ms = float(match.group(1))
-                wait_seconds = wait_ms / 1000.0 + 0.5  # Add buffer
+                wait_seconds = wait_ms / 1_000.0 + 0.5  # Add buffer
                 print(f"  Rate limit hit for chunk {chunk_num}. Waiting {wait_seconds:.1f}s...")
                 await asyncio.sleep(wait_seconds)
             else:
@@ -219,7 +220,7 @@ async def process_chunk_async(chunk_data: tuple, llm, prompt_template: str) -> t
     return chunk_num, result
 
 
-def process_youtube_with_llm(url: str, model: str, max_chunks: Optional[int] = None) -> Optional[str]:
+def process_youtube_with_llm(url: str, model: str, max_chunks: Optional[int] = None, single_chunk: bool = False) -> Optional[str]:
     """Process YouTube video using captions and LLM"""
     vtt_content = fetch_youtube_captions(url)
 
@@ -248,11 +249,11 @@ Your task:
 
 IMPORTANT: Preserve all content except obvious errors. This is a transcription, not a summary."""
 
-    if token_count > 100000:  # Very long video
+    if token_count > 100_000 and not single_chunk:  # Very long video
         print(f"\nWarning: This is a very long video ({token_count} tokens).")
         print("Processing in chunks...")
 
-        chunks = chunk_text(vtt_content, max_tokens=30000)  # Larger chunks for gpt-oss-120b
+        chunks = chunk_text(vtt_content, max_tokens=30_000)  # Larger chunks for gpt-oss-120b
         print(f"Split into {len(chunks)} chunks for processing")
 
         # Apply max_chunks limit if specified
@@ -260,44 +261,50 @@ IMPORTANT: Preserve all content except obvious errors. This is a transcription, 
             chunks = chunks[:max_chunks]
             print(f"Processing only first {max_chunks} chunks (testing mode)")
 
-        # Process chunks in parallel with max 3 concurrent (conservative for rate limits)
-        print(f"Processing {len(chunks)} chunks in parallel (max 3 concurrent with retry logic)...")
+        # Process all chunks at once without concurrency limits
+        print(f"Processing {len(chunks)} chunks all at once...")
 
         # Create async event loop for parallel processing
         async def process_all_chunks():
             # Prepare chunk data with indices
             chunk_data = [(i, len(chunks), chunk) for i, chunk in enumerate(chunks, 1)]
 
-            # Create semaphore to limit concurrent requests to 3 (more conservative for rate limits)
-            semaphore = asyncio.Semaphore(3)
-
-            async def process_with_semaphore(data):
-                async with semaphore:
-                    print(f"Starting chunk {data[0]}/{data[1]}...")
-                    result = await process_chunk_async(data, llm, TRANSCRIPT_CLEANING_PROMPT)
-                    print(f"Completed chunk {data[0]}/{data[1]}")
-                    return result
-
-            # Process all chunks with semaphore limiting
-            tasks = [process_with_semaphore(data) for data in chunk_data]
+            # Process all chunks simultaneously without semaphore
+            print(f"Starting all {len(chunks)} chunks simultaneously...")
+            tasks = [process_chunk_async(data, llm, TRANSCRIPT_CLEANING_PROMPT) for data in chunk_data]
             results = await asyncio.gather(*tasks)
 
             # Sort results by chunk number to maintain order
             results.sort(key=lambda x: x[0])
+            print(f"Completed all {len(chunks)} chunks")
             return [result[1] for result in results]
 
         # Run the async processing
         full_transcript = asyncio.run(process_all_chunks())
         return "\n\n".join(full_transcript)
     else:
-        # Process in one go for shorter videos
+        # Process in one go for shorter videos or when single_chunk is True
+        if single_chunk:
+            print(f"Processing entire transcript as single chunk ({token_count} tokens)...")
+            print(f"Caption content length: {len(vtt_content)} characters")
+
+        start_time = time.time()
         prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content=TRANSCRIPT_CLEANING_PROMPT),
             HumanMessage(content=vtt_content)
         ])
 
         chain = prompt | llm | StrOutputParser()
-        return chain.invoke({})
+        result = chain.invoke({})
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"\nProcessing completed in {elapsed_time:.2f} seconds")
+        print(f"Output length: {len(result)} characters")
+        output_tokens = openai_wrapper.num_tokens_from_string(result)
+        print(f"Output tokens: {output_tokens}")
+
+        return result
 
 
 # ============================================================================
@@ -391,9 +398,10 @@ def transcribe(
     path: str = typer.Argument(None, help="File path or YouTube URL to transcribe"),
     diarization: bool = typer.Option(True, help="Enable speaker diarization (AssemblyAI only)"),
     srt: bool = typer.Option(False, help="Export SRT subtitles (AssemblyAI only)"),
-    model: str = typer.Option("gpt_oss", help="Model for YouTube captions: gpt_oss, openai, claude, google, llama, openai_mini"),
+    model: str = typer.Option("grok4_fast", help="Model for YouTube captions: grok4_fast, gpt_oss, openai, claude, google, llama, openai_mini"),
     max_chunks: int = typer.Option(None, help="Maximum number of chunks to process (for testing)"),
-    use_assemblyai_for_youtube: bool = typer.Option(False, help="Download audio and use AssemblyAI for YouTube URLs")
+    use_assemblyai_for_youtube: bool = typer.Option(False, help="Download audio and use AssemblyAI for YouTube URLs"),
+    single_chunk: bool = typer.Option(False, help="Process entire transcript as a single chunk (no splitting)")
 ):
     """
     Transcribe audio from files or YouTube videos.
@@ -427,7 +435,7 @@ def transcribe(
         else:
             # Use captions + LLM (default for YouTube)
             print(f"Using {model} model with YouTube captions")
-            transcript = process_youtube_with_llm(path, model, max_chunks)
+            transcript = process_youtube_with_llm(path, model, max_chunks, single_chunk)
     else:
         # Local audio file - use AssemblyAI
         audio_file = Path(path)
