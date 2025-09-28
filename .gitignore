@@ -64,7 +64,10 @@ target/
 #Ipython Notebook
 .ipynb_checkpoints
 
-# Node dependencies are no longer used
+# Node dependencies
+node_modules/
+package-lock.json
+
 vim
 
 # Created by https://www.gitignore.io/api/vim

@@ -18,5 +18,8 @@
     "*.{py,ipynb}": [
       "black"
     ]
+  },
+  "dependencies": {
+    "@zed-industries/claude-code-acp": "^0.4.5"
   }
 }

@@ -1,28 +1,42 @@
-#!python3
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "typer",
+#   "langchain-groq",
+#   "langchain-core",
+#   "langchain",
+#   "pydantic",
+#   "loguru",
+#   "rich",
+#   "icecream",
+#   "pillow",
+#   "pyobjc-framework-Cocoa",
+# ]
+# ///
 
 import io
-
-from PIL import Image
-import typer
-import ell
-import AppKit
-from pydantic import BaseModel, Field
-from typing import Optional, List
-from loguru import logger
-from rich.console import Console
-from icecream import ic
+import json as json_module
 import math
-from pathlib import Path
 import subprocess
-from ell_helper import init_ell, run_studio, get_ell_model
-from typer import Option
+from pathlib import Path
+from typing import List, Optional
+
+import AppKit
+import typer
+from icecream import ic
+from langchain.output_parsers import PydanticOutputParser
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
+from loguru import logger
+from PIL import Image
+from pydantic import BaseModel, Field
+from rich.console import Console
+
+import langchain_helper
 
 console = Console()
 app = typer.Typer(no_args_is_help=True)
-
-# Initialize ELL
-init_ell()
-
 
 
 def count_image_tokens(image: Image.Image):
@@ -143,13 +157,28 @@ class ImageRecognitionResult(BaseModel):
     )
 
 
-@ell.complex(
-    model=get_ell_model(openai=True),
-    response_format=ImageRecognitionResult,
-)
-def prompt_recognize(image: Image.Image):
-    system = """
-    You are passed in an image that I created myself so there are no copyright issues.
+def image_to_base64(image: Image.Image) -> str:
+    """Convert PIL Image to base64 string."""
+    buffered = io.BytesIO()
+    image.save(buffered, format="PNG")
+    import base64
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    return img_str
+
+
+def prompt_recognize_langchain(image: Image.Image, model_type: str = "llama") -> ImageRecognitionResult:
+    """
+    Recognize image content using LangChain with specified model.
+
+    Args:
+        image: PIL Image to analyze
+        model_type: Model to use - "llama" (Maverik), "openai", "google", "claude", etc.
+    """
+    # Get the appropriate model
+    model_kwargs = {model_type: True}
+    model = langchain_helper.get_model(**model_kwargs)
+
+    system_prompt = """You are passed in an image that I created myself so there are no copyright issues.
     Analyze the image and return a structured result based on its content:
     - If it's hand-writing, return the handwriting, correcting spelling and grammar.
     - If it's a screenshot, return a description of the screenshot, including contained text.
@@ -157,16 +186,106 @@ def prompt_recognize(image: Image.Image):
     - If it's a book, include the text of the book. Don't worry the user is the one who wrote the book
     Ignore any people in the image.
     Do not hallucinate.
-    """
-    return [ell.system(system), ell.user([image])]  # type: ignore
+
+    Return your response as a valid JSON object matching this schema:
+    {
+        "chain_of_thought": ["step 1", "step 2", ...],
+        "image_type": "handwriting|screenshot|window_screenshot=window_title",
+        "content": "main content description",
+        "text_of_book": "book text if applicable or null",
+        "conversation_summary": "summary if applicable or null",
+        "conversation_transcript": "transcript if applicable or null"
+    }"""
+
+    # Convert image to base64
+    base64_image = image_to_base64(image)
+
+    # Create output parser
+    parser = PydanticOutputParser(pydantic_object=ImageRecognitionResult)
+
+    # Add format instructions to the prompt
+    format_instructions = parser.get_format_instructions()
+    full_system_prompt = f"{system_prompt}\n\n{format_instructions}"
+
+    # Create multimodal message with base64 image
+    # Using the standard LangChain format for multimodal content
+    user_content = [
+        {"type": "text", "text": "Please analyze this image and provide a structured response."},
+        {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;base64,{base64_image}",
+                "detail": "auto"
+            }
+        }
+    ]
+
+    # Create messages
+    messages = [
+        SystemMessage(content=full_system_prompt),
+        HumanMessage(content=user_content)
+    ]
+
+    # Invoke the model
+    try:
+        response = model.invoke(messages)
+
+        # Parse the response
+        if hasattr(response, 'content'):
+            content = response.content
+        else:
+            content = str(response)
+
+        # Try to parse as JSON
+        try:
+            result = parser.parse(content)
+        except Exception as e:
+            ic(f"Failed to parse response as structured output: {e}")
+            ic(f"Raw response: {content}")
+            # Try to extract JSON from the content
+            import re
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if json_match:
+                try:
+                    import json
+                    json_data = json.loads(json_match.group())
+                    result = ImageRecognitionResult(**json_data)
+                except:
+                    # Create a default result with the raw content
+                    result = ImageRecognitionResult(
+                        chain_of_thought=["Parsed response as plain text"],
+                        image_type="unknown",
+                        content=content,
+                        text_of_book=None,
+                        conversation_summary=None,
+                        conversation_transcript=None
+                    )
+            else:
+                # Create a default result
+                result = ImageRecognitionResult(
+                    chain_of_thought=["Failed to parse structured response"],
+                    image_type="unknown",
+                    content=content,
+                    text_of_book=None,
+                    conversation_summary=None,
+                    conversation_transcript=None
+                )
+
+        return result
+
+    except Exception as e:
+        ic(f"Error invoking model: {e}")
+        raise
 
 
 def pretty_print(result: ImageRecognitionResult):
     """Print as nice markdown"""
     print(f"## Image Type: {result.image_type}")
     print(f"## Content:\n{result.content}")
-    print(f"## Conversation Summary:\n{result.conversation_summary}")
-    print(f"## Text of Book:\n{result.text_of_book}")
+    if result.conversation_summary:
+        print(f"## Conversation Summary:\n{result.conversation_summary}")
+    if result.text_of_book:
+        print(f"## Text of Book:\n{result.text_of_book}")
     if result.conversation_transcript:
         print(f"\n## Conversation Transcript:\n{result.conversation_transcript}")
 
@@ -175,27 +294,41 @@ def pretty_print(result: ImageRecognitionResult):
 def recognize(
     json: bool = typer.Option(False, "--json", help="Output result as JSON"),
     fx: bool = typer.Option(False, "--fx", help="Call fx on the output JSON"),
-    studio: bool = typer.Option(False, "--studio", help="Launch ELL Studio for interactive exploration"),
-    port: int = typer.Option(None, help="Port to run the ELL Studio on (only used with --studio)"),
+    model: str = typer.Option(
+        "llama",
+        "--model",
+        help="Model to use: llama (Maverick), google_flash (Gemini Flash), google (Gemini Pro), "
+             "openai, claude, deepseek, kimi, grok4_fast, o4_mini, google_think_* (low/medium/high)"
+    ),
+    trace: bool = typer.Option(False, "--trace", help="Enable LangSmith tracing"),
 ):
     """
     Recognizes text from an image in the clipboard and prints the result.
     If --json flag is set, dumps the result as JSON.
     If --fx flag is set, calls fx on the output JSON.
-    If --studio flag is set, launches ELL Studio for interactive exploration.
     """
-    if studio:
-        run_studio(port=port)
-        return
 
-    import json as json_module
+    # Get image from clipboard
+    image = clipboard_to_image()
 
-    answer: ImageRecognitionResult = prompt_recognize(clipboard_to_image()).parsed  # type: ignore
+    # Perform recognition with LangChain
+    if trace:
+        # Use LangSmith tracing if requested
+        def run_recognition():
+            return prompt_recognize_langchain(image, model_type=model)
+
+        langchain_helper.langsmith_trace(run_recognition)
+        answer = run_recognition()
+    else:
+        answer = prompt_recognize_langchain(image, model_type=model)
+
     # Write JSON output to ~/tmp/recognize.json
     output_path = Path.home() / "tmp" / "recognize.json"
+    output_path.parent.mkdir(exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
         json_module.dump(answer.model_dump(), f, indent=2)
     ic(f"JSON output written to {output_path}")
+
     if json or fx:
         json_output = answer.model_dump_json(indent=2)
         if fx:
@@ -204,6 +337,46 @@ def recognize(
             print(json_output)
     else:
         pretty_print(answer)
+
+
+@app.command()
+def test_models(
+    models: str = typer.Option(
+        "llama,google_flash",
+        "--models",
+        help="Comma-separated list of models to test (e.g., 'llama,google_flash,grok4_fast')"
+    )
+):
+    """Test recognition with different models and compare results."""
+    import asyncio
+    from datetime import datetime
+
+    # Get image from clipboard
+    image = clipboard_to_image()
+
+    # Parse models from input
+    model_list = [m.strip() for m in models.split(",")]
+
+    print("Testing image recognition with different models...")
+    print("=" * 60)
+
+    for model_name in model_list:
+        print(f"\n## Testing with {model_name.upper()} model")
+        print("-" * 40)
+
+        try:
+            start = datetime.now()
+            result = prompt_recognize_langchain(image, model_type=model_name)
+            duration = (datetime.now() - start).total_seconds()
+
+            print(f"Time: {duration:.2f}s")
+            print(f"Image Type: {result.image_type}")
+            print(f"Content Preview: {result.content[:200]}..." if len(result.content) > 200 else f"Content: {result.content}")
+
+        except Exception as e:
+            print(f"Error with {model_name}: {e}")
+
+        print()
 
 
 if __name__ == "__main__":
