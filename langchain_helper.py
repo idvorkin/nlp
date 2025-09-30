@@ -9,7 +9,7 @@ from typing import List, Any
 import openai_wrapper
 from icecream import ic
 from types import FrameType
-from typing import Callable, List, TypeVar
+from typing import Callable, TypeVar
 from datetime import datetime, timedelta
 import asyncio
 from enum import Enum
@@ -40,7 +40,9 @@ class OpenAIResponsesWrapper(BaseChatModel):
     def _llm_type(self) -> str:
         return "openai-responses"
 
-    def _generate(self, messages: List[Any], stop=None, run_manager=None, **kwargs) -> Any:
+    def _generate(
+        self, messages: List[Any], stop=None, run_manager=None, **kwargs
+    ) -> Any:
         """Convert chat messages to Responses API format and generate"""
         # Convert messages to single prompt
         prompt = self._messages_to_prompt(messages)
@@ -56,7 +58,7 @@ class OpenAIResponsesWrapper(BaseChatModel):
             model=self.model,
             input=prompt,  # Responses API uses 'input' instead of 'prompt'
             max_output_tokens=self.max_tokens,  # Responses API uses 'max_output_tokens'
-            **kwargs
+            **kwargs,
         )
 
         # Return in expected format
@@ -68,12 +70,12 @@ class OpenAIResponsesWrapper(BaseChatModel):
         prompt_parts = []
 
         for msg in messages:
-            if hasattr(msg, 'content'):
-                if msg.__class__.__name__ == 'SystemMessage':
+            if hasattr(msg, "content"):
+                if msg.__class__.__name__ == "SystemMessage":
                     prompt_parts.append(f"Instructions:\n{msg.content}")
-                elif msg.__class__.__name__ == 'HumanMessage':
+                elif msg.__class__.__name__ == "HumanMessage":
                     prompt_parts.append(f"Input:\n{msg.content}")
-                elif msg.__class__.__name__ == 'AIMessage':
+                elif msg.__class__.__name__ == "AIMessage":
                     prompt_parts.append(f"Response:\n{msg.content}")
 
         # Add explicit instruction for response
@@ -84,6 +86,7 @@ class OpenAIResponsesWrapper(BaseChatModel):
     def _create_chat_result(self, text: str):
         """Create a chat result from text response"""
         from langchain_core.outputs import ChatGeneration, ChatResult
+
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content=text))])
 
 
@@ -355,7 +358,7 @@ def get_model(
         from langchain_anthropic import ChatAnthropic
 
         model = ChatAnthropic(
-            model_name="claude-sonnet-4-20250514",
+            model_name="claude-sonnet-4-5-20250929",
             model_kwargs={"format": "json"} if structured else {},
         )
     elif llama:
