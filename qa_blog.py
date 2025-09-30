@@ -516,7 +516,7 @@ Keep your response practical and actionable.
     if use_fast:
         llm = langchain_helper.get_model(gpt_oss=True)
     else:
-        llm = langchain_helper.get_model(openai=True)
+        llm = langchain_helper.get_model()
     timings["Model initialization"] = time.perf_counter() - model_start
 
     # Document retrieval timing
@@ -598,7 +598,7 @@ If you don't know the answer, just say that you don't know. Keep the answer unde
     if use_fast:
         llm = langchain_helper.get_model(gpt_oss=True)
     else:
-        llm = langchain_helper.get_model(openai=True)
+        llm = langchain_helper.get_model()
     timings["Model initialization"] = time.perf_counter() - model_start
 
     # Document retrieval timing

@@ -365,7 +365,7 @@ def changes(
     after="7 days ago",
     trace: bool = False,
     gist: bool = True,
-    openai: bool = True,
+    openai: bool = False,
     claude: bool = True,
     google: bool = True,
     google_flash: bool = True,

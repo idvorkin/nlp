@@ -69,7 +69,7 @@ def load_cached_prompt(prompt_name):
 @app.command()
 def great_prompt(prompt):
     prompt_maker_template = load_cached_prompt("hardkothari/prompt-maker")
-    model = langchain_helper.get_model(openai=True)
+    model = langchain_helper.get_model()
     chain = prompt_maker_template | model
     result = chain.invoke({"lazy_prompt": prompt, "task": prompt})
     print(result.content)
@@ -79,7 +79,7 @@ def great_prompt(prompt):
 def summarize():
     prompt_maker_template = load_cached_prompt("langchain-ai/chain-of-density:ba34ae10")
     user_text = "".join(sys.stdin.readlines())
-    model = langchain_helper.get_model(openai=True)
+    model = langchain_helper.get_model()
     chain = prompt_maker_template | model
     result = chain.invoke({"ARTICLE": user_text})
     ic(result)

@@ -271,8 +271,8 @@ def get_model(
         print("Only one model can be selected")
         exit(1)
     if count_true == 0:
-        # default to openai
-        openai = True
+        # default to claude (fast and good quality)
+        claude = True
 
     if google:
         from langchain_google_genai import ChatGoogleGenerativeAI

@@ -213,8 +213,8 @@ def get_model_for_name(model_name: str) -> BaseChatModel:
     if model_name == "openai_mini":
         return langchain_helper.get_model(openai_mini=True)
 
-    logger.warning(f"Unknown model name: {model_name}, defaulting to OpenAI.")
-    return langchain_helper.get_model(openai=True)
+    logger.warning(f"Unknown model name: {model_name}, defaulting to Claude.")
+    return langchain_helper.get_model()
 
 
 def normalize_scores(docs_and_scores):

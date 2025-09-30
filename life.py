@@ -124,7 +124,7 @@ E.g.
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
-    model = langchain_helper.get_model(openai=True)
+    model = langchain_helper.get_model()
     ic(langchain_helper.get_model_name(model))
     ic(num_tokens_from_string(user_text))
 
@@ -185,7 +185,7 @@ IF possible, categories should match the following
             HumanMessagePromptTemplate.from_template(user_text),
         ],
     )
-    model = langchain_helper.get_model(openai=True)
+    model = langchain_helper.get_model()
     ic(langchain_helper.get_model_name(model))
     ic(num_tokens_from_string(user_text))
 
@@ -245,7 +245,7 @@ If there are multiple instances of an item start it wtih with the number of time
     model = (
         langchain_helper.get_model(claude=True)
         if claude
-        else langchain_helper.get_model(openai=True)
+        else langchain_helper.get_model()
     )
     ic(langchain_helper.get_model_name(model))
     ic(num_tokens_from_string(user_text))
@@ -548,7 +548,7 @@ def journal_report_path(date: str, model: str):
 async def async_journal_for_year():
     for entry_date in igor_journal.all_entries():
         ic(entry_date)
-        model = langchain_helper.get_model(openai=True)
+        model = langchain_helper.get_model()
 
         journal_path = journal_report_path(
             date=entry_date, model=langchain_helper.get_model_name(model)

@@ -179,7 +179,6 @@ async def a_build_commit(
             llms = [langchain_helper.get_model(llama=True)]
     else:
         llms = langchain_helper.get_models(
-            openai=True,
             google=True,
             claude=True,
             kimi=kimi,

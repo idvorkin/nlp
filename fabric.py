@@ -52,7 +52,7 @@ async def a_fabric(
             print(file.name)
         return
 
-    llms = langchain_helper.get_models(openai=True, claude=True)
+    llms = langchain_helper.get_models(claude=True)
 
     user_text = langchain_helper.get_text_from_path_or_stdin(path)
     tokens = num_tokens_from_string(user_text)

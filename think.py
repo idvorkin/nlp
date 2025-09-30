@@ -429,7 +429,6 @@ async def a_think(
     repo_info = get_repo_info()  # Default False for getting source file URL
     output_dir.mkdir(parents=True, exist_ok=True)
     llms = langchain_helper.get_models(
-        openai=True,
         claude=True,
         google=True,
         google_think_medium=True,
