@@ -3,6 +3,7 @@
 
 import sys
 import asyncio
+from datetime import datetime
 
 from langchain_core import messages
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -158,7 +159,7 @@ Clearly state if this change breaks existing behavior and what consumers must do
 
 
 async def a_build_commit(
-    oneline: bool = False, fast: bool = False, kimi: bool = True, gpt_oss: bool = True, grok4_fast: bool = True
+    oneline: bool = False, fast: bool = False, medium: bool = False, kimi: bool = True, gpt_oss: bool = True, grok4_fast: bool = True
 ):
     user_text = "".join(sys.stdin.readlines())
     # Filter out diffs from files that should be skipped
@@ -171,6 +172,18 @@ async def a_build_commit(
             langchain_helper.get_model(gpt_oss=True),
             langchain_helper.get_model(kimi=True),
         ]
+    elif medium:
+        # Medium mode: fast models + first slow model to return
+        fast_llms = [
+            langchain_helper.get_model(llama=True),
+            langchain_helper.get_model(gpt_oss=True),
+            langchain_helper.get_model(kimi=True),
+        ]
+        slow_llms = [
+            langchain_helper.get_model(grok4_fast=True),
+            langchain_helper.get_model(claude=True),
+        ]
+        llms = None  # Will handle separately below
     elif oneline:
         # For oneline, optionally use grok4-fast if specified
         if grok4_fast:
@@ -201,7 +214,41 @@ async def a_build_commit(
             )
             return {"error": str(e)}
 
-    describe_diffs = await langchain_helper.async_run_on_llms(describe_diff, llms)
+    # Handle medium mode with special logic
+    if medium:
+        # Run fast models first
+        fast_results = await langchain_helper.async_run_on_llms(describe_diff, fast_llms)
+
+        # Run slow models and wait for first to complete with timing
+        async def timed_slow_task(llm):
+            start_time = datetime.now()
+            try:
+                chain = describe_diff(llm)
+                result = await chain.ainvoke({})
+                end_time = datetime.now()
+                return result, llm, end_time - start_time
+            except Exception as e:
+                logger.error(f"Error with model {langchain_helper.get_model_name(llm)}: {e}")
+                end_time = datetime.now()
+                return {"error": str(e)}, llm, end_time - start_time
+
+        slow_tasks = [asyncio.create_task(timed_slow_task(llm)) for llm in slow_llms]
+
+        # Wait for first to complete
+        done, pending = await asyncio.wait(slow_tasks, return_when=asyncio.FIRST_COMPLETED)
+
+        # Cancel remaining tasks
+        for task in pending:
+            task.cancel()
+
+        # Get the first completed result
+        completed_task = done.pop()
+        slow_result = await completed_task
+
+        # Combine results
+        describe_diffs = fast_results + [slow_result]
+    else:
+        describe_diffs = await langchain_helper.async_run_on_llms(describe_diff, llms)
 
     # Sort by duration (slowest first)
     describe_diffs_sorted = sorted(describe_diffs, key=lambda x: x[2], reverse=True)
@@ -261,6 +308,9 @@ def build_commit(
     fast: bool = typer.Option(
         False, "--fast", help="Use Llama 4 and GPT-OSS for faster processing"
     ),
+    medium: bool = typer.Option(
+        False, "--medium", help="Use fast models + first slow model (grok4-fast or claude) to return"
+    ),
     kimi: bool = typer.Option(
         True, "--kimi/--no-kimi", help="Use Kimi model (default: enabled)"
     ),
@@ -273,7 +323,7 @@ def build_commit(
     ),
 ):
     def run_build():
-        result = asyncio.run(a_build_commit(oneline, fast, kimi, gpt_oss, grok4_fast))
+        result = asyncio.run(a_build_commit(oneline, fast, medium, kimi, gpt_oss, grok4_fast))
         if result != 0:
             raise typer.Exit(code=result)
 
