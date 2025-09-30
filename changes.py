@@ -20,6 +20,11 @@
 # ]
 # ///
 
+import os
+
+# Suppress gRPC warnings from Google API - must be set before any gRPC imports
+os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
+os.environ.setdefault("GLOG_minloglevel", "2")
 
 import asyncio
 import subprocess
@@ -389,6 +394,7 @@ def changes(
     only: str = None,
     verbose: bool = False,
     gpt_oss: bool = True,
+    grok4_fast: bool = True,
 ):
     # If fast is True, override other model selections to use llama and gpt_oss
     if fast:
@@ -418,6 +424,7 @@ def changes(
         o4_mini=o4_mini,
         llama=llama,
         gpt_oss=gpt_oss,
+        grok4_fast=grok4_fast,
     )
 
     # If no models are selected, provide a helpful error message

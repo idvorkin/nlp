@@ -1,6 +1,11 @@
 from pathlib import Path
 import subprocess
 import os
+
+# Suppress gRPC warnings from Google API (ALTS credentials, fork handlers)
+os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
+os.environ.setdefault("GLOG_minloglevel", "2")
+
 from langchain_core.language_models.chat_models import (
     BaseChatModel,
 )
@@ -284,14 +289,14 @@ def get_model(
 
         api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-05-20", google_api_key=api_key
+            model="gemini-2.5-flash", google_api_key=api_key
         )
     elif google_think:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
         api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-05-20",
+            model="gemini-2.5-flash",
             model_kwargs={
                 "generation_config": {
                     "thinking_config": {
@@ -308,7 +313,7 @@ def get_model(
 
         api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-05-20",
+            model="gemini-2.5-flash",
             model_kwargs={
                 "generation_config": {
                     "thinking_config": {
@@ -325,7 +330,7 @@ def get_model(
 
         api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-05-20",
+            model="gemini-2.5-flash",
             model_kwargs={
                 "generation_config": {
                     "thinking_config": {
@@ -342,7 +347,7 @@ def get_model(
 
         api_key = os.getenv("GOOGLE_API_KEY", "DUMMY_KEY")
         model = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-05-20",
+            model="gemini-2.5-flash",
             model_kwargs={
                 "generation_config": {
                     "thinking_config": {
