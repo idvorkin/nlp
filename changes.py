@@ -373,21 +373,8 @@ def changes(
     openai: bool = False,
     claude: bool = True,
     google: bool = True,
-    google_flash: bool = True,
-    google_think: bool = typer.Option(
-        True, help="Google Gemini 2.5 Flash with thinking (8192 tokens - MEDIUM level)"
-    ),
-    google_think_low: bool = typer.Option(
-        False, help="Google Gemini 2.5 Flash with low thinking (1024 tokens)"
-    ),
-    google_think_medium: bool = typer.Option(
-        False, help="Google Gemini 2.5 Flash with medium thinking (8192 tokens)"
-    ),
-    google_think_high: bool = typer.Option(
-        False, help="Google Gemini 2.5 Flash with high thinking (24576 tokens)"
-    ),
     llama: bool = True,
-    o4_mini: bool = True,
+    grok4_fast: bool = True,
     fast: bool = typer.Option(
         False, help="Fast analysis using Llama and GPT-OSS models"
     ),
@@ -401,14 +388,9 @@ def changes(
         openai = False
         claude = False
         google = False
-        google_flash = False
-        google_think = False
-        google_think_low = False
-        google_think_medium = False
-        google_think_high = False
         llama = True
         gpt_oss = True
-        o4_mini = False
+        grok4_fast = False
         if verbose:
             print("Fast mode: using Llama and GPT-OSS models for quick analysis")
 
@@ -416,12 +398,6 @@ def changes(
         openai=openai,
         claude=claude,
         google=google,
-        google_flash=google_flash,
-        google_think=google_think,
-        google_think_low=google_think_low,
-        google_think_medium=google_think_medium,
-        google_think_high=google_think_high,
-        o4_mini=o4_mini,
         llama=llama,
         gpt_oss=gpt_oss,
         grok4_fast=grok4_fast,

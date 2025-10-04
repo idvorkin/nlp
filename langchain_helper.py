@@ -377,7 +377,7 @@ def get_model(
     elif kimi:
         from langchain_groq import ChatGroq
 
-        model = ChatGroq(model_name="moonshotai/kimi-k2-instruct")
+        model = ChatGroq(model_name="moonshotai/kimi-k2-instruct-0905")
     elif gpt_oss:
         from langchain_groq import ChatGroq
 

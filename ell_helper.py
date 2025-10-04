@@ -34,7 +34,7 @@ def init_ell():
     # Add the deepseek model registration
     ell.config.register_model("deepseek-r1-distill-llama-70b", default_client=groq)
     # Add Kimi model registration
-    ell.config.register_model("moonshotai/kimi-k2-instruct", default_client=groq)
+    ell.config.register_model("moonshotai/kimi-k2-instruct-0905", default_client=groq)
     ell.config.register_model("claude-3-7-sonnet-20250219", default_client=anthropic)
 
 
@@ -68,7 +68,7 @@ def get_ell_model(
     elif llama:
         return "meta-llama/llama-4-maverick-17b-128e-instruct"
     elif kimi:
-        return "moonshotai/kimi-k2-instruct"
+        return "moonshotai/kimi-k2-instruct-0905"
     elif openai_cheap:
         return "gpt-5-mini"
     else:
