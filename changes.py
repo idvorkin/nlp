@@ -10,6 +10,7 @@
 #     "langchain-google-genai",
 #     "langchain-anthropic",
 #     "langchain-groq",
+#     "langchain-xai",
 #     "loguru",
 #     "openai",
 #     "pydantic",
@@ -379,9 +380,9 @@ def changes(
         False, help="Fast analysis using Llama and GPT-OSS models"
     ),
     only: str = None,
+    md_only: bool = typer.Option(False, help="Only analyze markdown files (*.md)"),
     verbose: bool = False,
     gpt_oss: bool = True,
-    grok4_fast: bool = True,
 ):
     # If fast is True, override other model selections to use llama and gpt_oss
     if fast:
@@ -393,6 +394,12 @@ def changes(
         grok4_fast = False
         if verbose:
             print("Fast mode: using Llama and GPT-OSS models for quick analysis")
+
+    # If md_only is True, set the only pattern to *.md
+    if md_only:
+        only = "*.md"
+        if verbose:
+            print("Markdown-only mode: analyzing only *.md files")
 
     llms = langchain_helper.get_models(
         openai=openai,
