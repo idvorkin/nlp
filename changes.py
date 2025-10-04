@@ -686,6 +686,7 @@ async def achanges(
     only: str = None,
     verbose: bool = False,
 ):
+    total_start_time = datetime.now()
     if verbose:
         ic("v 0.0.4")
     repo_info = get_repo_info(for_file_changes=True)
@@ -711,6 +712,7 @@ async def achanges(
 
     # Modify get_file_diff calls to use semaphore
     async def get_file_diff_with_semaphore(file, first, last):
+        diff_start = datetime.now()
         if verbose:
             ic(f"Waiting for file semaphore to process: {file}")
         async with file_semaphore:
@@ -719,12 +721,24 @@ async def achanges(
             result = await get_file_diff(file, first, last, verbose)
             if verbose:
                 ic(f"Released file semaphore for: {file}")
-            return result
+        diff_end = datetime.now()
+        diff_duration = (diff_end - diff_start).total_seconds()
+        return result, diff_duration
 
     # Get all file diffs in parallel with semaphore
-    file_diffs = await asyncio.gather(
+    git_diff_start = datetime.now()
+    diff_results = await asyncio.gather(
         *[get_file_diff_with_semaphore(file, first, last) for file in changed_files]
     )
+    git_diff_end = datetime.now()
+    total_git_diff_duration = (git_diff_end - git_diff_start).total_seconds()
+
+    # Extract file diffs and timings
+    file_diffs = [(result[0], result[1]) for result, _ in diff_results]
+    git_diff_timings = [
+        {"file": result[0], "duration": duration}
+        for (result, _), duration in zip(diff_results, [d for _, d in diff_results])
+    ]
 
     # Process all models in parallel
     async def process_model(llm):
@@ -737,10 +751,12 @@ async def achanges(
 
         call_order = 0
         call_order_lock = asyncio.Lock()
+        model_process_start = datetime.now()
 
         async def concurrent_llm_call(file, diff_content):
             nonlocal call_order
             model_name = langchain_helper.get_model_name(llm)
+            queued_time = datetime.now()
             if verbose:
                 ic(f"Waiting for max_parallel semaphore for {file} with {model_name}")
             async with max_parallel:
@@ -748,6 +764,10 @@ async def achanges(
                 async with call_order_lock:
                     call_order += 1
                     my_order = call_order
+
+                acquired_time = datetime.now()
+                delay_to_start = (acquired_time - model_process_start).total_seconds()
+                queue_wait_time = (acquired_time - queued_time).total_seconds()
 
                 if verbose:
                     ic(f"Acquired max_parallel semaphore for {file} with {model_name}")
@@ -764,7 +784,14 @@ async def achanges(
                 if verbose:
                     ic(f"-- LLM call end: {file} with {model_name}")
                     ic(f"Released max_parallel semaphore for {file} with {model_name}")
-                return result, file, call_duration, my_order
+                return (
+                    result,
+                    file,
+                    call_duration,
+                    my_order,
+                    delay_to_start,
+                    queue_wait_time,
+                )
 
         # Run all file analyses for this model in parallel
         ai_invoke_tasks = [
@@ -775,10 +802,23 @@ async def achanges(
         # Extract timing data for each file
         file_timings = []
         results = []
-        for result, file, call_duration, order in invoke_results:
+        for (
+            result,
+            file,
+            call_duration,
+            order,
+            delay_to_start,
+            queue_wait_time,
+        ) in invoke_results:
             results.append(result.content)
             file_timings.append(
-                {"file": file, "duration": call_duration, "order": order}
+                {
+                    "file": file,
+                    "duration": call_duration,
+                    "order": order,
+                    "delay_to_start": delay_to_start,
+                    "queue_wait_time": queue_wait_time,
+                }
             )
 
         results.sort(key=lambda x: len(x), reverse=True)
@@ -814,7 +854,10 @@ async def achanges(
         }
 
     # Run all models in parallel
+    models_start_time = datetime.now()
     analysis_results = await asyncio.gather(*(process_model(llm) for llm in llms))
+    models_end_time = datetime.now()
+    total_models_duration = (models_end_time - models_start_time).total_seconds()
 
     # Create all output files in parallel
     async def write_model_summary(result, temp_dir: Path):
@@ -845,9 +888,12 @@ ___
 
     with TempDirectoryContext() as temp_dir:
         # Write all summary files in parallel
+        file_write_start = datetime.now()
         summary_paths = await asyncio.gather(
             *(write_model_summary(result, temp_dir) for result in analysis_results)
         )
+        file_write_end = datetime.now()
+        file_write_duration = (file_write_end - file_write_start).total_seconds()
 
         # Create and write overview file
         overview_filename = f"a_{repo_info.name.split('/')[-1]}--overview"
@@ -868,11 +914,62 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
 """
 
         # Create detailed timing debug file
+        total_current_duration = (datetime.now() - total_start_time).total_seconds()
+        gap_time = (
+            total_current_duration
+            - total_git_diff_duration
+            - total_models_duration
+            - file_write_duration
+        )
+
         debug_content = f"""# Detailed LLM Call Timing Debug
 
 Changes to {github_repo_diff_link} From [{after}] To [{before}]
 
+## Overall Timing Summary
+
+| Phase | Duration (s) | % of Total |
+|-------|--------------|------------|
+| Git Diff Operations | {total_git_diff_duration:.2f} | {(total_git_diff_duration / total_current_duration * 100):.1f}% |
+| All Models Processing | {total_models_duration:.2f} | {(total_models_duration / total_current_duration * 100):.1f}% |
+| File Writing | {file_write_duration:.2f} | {(file_write_duration / total_current_duration * 100):.1f}% |
+| Other/Overhead | {gap_time:.2f} | {(gap_time / total_current_duration * 100):.1f}% |
+| **Total (so far)** | **{total_current_duration:.2f}** | **100%** |
+
+**Note:** Gist upload timing will be added after completion.
+
+---
+
+## Git Diff Timing
+
+**Total Git Diff Duration:** {total_git_diff_duration:.2f} seconds
+
+### Per-File Git Diff Timings (sorted by duration, longest first)
+
+| File | Duration (s) |
+|------|--------------|
 """
+
+        # Add git diff timings
+        sorted_git_timings = sorted(
+            git_diff_timings, key=lambda x: x["duration"], reverse=True
+        )
+        for timing in sorted_git_timings:
+            debug_content += f"| {timing['file']} | {timing['duration']:.2f} |\n"
+
+        debug_content += "\n---\n\n## Table of Contents\n\n"
+
+        # Build ToC
+        for result in sorted(
+            analysis_results,
+            key=lambda x: x["analysis_duration"].total_seconds(),
+            reverse=True,
+        ):
+            model_name = result["model_name"]
+            safe_name = sanitize_model_name(model_name)
+            debug_content += f"- [{model_name}](#timing-{safe_name})\n"
+
+        debug_content += "\n---\n"
 
         for result in sorted(
             analysis_results,
@@ -888,30 +985,24 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
             overview_content += f"| [{model_name}](#file-z_{safe_name}-md) | {duration} | {output_size:.1f} |\n"
 
             # Add to debug content
-            debug_content += f"\n## {model_name}\n\n"
+            debug_content += f'\n## <a id="timing-{safe_name}"></a>{model_name}\n\n'
             debug_content += f"**Total Duration:** {duration} seconds\n"
             debug_content += f"**Summary Call Duration:** {result['summary_duration']:.2f} seconds\n\n"
-            debug_content += "### Per-File Timings (sorted by duration)\n\n"
-            debug_content += "| Order | File | Duration (seconds) |\n"
-            debug_content += "|-------|------|-------------------|\n"
+            debug_content += (
+                "### Per-File Timings (sorted by duration, longest first)\n\n"
+            )
+            debug_content += "| Order | File | Duration (s) | Delay to Start (s) | Queue Wait (s) |\n"
+            debug_content += (
+                "|-------|------|--------------|-------------------|----------------|\n"
+            )
 
             # Sort file timings by duration, longest first
-            sorted_timings = sorted(
+            sorted_by_duration = sorted(
                 result["file_timings"], key=lambda x: x["duration"], reverse=True
             )
 
-            for timing in sorted_timings:
-                debug_content += f"| {timing['order']} | {timing['file']} | {timing['duration']:.2f} |\n"
-
-            # Also add a section sorted by launch order
-            debug_content += "\n### Per-File Timings (sorted by launch order)\n\n"
-            debug_content += "| Order | File | Duration (seconds) |\n"
-            debug_content += "|-------|------|-------------------|\n"
-
-            sorted_by_order = sorted(result["file_timings"], key=lambda x: x["order"])
-
-            for timing in sorted_by_order:
-                debug_content += f"| {timing['order']} | {timing['file']} | {timing['duration']:.2f} |\n"
+            for timing in sorted_by_duration:
+                debug_content += f"| {timing['order']} | {timing['file']} | {timing['duration']:.2f} | {timing['delay_to_start']:.2f} | {timing['queue_wait_time']:.2f} |\n"
 
         # Write overview file
         await asyncio.to_thread(overview_path.write_text, overview_content)
@@ -927,17 +1018,31 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
             gist_description = f"changes - {repo_info.name} ({after} to {before})"
             # Clean up description by removing newlines and truncating if too long
             gist_description = gist_description.replace("\n", " ")[:100]
+            gist_upload_start = datetime.now()
             await asyncio.to_thread(
                 langchain_helper.to_gist_multiple,
                 files_to_gist,
                 description=gist_description,
             )
+            gist_upload_end = datetime.now()
+            gist_upload_duration = (gist_upload_end - gist_upload_start).total_seconds()
         else:
+            gist_upload_duration = 0
             print(overview_content)
             for result in analysis_results:
                 model_name = result["model_name"]
                 print(f"\n=== Analysis by {model_name} ===\n")
                 print(result["diff_report"])
+
+    total_end_time = datetime.now()
+    total_duration = (total_end_time - total_start_time).total_seconds()
+
+    if verbose:
+        ic(f"Total end-to-end duration: {total_duration:.2f}s")
+        ic(f"Git diff duration: {total_git_diff_duration:.2f}s")
+        ic(f"Models processing duration: {total_models_duration:.2f}s")
+        ic(f"File writing duration: {file_write_duration:.2f}s")
+        ic(f"Gist upload duration: {gist_upload_duration:.2f}s")
 
 
 if __name__ == "__main__":
