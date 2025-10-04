@@ -515,7 +515,7 @@ Please summarize the passed in report file (the actual report will be appended a
 
 <file_link_instructions_and_example>
 
-When making file links, keep the _'s, here are valid examples:C
+When making file links, keep the _'s, here are valid examples:
 
 - [.gitignore](#gitignore)
 - [_d/ai-journal.md](#_dai-journalmd)
@@ -559,6 +559,8 @@ When summarizing, if working on a cli tool and it gets new commands. Be sure to 
 <table_of_content_instructions>
 A table of changes with clickable links to each section.
 Order files by magnitude/importance of change, use same rules as with summary
+
+IMPORTANT: Include ALL files in the table of contents. Do NOT truncate or skip any files. Complete the entire list.
 </table_of_content_instructions>
 
 <table_of_content_example>
@@ -733,30 +735,52 @@ async def achanges(
         if isinstance(llm, ChatOpenAI) and llm.model_name == "o4-mini-2025-04-16":
             llm.model_kwargs = {}  # Clear any default parameters like temperature
 
+        call_order = 0
+        call_order_lock = asyncio.Lock()
+
         async def concurrent_llm_call(file, diff_content):
+            nonlocal call_order
             model_name = langchain_helper.get_model_name(llm)
             if verbose:
                 ic(f"Waiting for max_parallel semaphore for {file} with {model_name}")
             async with max_parallel:
+                # Record order when actually starting the call
+                async with call_order_lock:
+                    call_order += 1
+                    my_order = call_order
+
                 if verbose:
                     ic(f"Acquired max_parallel semaphore for {file} with {model_name}")
-                    ic(f"++ LLM call start: {file} with {model_name}")
+                    ic(f"++ LLM call start #{my_order}: {file} with {model_name}")
+                call_start = datetime.now()
                 result = await (
                     prompt_summarize_diff(
                         file, diff_content, repo_path=repo_path, end_rev=last
                     )
                     | llm
                 ).ainvoke({})
+                call_end = datetime.now()
+                call_duration = (call_end - call_start).total_seconds()
                 if verbose:
                     ic(f"-- LLM call end: {file} with {model_name}")
                     ic(f"Released max_parallel semaphore for {file} with {model_name}")
-                return result
+                return result, file, call_duration, my_order
 
         # Run all file analyses for this model in parallel
         ai_invoke_tasks = [
             concurrent_llm_call(file, diff_content) for file, diff_content in file_diffs
         ]
-        results = [result.content for result in await asyncio.gather(*ai_invoke_tasks)]
+        invoke_results = await asyncio.gather(*ai_invoke_tasks)
+
+        # Extract timing data for each file
+        file_timings = []
+        results = []
+        for result, file, call_duration, order in invoke_results:
+            results.append(result.content)
+            file_timings.append(
+                {"file": file, "duration": call_duration, "order": order}
+            )
+
         results.sort(key=lambda x: len(x), reverse=True)
         code_based_diff_report = "\n\n___\n\n".join(results)
 
@@ -764,9 +788,12 @@ async def achanges(
         # Get summary for this model
         if verbose:
             ic(f"++ LLM summary call start with {model_name}")
+        summary_start = datetime.now()
         summary_all_diffs = await (
             prompt_summarize_diff_summaries(code_based_diff_report) | llm
         ).ainvoke({})
+        summary_end = datetime.now()
+        summary_duration = (summary_end - summary_start).total_seconds()
         if verbose:
             ic(f"-- LLM summary call end with {model_name}")
         summary_content = (
@@ -782,6 +809,8 @@ async def achanges(
             "analysis_duration": model_end - model_start,
             "diff_report": code_based_diff_report,
             "summary": summary_content,
+            "file_timings": file_timings,
+            "summary_duration": summary_duration,
         }
 
     # Run all models in parallel
@@ -832,8 +861,17 @@ ___
 
 Changes to {github_repo_diff_link} From [{after}] To [{before}]
 
+[Detailed Timing Debug Info](#file-zzz_timing_debug-md)
+
 | Model | Analysis Duration (seconds) | Output Size (KB) |
 |-------|---------------------------|-----------------|
+"""
+
+        # Create detailed timing debug file
+        debug_content = f"""# Detailed LLM Call Timing Debug
+
+Changes to {github_repo_diff_link} From [{after}] To [{before}]
+
 """
 
         for result in sorted(
@@ -849,10 +887,40 @@ Changes to {github_repo_diff_link} From [{after}] To [{before}]
             )  # Convert to KB
             overview_content += f"| [{model_name}](#file-z_{safe_name}-md) | {duration} | {output_size:.1f} |\n"
 
+            # Add to debug content
+            debug_content += f"\n## {model_name}\n\n"
+            debug_content += f"**Total Duration:** {duration} seconds\n"
+            debug_content += f"**Summary Call Duration:** {result['summary_duration']:.2f} seconds\n\n"
+            debug_content += "### Per-File Timings (sorted by duration)\n\n"
+            debug_content += "| Order | File | Duration (seconds) |\n"
+            debug_content += "|-------|------|-------------------|\n"
+
+            # Sort file timings by duration, longest first
+            sorted_timings = sorted(
+                result["file_timings"], key=lambda x: x["duration"], reverse=True
+            )
+
+            for timing in sorted_timings:
+                debug_content += f"| {timing['order']} | {timing['file']} | {timing['duration']:.2f} |\n"
+
+            # Also add a section sorted by launch order
+            debug_content += "\n### Per-File Timings (sorted by launch order)\n\n"
+            debug_content += "| Order | File | Duration (seconds) |\n"
+            debug_content += "|-------|------|-------------------|\n"
+
+            sorted_by_order = sorted(result["file_timings"], key=lambda x: x["order"])
+
+            for timing in sorted_by_order:
+                debug_content += f"| {timing['order']} | {timing['file']} | {timing['duration']:.2f} |\n"
+
         # Write overview file
         await asyncio.to_thread(overview_path.write_text, overview_content)
 
-        files_to_gist = [overview_path] + list(summary_paths)
+        # Write debug timing file
+        debug_path = temp_dir / "zzz_timing_debug.md"
+        await asyncio.to_thread(debug_path.write_text, debug_content)
+
+        files_to_gist = [overview_path] + list(summary_paths) + [debug_path]
 
         if gist:
             # Create description using repo name and date range
