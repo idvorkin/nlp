@@ -678,6 +678,44 @@ def sanitize_model_name(model_name):
     return model_name.lower().replace(".", "-").replace("/", "-")
 
 
+def update_progress_table(
+    model_names: List[str], model_states: dict, start_time: datetime
+):
+    """Update the progress table at the top of the log file"""
+    try:
+        # Read current detailed progress
+        detailed_progress = ""
+        try:
+            with open("/tmp/changes_progress.log", "r") as f:
+                lines = f.readlines()
+                # Find where detailed progress starts
+                if "## Detailed Progress\n" in lines:
+                    idx = lines.index("## Detailed Progress\n")
+                    detailed_progress = "".join(lines[idx:])
+        except Exception:
+            detailed_progress = "\n---\n\n## Detailed Progress\n\n"
+
+        # Write new table
+        with open("/tmp/changes_progress.log", "w") as f:
+            f.write(
+                f"# Changes Progress - Started at {start_time.strftime('%H:%M:%S')}\n\n"
+            )
+            f.write("| Model | Status | Files | Summary | Total Time |\n")
+            f.write("|-------|--------|-------|---------|------------|\n")
+            for model_name in model_names:
+                state = model_states.get(model_name, {})
+                status = state.get("status", "⏳ Waiting")
+                files = state.get("files", "-")
+                summary = state.get("summary", "-")
+                total = state.get("total", "-")
+                f.write(
+                    f"| {model_name} | {status} | {files} | {summary} | {total} |\n"
+                )
+            f.write(detailed_progress)
+    except Exception:
+        pass  # Silently ignore errors
+
+
 async def achanges(
     llms: List[BaseChatModel],
     before,
@@ -687,6 +725,17 @@ async def achanges(
     verbose: bool = False,
 ):
     total_start_time = datetime.now()
+
+    # Initialize model tracking
+    model_names = [langchain_helper.get_model_name(llm) for llm in llms]
+    model_states = {
+        name: {"status": "⏳ Waiting", "files": "-", "summary": "-", "total": "-"}
+        for name in model_names
+    }
+
+    # Clear and initialize progress log with table
+    update_progress_table(model_names, model_states, total_start_time)
+
     if verbose:
         ic("v 0.0.4")
     repo_info = get_repo_info(for_file_changes=True)
@@ -743,6 +792,17 @@ async def achanges(
     # Process all models in parallel
     async def process_model(llm):
         model_start = datetime.now()
+        model_name = langchain_helper.get_model_name(llm)
+
+        # Update status to processing files
+        model_states[model_name] = {
+            "status": "📝 Files",
+            "files": "0/0",
+            "summary": "-",
+            "total": "-",
+        }
+        update_progress_table(model_names, model_states, total_start_time)
+
         max_parallel = asyncio.Semaphore(100)
 
         # Special handling for o4-mini model
@@ -750,11 +810,13 @@ async def achanges(
             llm.model_kwargs = {}  # Clear any default parameters like temperature
 
         call_order = 0
+        files_completed = 0
         call_order_lock = asyncio.Lock()
         model_process_start = datetime.now()
+        total_files = len(file_diffs)
 
         async def concurrent_llm_call(file, diff_content):
-            nonlocal call_order
+            nonlocal call_order, files_completed
             model_name = langchain_helper.get_model_name(llm)
             queued_time = datetime.now()
             if verbose:
@@ -781,6 +843,28 @@ async def achanges(
                 ).ainvoke({})
                 call_end = datetime.now()
                 call_duration = (call_end - call_start).total_seconds()
+
+                # Update file completion counter
+                async with call_order_lock:
+                    files_completed += 1
+                    elapsed = (datetime.now() - total_start_time).total_seconds()
+                    model_states[model_name] = {
+                        "status": "📝 Files",
+                        "files": f"{files_completed}/{total_files}",
+                        "summary": "-",
+                        "total": f"{elapsed:.0f}s",
+                    }
+                    update_progress_table(model_names, model_states, total_start_time)
+
+                # Log individual file completion
+                try:
+                    with open("/tmp/changes_progress.log", "a") as f:
+                        f.write(
+                            f"  [{datetime.now().strftime('%H:%M:%S')}] {model_name}: {file} ({call_duration:.1f}s)\n"
+                        )
+                except Exception:
+                    pass
+
                 if verbose:
                     ic(f"-- LLM call end: {file} with {model_name}")
                     ic(f"Released max_parallel semaphore for {file} with {model_name}")
@@ -828,12 +912,52 @@ async def achanges(
         # Get summary for this model
         if verbose:
             ic(f"++ LLM summary call start with {model_name}")
+
+        # Update status to summary
+        elapsed = (datetime.now() - total_start_time).total_seconds()
+        model_states[model_name] = {
+            "status": "📊 Summary",
+            "files": f"{total_files}/{total_files}",
+            "summary": "⏳",
+            "total": f"{elapsed:.0f}s",
+        }
+        update_progress_table(model_names, model_states, total_start_time)
+
+        # Log summary start
+        try:
+            with open("/tmp/changes_progress.log", "a") as f:
+                f.write(
+                    f"  [{datetime.now().strftime('%H:%M:%S')}] {model_name}: Starting summary...\n"
+                )
+        except Exception:
+            pass
+
         summary_start = datetime.now()
         summary_all_diffs = await (
             prompt_summarize_diff_summaries(code_based_diff_report) | llm
         ).ainvoke({})
         summary_end = datetime.now()
         summary_duration = (summary_end - summary_start).total_seconds()
+
+        # Update status to complete
+        elapsed = (datetime.now() - total_start_time).total_seconds()
+        model_states[model_name] = {
+            "status": "✅ Done",
+            "files": f"{total_files}/{total_files}",
+            "summary": f"{summary_duration:.1f}s",
+            "total": f"{elapsed:.0f}s",
+        }
+        update_progress_table(model_names, model_states, total_start_time)
+
+        # Log summary completion
+        try:
+            with open("/tmp/changes_progress.log", "a") as f:
+                f.write(
+                    f"  [{datetime.now().strftime('%H:%M:%S')}] {model_name}: Summary complete ({summary_duration:.1f}s)\n"
+                )
+        except Exception:
+            pass
+
         if verbose:
             ic(f"-- LLM summary call end with {model_name}")
         summary_content = (
@@ -843,6 +967,7 @@ async def achanges(
         )
 
         model_end = datetime.now()
+
         return {
             "model": llm,
             "model_name": model_name,
