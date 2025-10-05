@@ -30,6 +30,7 @@ os.environ.setdefault("GLOG_minloglevel", "2")
 import asyncio
 import subprocess
 import tempfile
+import uuid
 
 from langchain_core import messages
 from typing import List, Tuple
@@ -574,6 +575,8 @@ Order files by magnitude/importance of change, use same rules as with summary
 
 1. Remember don't include the report below, it will be added afterwards
 
+IMPORTANT: Be concise. DO NOT output the entire report or individual file diffs. Only provide the summary and table of contents. Keep descriptions brief and to the point.
+
 </instructions>
 """
     return ChatPromptTemplate.from_messages(
@@ -611,6 +614,8 @@ You are  summarizing the passed in changes for: {file}, permalink:{repo_path}/bl
 
     * Instead of: Changed the prompt formatting instructions to clarify that groups should be titled with their actual names instead of the word "group". This enhances clarity for the user.
     * Use: Enhance clarity by using actual group names instead of the word "group" in the prompt formatting instructions.
+
+IMPORTANT: Be concise. DO NOT output the entire diff or code. Only summarize the changes. Keep descriptions brief and to the point.
 </instructions>
 
 <example>
@@ -677,26 +682,24 @@ def sanitize_model_name(model_name):
 
 
 def update_progress_table(
-    model_names: List[str], model_states: dict, start_time: datetime
+    model_names: List[str],
+    model_states: dict,
+    start_time: datetime,
+    progress_log_path: str,
+    detailed_logs: List[str] = None,
 ):
     """Update the progress table at the top of the log file"""
     try:
-        # Read current detailed progress
-        detailed_progress = ""
-        try:
-            with open("/tmp/changes_progress.log", "r") as f:
-                lines = f.readlines()
-                # Find where detailed progress starts
-                if "## Detailed Progress\n" in lines:
-                    idx = lines.index("## Detailed Progress\n")
-                    detailed_progress = "".join(lines[idx:])
-        except Exception:
-            detailed_progress = "\n---\n\n## Detailed Progress\n\n"
+        # Count completed and total models
+        completed = sum(
+            1 for state in model_states.values() if state.get("status") == "✅ Done"
+        )
+        total = len(model_names)
 
         # Write new table
-        with open("/tmp/changes_progress.log", "w") as f:
+        with open(progress_log_path, "w") as f:
             f.write(
-                f"# Changes Progress - Started at {start_time.strftime('%H:%M:%S')}\n\n"
+                f"# Changes Progress - Started at {start_time.strftime('%H:%M:%S')} - {completed}/{total} models complete\n\n"
             )
             f.write("| Model | Status | Files | Summary | Total Time |\n")
             f.write("|-------|--------|-------|---------|------------|\n")
@@ -705,11 +708,18 @@ def update_progress_table(
                 status = state.get("status", "⏳ Waiting")
                 files = state.get("files", "-")
                 summary = state.get("summary", "-")
-                total = state.get("total", "-")
+                total_time = state.get("total", "-")
                 f.write(
-                    f"| {model_name} | {status} | {files} | {summary} | {total} |\n"
+                    f"| {model_name} | {status} | {files} | {summary} | {total_time} |\n"
                 )
-            f.write(detailed_progress)
+
+            # Write detailed logs in reverse order (newest first)
+            if detailed_logs:
+                f.write("\n---\n\n## Detailed Progress (newest first)\n\n")
+                for log_entry in reversed(detailed_logs):
+                    f.write(log_entry + "\n")
+
+            f.flush()  # Ensure immediate write
     except Exception:
         pass  # Silently ignore errors
 
@@ -724,15 +734,22 @@ async def achanges(
 ):
     total_start_time = datetime.now()
 
-    # Initialize model tracking
+    # Generate unique progress log file for this run (supports concurrent execution)
+    progress_log_path = f"/tmp/changes_progress_{uuid.uuid4().hex[:8]}.log"
+    print(f"Progress log: {progress_log_path}")
+
+    # Initialize model tracking and detailed logs
     model_names = [langchain_helper.get_model_name(llm) for llm in llms]
     model_states = {
         name: {"status": "⏳ Waiting", "files": "-", "summary": "-", "total": "-"}
         for name in model_names
     }
+    detailed_logs = []  # In-memory buffer for detailed progress
 
     # Clear and initialize progress log with table
-    update_progress_table(model_names, model_states, total_start_time)
+    update_progress_table(
+        model_names, model_states, total_start_time, progress_log_path, detailed_logs
+    )
 
     if verbose:
         ic("v 0.0.4")
@@ -799,9 +816,15 @@ async def achanges(
             "summary": "-",
             "total": "-",
         }
-        update_progress_table(model_names, model_states, total_start_time)
+        update_progress_table(
+            model_names,
+            model_states,
+            total_start_time,
+            progress_log_path,
+            detailed_logs,
+        )
 
-        max_parallel = asyncio.Semaphore(100)
+        max_parallel = asyncio.Semaphore(400)
 
         # Special handling for o4-mini model
         if isinstance(llm, ChatOpenAI) and llm.model_name == "o4-mini-2025-04-16":
@@ -832,7 +855,21 @@ async def achanges(
                 if verbose:
                     ic(f"Acquired max_parallel semaphore for {file} with {model_name}")
                     ic(f"++ LLM call start #{my_order}: {file} with {model_name}")
+
+                # Log LLM call start
                 call_start = datetime.now()
+                start_elapsed = (call_start - total_start_time).total_seconds()
+                start_log = f"[{call_start.strftime('%H:%M:%S')}] [+{start_elapsed:.0f}s] {model_name}: START {file}"
+                async with call_order_lock:
+                    detailed_logs.append(start_log)
+                    update_progress_table(
+                        model_names,
+                        model_states,
+                        total_start_time,
+                        progress_log_path,
+                        detailed_logs,
+                    )
+
                 result = await (
                     prompt_summarize_diff(
                         file, diff_content, repo_path=repo_path, end_rev=last
@@ -852,16 +889,19 @@ async def achanges(
                         "summary": "-",
                         "total": f"{elapsed:.0f}s",
                     }
-                    update_progress_table(model_names, model_states, total_start_time)
 
-                # Log individual file completion
-                try:
-                    with open("/tmp/changes_progress.log", "a") as f:
-                        f.write(
-                            f"  [{datetime.now().strftime('%H:%M:%S')}] {model_name}: {file} ({call_duration:.1f}s)\n"
-                        )
-                except Exception:
-                    pass
+                    # Log individual file completion with timestamp and delta
+                    remaining = total_files - files_completed
+                    log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] [+{elapsed:.0f}s] {model_name}: DONE {file} ({call_duration:.1f}s) - {remaining} files remaining"
+                    detailed_logs.append(log_msg)  # Add to in-memory buffer
+
+                    update_progress_table(
+                        model_names,
+                        model_states,
+                        total_start_time,
+                        progress_log_path,
+                        detailed_logs,
+                    )
 
                 if verbose:
                     ic(f"-- LLM call end: {file} with {model_name}")
@@ -919,16 +959,18 @@ async def achanges(
             "summary": "⏳",
             "total": f"{elapsed:.0f}s",
         }
-        update_progress_table(model_names, model_states, total_start_time)
 
-        # Log summary start
-        try:
-            with open("/tmp/changes_progress.log", "a") as f:
-                f.write(
-                    f"  [{datetime.now().strftime('%H:%M:%S')}] {model_name}: Starting summary...\n"
-                )
-        except Exception:
-            pass
+        # Log summary start with timestamp and delta
+        log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] [+{elapsed:.0f}s] {model_name}: Starting summary..."
+        detailed_logs.append(log_msg)  # Add to in-memory buffer
+
+        update_progress_table(
+            model_names,
+            model_states,
+            total_start_time,
+            progress_log_path,
+            detailed_logs,
+        )
 
         summary_start = datetime.now()
         summary_all_diffs = await (
@@ -945,16 +987,18 @@ async def achanges(
             "summary": f"{summary_duration:.1f}s",
             "total": f"{elapsed:.0f}s",
         }
-        update_progress_table(model_names, model_states, total_start_time)
 
-        # Log summary completion
-        try:
-            with open("/tmp/changes_progress.log", "a") as f:
-                f.write(
-                    f"  [{datetime.now().strftime('%H:%M:%S')}] {model_name}: Summary complete ({summary_duration:.1f}s)\n"
-                )
-        except Exception:
-            pass
+        # Log summary completion with timestamp and delta
+        log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] [+{elapsed:.0f}s] {model_name}: Summary complete ({summary_duration:.1f}s)"
+        detailed_logs.append(log_msg)  # Add to in-memory buffer
+
+        update_progress_table(
+            model_names,
+            model_states,
+            total_start_time,
+            progress_log_path,
+            detailed_logs,
+        )
 
         if verbose:
             ic(f"-- LLM summary call end with {model_name}")
