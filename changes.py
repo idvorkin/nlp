@@ -559,8 +559,6 @@ When summarizing, if working on a cli tool and it gets new commands. Be sure to 
 <table_of_content_instructions>
 A table of changes with clickable links to each section.
 Order files by magnitude/importance of change, use same rules as with summary
-
-IMPORTANT: Include ALL files in the table of contents. Do NOT truncate or skip any files. Complete the entire list.
 </table_of_content_instructions>
 
 <table_of_content_example>
