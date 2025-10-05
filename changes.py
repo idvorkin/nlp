@@ -27,6 +27,16 @@ import os
 os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
 os.environ.setdefault("GLOG_minloglevel", "2")
 
+# Enable gRPC fork support to prevent deadlocks when using subprocess
+# Must be called before any gRPC usage (langchain uses gRPC internally)
+try:
+    import grpc.experimental
+
+    grpc.experimental.fork_support()
+except (ImportError, AttributeError):
+    # grpc module might not have fork_support in older versions
+    pass
+
 import asyncio
 import subprocess
 import tempfile
@@ -405,8 +415,10 @@ def changes(
     gist: bool = True,
     openai: bool = False,
     claude: bool = True,
-    google: bool = True,
-    llama: bool = False,
+    google: bool = False,  # Disabled - causes resource contention with other threads
+    llama: bool = True,
+    kimi: bool = True,
+    deepseek: bool = True,
     grok4_fast: bool = True,
     fast: bool = typer.Option(
         False, help="Fast analysis using Llama and GPT-OSS models"
@@ -438,6 +450,8 @@ def changes(
         claude=claude,
         google=google,
         llama=llama,
+        kimi=kimi,
+        deepseek=deepseek,
         gpt_oss=gpt_oss,
         grok4_fast=grok4_fast,
     )
