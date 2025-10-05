@@ -375,7 +375,7 @@ def changes(
     openai: bool = False,
     claude: bool = True,
     google: bool = True,
-    llama: bool = True,
+    llama: bool = False,
     grok4_fast: bool = True,
     fast: bool = typer.Option(
         False, help="Fast analysis using Llama and GPT-OSS models"
@@ -383,7 +383,7 @@ def changes(
     only: str = None,
     md_only: bool = typer.Option(False, help="Only analyze markdown files (*.md)"),
     verbose: bool = False,
-    gpt_oss: bool = True,
+    gpt_oss: bool = False,
 ):
     # If fast is True, override other model selections to use llama and gpt_oss
     if fast:
@@ -736,7 +736,16 @@ async def achanges(
 
     # Generate unique progress log file for this run (supports concurrent execution)
     progress_log_path = f"/tmp/changes_progress_{uuid.uuid4().hex[:8]}.log"
+
+    # Create symlink to latest run
+    latest_link = Path.home() / "tmp" / "changes.latest.txt"
+    latest_link.parent.mkdir(parents=True, exist_ok=True)
+    if latest_link.exists() or latest_link.is_symlink():
+        latest_link.unlink()
+    latest_link.symlink_to(progress_log_path)
+
     print(f"Progress log: {progress_log_path}")
+    print(f"Latest link: {latest_link}")
 
     # Initialize model tracking and detailed logs
     model_names = [langchain_helper.get_model_name(llm) for llm in llms]
@@ -859,7 +868,8 @@ async def achanges(
                 # Log LLM call start
                 call_start = datetime.now()
                 start_elapsed = (call_start - total_start_time).total_seconds()
-                start_log = f"[{call_start.strftime('%H:%M:%S')}] [+{start_elapsed:.0f}s] {model_name}: START {file}"
+                content_size_k = len(diff_content) / 1000
+                start_log = f"[{call_start.strftime('%H:%M:%S')}] [+{start_elapsed:.0f}s] {model_name}: START {file} ({content_size_k:.0f}K)"
                 async with call_order_lock:
                     detailed_logs.append(start_log)
                     update_progress_table(
