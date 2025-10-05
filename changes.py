@@ -31,6 +31,7 @@ import asyncio
 import subprocess
 import tempfile
 import uuid
+import signal
 
 from langchain_core import messages
 from typing import List, Tuple
@@ -60,6 +61,10 @@ import os
 console = Console()
 app = typer.Typer(no_args_is_help=True)
 
+# Semaphore limits for concurrent operations
+MAX_CONCURRENT_FILE_DIFFS = 100  # Limit concurrent git diff operations
+MAX_CONCURRENT_LLM_CALLS = 100  # Limit concurrent LLM API calls per model
+
 
 class Diff(BaseModel):
     FilePath: Path
@@ -79,6 +84,34 @@ openai_wrapper.setup_secret()
 @logger.catch()
 def app_wrap_loguru():
     app()
+
+
+async def run_subprocess_with_timeout(
+    process, timeout: float, error_msg: str, verbose: bool = False
+):
+    """Run a subprocess with timeout and proper cleanup."""
+    try:
+        return await asyncio.wait_for(process.communicate(), timeout=timeout)
+    except asyncio.TimeoutError:
+        if verbose:
+            print(f"Timeout: {error_msg}")
+
+        # Try graceful termination first, then force kill
+        try:
+            process.terminate()  # Send SIGTERM
+            try:
+                await asyncio.wait_for(process.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                # Process didn't respond to SIGTERM, force kill with SIGKILL
+                process.kill()
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    pass  # Process is stuck, nothing more we can do
+        except (ProcessLookupError, OSError):
+            pass  # Process already dead
+
+        raise RuntimeError(error_msg)
 
 
 def is_skip_file(file, only_pattern=None, verbose=False):
@@ -210,7 +243,12 @@ async def get_file_diff(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    stdout, _ = await is_binary_cmd.communicate()
+    try:
+        stdout, _ = await run_subprocess_with_timeout(
+            is_binary_cmd, 30.0, f"Binary check timed out for {file}", verbose
+        )
+    except RuntimeError:
+        return file, f"Binary check timed out for {file}"
     # If the file is binary, git outputs "-" for both additions and deletions
     if "-\t-\t" in stdout.decode():
         if verbose:
@@ -235,37 +273,18 @@ async def get_file_diff(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        stdout, _ = await size_cmd.communicate()
+        stdout, _ = await run_subprocess_with_timeout(
+            size_cmd, 10.0, f"Size check timed out for {file}", verbose
+        )
         file_size_before = int(stdout.decode().strip()) if stdout else 0
     except Exception as e:
         if verbose:
             ic(f"Error getting previous size for {file}: {str(e)}")
-        pass
+        pass  # Continue even if we can't get file size
 
     # Use nbdiff for Jupyter notebooks to ignore outputs
     if verbose:
         ic(f"Starting diff process for {file}")
-
-    async def run_with_timeout(cmd, timeout_seconds=30):
-        try:
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            return await asyncio.wait_for(
-                process.communicate(), timeout=timeout_seconds
-            )
-        except asyncio.TimeoutError:
-            try:
-                process.kill()
-            except ProcessLookupError:
-                pass
-            if verbose:
-                ic(
-                    f"Command timed out after {timeout_seconds} seconds: {' '.join(cmd)}"
-                )
-            return None, None
 
     if file.endswith(".ipynb"):
         if verbose:
@@ -277,28 +296,38 @@ async def get_file_diff(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        stdout, _ = await which_process.communicate()
+        try:
+            stdout, _ = await run_subprocess_with_timeout(
+                which_process, 5.0, f"which nbdiff timed out for {file}", verbose
+            )
+        except RuntimeError:
+            stdout = None
 
         if stdout and stdout.decode().strip():
             if verbose:
                 ic(f"Using nbdiff for {file}")
-            stdout_diff, stderr = await run_with_timeout(
-                [
-                    "nbdiff",
-                    "--ignore-outputs",
-                    first_commit_hash,
-                    last_commit_hash,
-                    "--",
-                    file,
-                ]
+
+            nbdiff_process = await asyncio.create_subprocess_exec(
+                "nbdiff",
+                "--ignore-outputs",
+                first_commit_hash,
+                last_commit_hash,
+                "--",
+                file,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
 
-            if stdout_diff is None:  # timeout occurred
+            try:
+                stdout_diff, stderr = await run_subprocess_with_timeout(
+                    nbdiff_process, 30.0, f"nbdiff timed out for {file}", verbose
+                )
+                use_git_diff = False
+            except RuntimeError:
+                # Timeout occurred, fall back to git diff
                 if verbose:
                     ic(f"nbdiff timed out, falling back to git diff for {file}")
                 use_git_diff = True
-            else:
-                use_git_diff = False
         else:
             if verbose:
                 ic(f"nbdiff not found, falling back to git diff for {file}")
@@ -309,20 +338,23 @@ async def get_file_diff(
     if use_git_diff:
         if verbose:
             ic(f"Using git diff for {file}")
-        stdout_diff, stderr = await run_with_timeout(
-            [
-                "git",
-                "diff",
-                first_commit_hash,
-                last_commit_hash,
-                "--",
-                file,
-            ]
+
+        git_diff_process = await asyncio.create_subprocess_exec(
+            "git",
+            "diff",
+            first_commit_hash,
+            last_commit_hash,
+            "--",
+            file,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
 
-        if stdout_diff is None:  # timeout occurred
-            if verbose:
-                ic(f"Git diff timed out for {file}")
+        try:
+            stdout_diff, stderr = await run_subprocess_with_timeout(
+                git_diff_process, 30.0, f"Git diff timed out for {file}", verbose
+            )
+        except RuntimeError:
             return file, f"Diff timed out for {file}"
 
     if stderr and verbose:
@@ -370,7 +402,6 @@ def changes(
     directory: Path = Path("."),
     before=tomorrow(),
     after="7 days ago",
-    trace: bool = False,
     gist: bool = True,
     openai: bool = False,
     claude: bool = True,
@@ -435,33 +466,46 @@ def changes(
             ic("Not in a git repo, using the current directory")
 
     with DirectoryContext(directory):
-        if not trace:
-            asyncio.run(achanges(*achanges_params))
-            return
+        # Set up signal handlers for graceful shutdown
+        def signal_handler(signum, frame):
+            print("\n\nReceived interrupt signal. Cleaning up...")
+            raise KeyboardInterrupt()
 
-        from langchain_core.tracers.context import tracing_v2_enabled
-        from langchain.callbacks.tracers.langchain import wait_for_all_tracers
+        # Store original handlers to restore them later
+        original_sigint = signal.signal(signal.SIGINT, signal_handler)
+        original_sigterm = signal.signal(signal.SIGTERM, signal_handler)
 
-        trace_name = openai_wrapper.tracer_project_name()
-        with tracing_v2_enabled(project_name=trace_name) as tracer:
-            if verbose:
-                ic("Using Langsmith:", trace_name)
+        try:
             asyncio.run(achanges(*achanges_params))
-            if verbose:
-                ic(tracer.get_run_url())
-        wait_for_all_tracers()
+        except KeyboardInterrupt:
+            print("\nOperation cancelled by user")
+            raise SystemExit(1)
+        finally:
+            # Restore original signal handlers
+            signal.signal(signal.SIGINT, original_sigint)
+            signal.signal(signal.SIGTERM, original_sigterm)
 
 
 async def first_last_commit(before: str, after: str, verbose=False) -> Tuple[str, str]:
-    git_log_command = f"git log --after='{after}' --before='{before}' --pretty='%H'"
     if verbose:
-        ic(git_log_command)
+        ic(f"git log --after={after} --before={before} --pretty=%H")
 
-    # Execute the git log command
-    process = await asyncio.create_subprocess_shell(
-        git_log_command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    # Execute the git log command with timeout (use exec not shell to prevent injection)
+    process = await asyncio.create_subprocess_exec(
+        "git",
+        "log",
+        f"--after={after}",
+        f"--before={before}",
+        "--pretty=%H",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
-    stdout, _ = await process.communicate()
+    stdout, _ = await run_subprocess_with_timeout(
+        process,
+        30.0,
+        f"Git log command timed out (after={after}, before={before})",
+        verbose,
+    )
     git_output = stdout.decode().strip().split("\n")
 
     if not git_output:
@@ -473,14 +517,21 @@ async def first_last_commit(before: str, after: str, verbose=False) -> Tuple[str
     last_commit = git_output[0]
 
     # Get the diff before the last commit
-    git_cli_diff_before = f"git log {first_commit}^ -1 --pretty='%H'"
-    # call it from a simple shell command
-    first_diff = await asyncio.create_subprocess_shell(
-        git_cli_diff_before,
+    first_diff = await asyncio.create_subprocess_exec(
+        "git",
+        "log",
+        f"{first_commit}^",
+        "-1",
+        "--pretty=%H",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout, _ = await first_diff.communicate()
+    stdout, _ = await run_subprocess_with_timeout(
+        first_diff,
+        30.0,
+        f"Git log command timed out for commit: {first_commit}^",
+        verbose,
+    )
     first_commit = stdout.decode().strip()
 
     if verbose:
@@ -489,13 +540,22 @@ async def first_last_commit(before: str, after: str, verbose=False) -> Tuple[str
 
 
 async def get_changed_files(first_commit, last_commit, verbose=False):
-    git_diff_command = f"git diff --name-only {first_commit} {last_commit}"
-
-    # Execute the git diff command
-    process = await asyncio.create_subprocess_shell(
-        git_diff_command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    # Execute the git diff command with timeout (use exec not shell to prevent injection)
+    process = await asyncio.create_subprocess_exec(
+        "git",
+        "diff",
+        "--name-only",
+        first_commit,
+        last_commit,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
-    stdout, _ = await process.communicate()
+    stdout, _ = await run_subprocess_with_timeout(
+        process,
+        30.0,
+        f"Git diff command timed out: {first_commit}...{last_commit}",
+        verbose,
+    )
     changed_files_output = stdout.decode().strip()
 
     # Split the output into a list of file paths
@@ -724,16 +784,8 @@ def update_progress_table(
         pass  # Silently ignore errors
 
 
-async def achanges(
-    llms: List[BaseChatModel],
-    before,
-    after,
-    gist,
-    only: str = None,
-    verbose: bool = False,
-):
-    total_start_time = datetime.now()
-
+def init_progress_tracking(llms: List[BaseChatModel], total_start_time: datetime):
+    """Initialize progress tracking for all models."""
     # Generate unique progress log file for this run (supports concurrent execution)
     progress_log_path = f"/tmp/changes_progress_{uuid.uuid4().hex[:8]}.log"
 
@@ -760,30 +812,31 @@ async def achanges(
         model_names, model_states, total_start_time, progress_log_path, detailed_logs
     )
 
-    if verbose:
-        ic("v 0.0.4")
-    repo_info = get_repo_info(for_file_changes=True)
-    repo_path = Path.cwd()
+    return progress_log_path, model_names, model_states, detailed_logs
 
-    # Add file operation semaphore
-    file_semaphore = asyncio.Semaphore(50)  # Limit concurrent file operations
-    if verbose:
-        ic("Created file semaphore with limit of 50")
 
-    # Run first_last_commit and get_changed_files in parallel
-    first_last, _ = await asyncio.gather(
-        first_last_commit(before, after, verbose),
-        get_changed_files("", "", verbose),  # Placeholder, will be updated
-    )
-    first, last = first_last
+async def fetch_git_changes(before: str, after: str, only: str, verbose: bool):
+    """Fetch git commits and changed files."""
+    # Get commit range
+    first, last = await first_last_commit(before, after, verbose)
 
-    # Get updated changed files with correct commit hashes
+    # Get changed files
     changed_files = await get_changed_files(first, last, verbose)
     changed_files = [
         file for file in changed_files if not is_skip_file(file, only, verbose)
     ]
 
-    # Modify get_file_diff calls to use semaphore
+    return first, last, changed_files
+
+
+async def process_file_diffs(
+    changed_files: List[str], first: str, last: str, verbose: bool
+):
+    """Process all file diffs in parallel with semaphore limiting."""
+    file_semaphore = asyncio.Semaphore(MAX_CONCURRENT_FILE_DIFFS)
+    if verbose:
+        ic(f"Created file semaphore with limit of {MAX_CONCURRENT_FILE_DIFFS}")
+
     async def get_file_diff_with_semaphore(file, first, last):
         diff_start = datetime.now()
         if verbose:
@@ -813,6 +866,47 @@ async def achanges(
         for (result, _), duration in zip(diff_results, [d for _, d in diff_results])
     ]
 
+    return file_diffs, git_diff_timings, total_git_diff_duration
+
+
+async def achanges(
+    llms: List[BaseChatModel],
+    before,
+    after,
+    gist,
+    only: str = None,
+    verbose: bool = False,
+):
+    """
+    Analyze git changes using multiple LLM models in parallel.
+
+    Main orchestration function that:
+    1. Initializes progress tracking
+    2. Fetches git changes
+    3. Processes file diffs
+    4. Analyzes with LLM models
+    5. Generates and uploads reports
+    """
+    total_start_time = datetime.now()
+
+    # Initialize progress tracking
+    progress_log_path, model_names, model_states, detailed_logs = (
+        init_progress_tracking(llms, total_start_time)
+    )
+
+    if verbose:
+        ic("v 0.0.4")
+    repo_info = get_repo_info(for_file_changes=True)
+    repo_path = Path.cwd()
+
+    # Fetch git changes
+    first, last, changed_files = await fetch_git_changes(before, after, only, verbose)
+
+    # Process file diffs
+    file_diffs, git_diff_timings, total_git_diff_duration = await process_file_diffs(
+        changed_files, first, last, verbose
+    )
+
     # Process all models in parallel
     async def process_model(llm):
         model_start = datetime.now()
@@ -833,7 +927,7 @@ async def achanges(
             detailed_logs,
         )
 
-        max_parallel = asyncio.Semaphore(400)
+        max_parallel = asyncio.Semaphore(MAX_CONCURRENT_LLM_CALLS)
 
         # Special handling for o4-mini model
         if isinstance(llm, ChatOpenAI) and llm.model_name == "o4-mini-2025-04-16":
@@ -971,7 +1065,8 @@ async def achanges(
         }
 
         # Log summary start with timestamp and delta
-        log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] [+{elapsed:.0f}s] {model_name}: Starting summary..."
+        summary_content_size_k = len(code_based_diff_report) / 1000
+        log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] [+{elapsed:.0f}s] {model_name}: Starting summary ({summary_content_size_k:.0f}K)..."
         detailed_logs.append(log_msg)  # Add to in-memory buffer
 
         update_progress_table(
