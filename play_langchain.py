@@ -128,31 +128,8 @@ def cat_pdf(path: Path):
 
 
 @app.command()
-def deepseek():
-    """Process stdin through DeepSeek model and stream the output."""
-    user_text = "".join(sys.stdin.readlines())
-
-    model = langchain_helper.get_model(deepseek=True)
-
-    # Create a simple prompt template
-    prompt = ChatPromptTemplate.from_messages(
-        [("system", "You are a helpful AI assistant."), ("human", "{input}")]
-    )
-
-    # Create chain with streaming
-    chain = prompt | model
-
-    # Stream the response
-    response = chain.stream({"input": user_text})
-    for chunk in response:
-        print(chunk.content, end="", flush=True)
-    print()  # Add final newline
-
-
-@app.command()
 def stdin(
     o4: bool = typer.Option(False, "--o4", help="Use O4-mini model"),
-    deepseek: bool = typer.Option(False, "--deepseek", help="Use DeepSeek model"),
     claude: bool = typer.Option(False, "--claude", help="Use Claude model"),
     llama: bool = typer.Option(False, "--llama", help="Use Llama model"),
     google: bool = typer.Option(False, "--google", help="Use Google model"),
@@ -164,7 +141,6 @@ def stdin(
     # Get the appropriate model based on flags
     model = langchain_helper.get_model(
         o4_mini=o4,
-        deepseek=deepseek,
         claude=claude,
         llama=llama,
         google=google,

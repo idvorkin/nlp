@@ -206,8 +206,6 @@ def get_model_for_name(model_name: str) -> BaseChatModel:
         return langchain_helper.get_model(google_think=True)
     if model_name == "google_flash":
         return langchain_helper.get_model(google_flash=True)
-    if model_name == "deepseek":
-        return langchain_helper.get_model(deepseek=True)
     if model_name == "o4_mini":
         return langchain_helper.get_model(o4_mini=True)
     if model_name == "openai_mini":

@@ -74,7 +74,6 @@ async def test_all_models_joke_parallel():
         ("google_flash", {}),
         ("claude", {}),
         ("llama", {}),
-        ("deepseek", {}),
         ("kimi", {}),
         ("gpt_oss", {}),
         # Skip o4_mini as it might have different rate limits

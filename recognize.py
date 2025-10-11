@@ -298,7 +298,7 @@ def recognize(
         "llama",
         "--model",
         help="Model to use: llama (Maverick), google_flash (Gemini Flash), google (Gemini Pro), "
-             "openai, claude, deepseek, kimi, grok4_fast, o4_mini, google_think_* (low/medium/high)"
+             "openai, claude, kimi, grok4_fast, o4_mini, google_think_* (low/medium/high)"
     ),
     trace: bool = typer.Option(False, "--trace", help="Enable LangSmith tracing"),
 ):

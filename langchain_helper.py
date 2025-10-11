@@ -163,7 +163,6 @@ def get_models(
     claude: bool = False,
     llama: bool = False,
     google_think: bool = False,
-    deepseek: bool = False,
     o4_mini: bool = False,
     google_flash: bool = False,
     structured: bool = False,
@@ -202,9 +201,6 @@ def get_models(
     if llama:
         ret.append(get_model(llama=True))
 
-    if deepseek:
-        ret.append(get_model(deepseek=True))
-
     if o4_mini:
         ret.append(get_model(o4_mini=True))
 
@@ -235,7 +231,6 @@ def get_model(
     claude: bool = False,
     llama: bool = False,
     google_think: bool = False,
-    deepseek: bool = False,
     o4_mini: bool = False,
     google_flash: bool = False,
     structured: bool = False,
@@ -259,7 +254,6 @@ def get_model(
             claude,
             llama,
             google_think,
-            deepseek,
             o4_mini,
             google_flash,
             google_think_low,
@@ -369,10 +363,6 @@ def get_model(
         from langchain_groq import ChatGroq
 
         model = ChatGroq(model_name="meta-llama/llama-4-maverick-17b-128e-instruct")
-    elif deepseek:
-        from langchain_groq import ChatGroq
-
-        model = ChatGroq(model_name="deepseek-r1-distill-llama-70b")
     elif kimi:
         from langchain_groq import ChatGroq
 

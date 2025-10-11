@@ -31,8 +31,6 @@ def init_ell():
     )
     ell.config.register_model("llama-3.2-90b-vision-preview", default_client=groq)
     anthropic = Anthropic()
-    # Add the deepseek model registration
-    ell.config.register_model("deepseek-r1-distill-llama-70b", default_client=groq)
     # Add Kimi model registration
     ell.config.register_model("moonshotai/kimi-k2-instruct-0905", default_client=groq)
     ell.config.register_model("claude-3-7-sonnet-20250219", default_client=anthropic)

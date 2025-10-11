@@ -418,7 +418,6 @@ def changes(
     google: bool = False,  # Disabled - causes resource contention with other threads
     llama: bool = True,
     kimi: bool = True,
-    deepseek: bool = True,
     grok4_fast: bool = True,
     fast: bool = typer.Option(
         False, help="Fast analysis using Llama and GPT-OSS models"
@@ -451,7 +450,6 @@ def changes(
         google=google,
         llama=llama,
         kimi=kimi,
-        deepseek=deepseek,
         gpt_oss=gpt_oss,
         grok4_fast=grok4_fast,
     )
