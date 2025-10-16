@@ -159,7 +159,7 @@ Clearly state if this change breaks existing behavior and what consumers must do
 
 
 async def a_build_commit(
-    oneline: bool = False, fast: bool = False, medium: bool = False, kimi: bool = True, gpt_oss: bool = True, grok4_fast: bool = True
+    oneline: bool = False, fast: bool = False, medium: bool = False, haiku: bool = False, kimi: bool = True, gpt_oss: bool = True, grok4_fast: bool = True
 ):
     user_text = "".join(sys.stdin.readlines())
     # Filter out diffs from files that should be skipped
@@ -194,6 +194,7 @@ async def a_build_commit(
         llms = langchain_helper.get_models(
             google=True,
             claude=True,
+            haiku=haiku,
             kimi=kimi,
             gpt_oss=gpt_oss,
             grok4_fast=grok4_fast,
@@ -311,6 +312,9 @@ def build_commit(
     medium: bool = typer.Option(
         False, "--medium", help="Use fast models + first slow model (grok4-fast or claude) to return"
     ),
+    haiku: bool = typer.Option(
+        False, "--haiku/--no-haiku", help="Use Claude Haiku model (default: disabled)"
+    ),
     kimi: bool = typer.Option(
         True, "--kimi/--no-kimi", help="Use Kimi model (default: enabled)"
     ),
@@ -323,7 +327,7 @@ def build_commit(
     ),
 ):
     def run_build():
-        result = asyncio.run(a_build_commit(oneline, fast, medium, kimi, gpt_oss, grok4_fast))
+        result = asyncio.run(a_build_commit(oneline, fast, medium, haiku, kimi, gpt_oss, grok4_fast))
         if result != 0:
             raise typer.Exit(code=result)
 

@@ -161,6 +161,7 @@ def get_models(
     openai: bool = False,
     google: bool = False,
     claude: bool = False,
+    haiku: bool = False,
     llama: bool = False,
     google_think: bool = False,
     o4_mini: bool = False,
@@ -198,6 +199,9 @@ def get_models(
     if claude:
         ret.append(get_model(claude=True))
 
+    if haiku:
+        ret.append(get_model(haiku=True))
+
     if llama:
         ret.append(get_model(llama=True))
 
@@ -229,6 +233,7 @@ def get_model(
     openai: bool = False,
     google: bool = False,
     claude: bool = False,
+    haiku: bool = False,
     llama: bool = False,
     google_think: bool = False,
     o4_mini: bool = False,
@@ -252,6 +257,7 @@ def get_model(
             openai,
             google,
             claude,
+            haiku,
             llama,
             google_think,
             o4_mini,
@@ -356,6 +362,14 @@ def get_model(
 
         model = ChatAnthropic(
             model_name="claude-sonnet-4-5-20250929",
+            max_tokens=64000,
+            model_kwargs={"format": "json"} if structured else {},
+        )
+    elif haiku:
+        from langchain_anthropic import ChatAnthropic
+
+        model = ChatAnthropic(
+            model_name="claude-3-5-haiku-20241022",
             max_tokens=64000,
             model_kwargs={"format": "json"} if structured else {},
         )

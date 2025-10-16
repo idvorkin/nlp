@@ -415,6 +415,7 @@ def changes(
     gist: bool = True,
     openai: bool = False,
     claude: bool = True,
+    haiku: bool = False,
     google: bool = False,  # Disabled - causes resource contention with other threads
     llama: bool = True,
     kimi: bool = True,
@@ -447,6 +448,7 @@ def changes(
     llms = langchain_helper.get_models(
         openai=openai,
         claude=claude,
+        haiku=haiku,
         google=google,
         llama=llama,
         kimi=kimi,
