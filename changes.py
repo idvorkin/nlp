@@ -417,7 +417,7 @@ def changes(
     claude: bool = True,
     haiku: bool = True,
     google: bool = False,  # Disabled - causes resource contention with other threads
-    llama: bool = True,
+    llama: bool = False,
     kimi: bool = True,
     grok4_fast: bool = True,
     fast: bool = typer.Option(
@@ -648,6 +648,20 @@ Order files by magnitude/importance of change, use same rules as with summary
 
 
 1. Remember don't include the report below, it will be added afterwards
+
+CRITICAL OUTPUT REQUIREMENTS:
+* DO NOT reproduce the individual file summaries in your output
+* DO NOT include ANY code snippets or diff lines from the report
+* DO NOT copy-paste sections from the report verbatim
+* ONLY create a NEW high-level summary and table of contents
+* Your summary must be ORIGINAL synthesis, not regurgitation of the input
+* The full report will be automatically appended - you MUST NOT include it
+
+WRONG (DO NOT DO THIS):
+Copying entire file summaries like "#### foo.py\n[foo.py](link): +10, -5, ~3\nTLDR: blah..."
+
+RIGHT (DO THIS):
+Creating a fresh summary like "### Summary\n* Enhanced authentication system ([foo.py](#foopy), [bar.py](#barpy))"
 
 IMPORTANT: Be concise. DO NOT output the entire report or individual file diffs. Only provide the summary and table of contents. Keep descriptions brief and to the point.
 

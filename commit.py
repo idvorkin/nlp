@@ -186,11 +186,8 @@ async def a_build_commit(
         ]
         llms = None  # Will handle separately below
     elif oneline:
-        # For oneline, optionally use grok4-fast if specified
-        if grok4_fast:
-            llms = [langchain_helper.get_model(grok4_fast=True)]
-        else:
-            llms = [langchain_helper.get_model(llama=True)]
+        # For oneline, use haiku for fast, quality commits
+        llms = [langchain_helper.get_model(haiku=True)]
     else:
         llms = langchain_helper.get_models(
             google=True,
