@@ -369,7 +369,7 @@ def get_model(
         from langchain_anthropic import ChatAnthropic
 
         model = ChatAnthropic(
-            model_name="claude-3-5-haiku-20241022",
+            model_name="claude-haiku-4-5",
             max_tokens=64000,
             model_kwargs={"format": "json"} if structured else {},
         )

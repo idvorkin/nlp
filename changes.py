@@ -415,7 +415,7 @@ def changes(
     gist: bool = True,
     openai: bool = False,
     claude: bool = True,
-    haiku: bool = False,
+    haiku: bool = True,
     google: bool = False,  # Disabled - causes resource contention with other threads
     llama: bool = True,
     kimi: bool = True,

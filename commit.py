@@ -166,11 +166,12 @@ async def a_build_commit(
     filtered_text = filter_diff_content(user_text)
 
     if fast:
-        # Fast mode uses only llama, gpt-oss, and kimi
+        # Fast mode uses llama, gpt-oss, kimi, and haiku
         llms = [
             langchain_helper.get_model(llama=True),
             langchain_helper.get_model(gpt_oss=True),
             langchain_helper.get_model(kimi=True),
+            langchain_helper.get_model(haiku=True),
         ]
     elif medium:
         # Medium mode: fast models + first slow model to return
@@ -178,10 +179,10 @@ async def a_build_commit(
             langchain_helper.get_model(llama=True),
             langchain_helper.get_model(gpt_oss=True),
             langchain_helper.get_model(kimi=True),
+            langchain_helper.get_model(haiku=True),
         ]
         slow_llms = [
             langchain_helper.get_model(grok4_fast=True),
-            langchain_helper.get_model(claude=True),
         ]
         llms = None  # Will handle separately below
     elif oneline:
@@ -313,7 +314,7 @@ def build_commit(
         False, "--medium", help="Use fast models + first slow model (grok4-fast or claude) to return"
     ),
     haiku: bool = typer.Option(
-        False, "--haiku/--no-haiku", help="Use Claude Haiku model (default: disabled)"
+        True, "--haiku/--no-haiku", help="Use Claude Haiku model (default: enabled)"
     ),
     kimi: bool = typer.Option(
         True, "--kimi/--no-kimi", help="Use Kimi model (default: enabled)"
