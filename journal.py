@@ -46,9 +46,9 @@ DEFAULT_PAGES_PER_CHUNK = 10
 DEFAULT_MAX_WORKERS = 5
 DEFAULT_TIMEOUT = 600
 DEFAULT_MAX_OUTPUT_TOKENS = (
-    60000  # Conservative limit for Gemini 2.5 Pro (max is 65536)
+    60000  # Conservative limit for Gemini 3 Pro (max is 64000)
 )
-DEFAULT_MODEL = "gemini-2.5-pro"
+DEFAULT_MODEL = "gemini-3-pro-preview"
 DEFAULT_OUTPUT_PATH = Path.home() / "tmp" / "journal.md"
 
 

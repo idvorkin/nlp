@@ -177,21 +177,21 @@ def test_get_model_name_integration_with_real_models():
     # Test regular Google model
     google_model = get_model(google_flash=True)
     google_name = get_model_name(google_model)
-    assert "gemini-2.5-flash-preview-05-20" in google_name
+    assert "gemini-2.5-flash" in google_name
     assert "thinking" not in google_name
 
     # Test Google thinking models - these should now have _thinking_level attribute
     google_think_low = get_model(google_think_low=True)
     think_low_name = get_model_name(google_think_low)
     assert "thinking-LOW" in think_low_name
-    assert "gemini-2.5-flash-preview-05-20-thinking-LOW" == think_low_name
+    assert "gemini-2.5-flash-thinking-LOW" == think_low_name
 
     google_think_medium = get_model(google_think_medium=True)
     think_medium_name = get_model_name(google_think_medium)
     assert "thinking-MEDIUM" in think_medium_name
-    assert "gemini-2.5-flash-preview-05-20-thinking-MEDIUM" == think_medium_name
+    assert "gemini-2.5-flash-thinking-MEDIUM" == think_medium_name
 
     google_think_high = get_model(google_think_high=True)
     think_high_name = get_model_name(google_think_high)
     assert "thinking-HIGH" in think_high_name
-    assert "gemini-2.5-flash-preview-05-20-thinking-HIGH" == think_high_name
+    assert "gemini-2.5-flash-thinking-HIGH" == think_high_name
