@@ -200,7 +200,7 @@ Adhere to these rules meticulously:
         - Sometimes the line will span multiple lines
 
 
-7. **Acronyms**
+7. **Acronyms and Symbols**
    - Expand the following acronyms whenever they appear:
      - **YAB** → **Yesterday Awesome Because**
      - **TAB** → **Today Awesome Because**
@@ -215,6 +215,8 @@ Adhere to these rules meticulously:
      - **CHOP** → Chat Oriented Programming
      - **CHOW** → Chat Oriented Writing
      - **CHOLI** → Chat Oriented Life Insights
+   - Special symbols:
+     - **Ⓛ or circled L** → **Note for Larry (life coach)**. When you see an "L" with a circle around it, this indicates the content is specifically meant as a note or topic to discuss with Larry, the author's life coach.
 
 ---
 
