@@ -24,6 +24,8 @@ COLUMNS = [
     "attachment",
 ]
 
+ARCHIVE_COLUMNS = COLUMNS[:4]
+
 APPLE_EPOCH = 978307200  # 2001-01-01 UTC as a unix timestamp
 GROUP_CHAT_STYLE = 43
 OBJECT_REPLACEMENT_CHAR = (
@@ -135,6 +137,27 @@ def export_csv(db_path, out_path) -> int:
     return len(rows)
 
 
+def escape_archive_text(text: str) -> str:
+    """Keep each message on one line, writing line breaks and tabs as literal \\n and \\t."""
+    return (
+        text.replace("\r\n", "\\n")
+        .replace("\r", "\\n")
+        .replace("\n", "\\n")
+        .replace("\t", "\\t")
+    )
+
+
+def export_archive_txt(db_path, out_path) -> int:
+    """Write the tab-separated big_dump.txt archive format: date, text, is_from_me, to_phone."""
+    rows = read_messages(db_path)
+    with Path(out_path).open("w", newline="", encoding="utf-8") as f:
+        f.write("\t".join(ARCHIVE_COLUMNS) + "\n")
+        for row in rows:
+            text = escape_archive_text(row["text"]) or OBJECT_REPLACEMENT_CHAR
+            f.write(f"{row['date']}\t{text}\t{row['is_from_me']}\t{row['to_phone']}\n")
+    return len(rows)
+
+
 def _build_app():
     """Wire the Typer app. Called only from __main__ so tests skip the typer import."""
     from typing import Annotated
@@ -143,7 +166,7 @@ def _build_app():
     from rich.console import Console
 
     app = typer.Typer(
-        help="Back up iMessage history to CSV.",
+        help="Back up iMessage history to CSV or the big_dump.txt archive format.",
         add_completion=False,
         no_args_is_help=True,
     )
@@ -159,6 +182,20 @@ def _build_app():
         / "messages.csv",
     ):
         count = export_csv(db, out)
+        console.print(f"Wrote [bold]{count:,}[/] messages to [blue]{out}[/]")
+
+    @app.command(
+        help="Export every message in chat.db to the big_dump.txt archive format"
+    )
+    def export_archive(
+        db: Annotated[Path, typer.Option(help="chat.db to read")] = Path.home()
+        / "imessage"
+        / "chat.db",
+        out: Annotated[Path, typer.Option(help="txt file to write")] = Path.home()
+        / "imessage"
+        / "messages.txt",
+    ):
+        count = export_archive_txt(db, out)
         console.print(f"Wrote [bold]{count:,}[/] messages to [blue]{out}[/]")
 
     @app.command(help="Show version")
