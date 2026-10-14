@@ -1,5 +1,5 @@
 # ABOUTME: Tests for imessage_export, run against a small real SQLite chat.db built per test.
-# ABOUTME: Covers row-per-message output, local dates, attributedBody decoding, group chats and attachments.
+# ABOUTME: Covers row-per-message output, local dates, attributedBody decoding, group chats, attachments and archive txt.
 
 import csv
 import sqlite3
@@ -11,6 +11,7 @@ from imessage_export import (
     COLUMNS,
     apple_time_to_local,
     decode_attributed_body,
+    export_archive_txt,
     export_csv,
     read_messages,
 )
@@ -222,3 +223,33 @@ def test_export_csv_round_trips_multiline_text(chat_db, tmp_path):
         rows = list(csv.DictReader(f))
     assert list(rows[0].keys()) == COLUMNS
     assert rows[0]["text"] == 'line one\nline "two", three'
+
+
+def test_export_archive_txt_matches_big_dump_format(chat_db, tmp_path):
+    add_message(chat_db, 1, 10, datetime(2024, 1, 1, 9, 0, 0), text="hi", handle_id=1)
+    add_message(
+        chat_db,
+        2,
+        10,
+        datetime(2024, 1, 1, 9, 0, 1),
+        text="line one\r\nline\ttwo\nthree",
+        from_me=1,
+        handle_id=1,
+    )
+    out = tmp_path / "big_dump.txt"
+    assert export_archive_txt(chat_db, out) == 2
+    assert out.read_text(encoding="utf-8").split("\n") == [
+        "date\ttext\tis_from_me\tto_phone",
+        "2024-01-01 09:00:00\thi\t0\t+12065550001",
+        "2024-01-01 09:00:01\tline one\\nline\\ttwo\\nthree\t1\t+12065550001",
+        "",
+    ]
+
+
+def test_export_archive_txt_keeps_attachment_placeholder(chat_db, tmp_path):
+    add_message(
+        chat_db, 1, 10, datetime(2024, 1, 1), handle_id=1, attachments=["IMG_1.jpg"]
+    )
+    out = tmp_path / "big_dump.txt"
+    export_archive_txt(chat_db, out)
+    assert out.read_text(encoding="utf-8").split("\n")[1].split("\t")[1] == "\ufffc"
