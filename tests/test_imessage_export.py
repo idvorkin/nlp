@@ -1,5 +1,5 @@
 # ABOUTME: Tests for imessage_export, run against a small real SQLite chat.db built per test.
-# ABOUTME: Covers row-per-message output, local dates, attributedBody decoding, group chats, attachments and archive txt.
+# ABOUTME: Covers rows, local dates, attributedBody decoding, groups, attachments, contact names and archive txt.
 
 import csv
 import sqlite3
@@ -13,6 +13,8 @@ from imessage_export import (
     decode_attributed_body,
     export_archive_txt,
     export_csv,
+    handle_key,
+    read_contacts,
     read_messages,
 )
 
@@ -239,9 +241,9 @@ def test_export_archive_txt_matches_big_dump_format(chat_db, tmp_path):
     out = tmp_path / "big_dump.txt"
     assert export_archive_txt(chat_db, out) == 2
     assert out.read_text(encoding="utf-8").split("\n") == [
-        "date\ttext\tis_from_me\tto_phone",
-        "2024-01-01 09:00:00\thi\t0\t+12065550001",
-        "2024-01-01 09:00:01\tline one\\nline\\ttwo\\nthree\t1\t+12065550001",
+        "date\ttext\tis_from_me\tto_phone\tchat",
+        "2024-01-01 09:00:00\thi\t0\t+12065550001\t+12065550001",
+        "2024-01-01 09:00:01\tline one\\nline\\ttwo\\nthree\t1\t+12065550001\t+12065550001",
         "",
     ]
 
@@ -253,3 +255,103 @@ def test_export_archive_txt_keeps_attachment_placeholder(chat_db, tmp_path):
     out = tmp_path / "big_dump.txt"
     export_archive_txt(chat_db, out)
     assert out.read_text(encoding="utf-8").split("\n")[1].split("\t")[1] == "\ufffc"
+
+
+CONTACTS_SCHEMA = """
+CREATE TABLE ZABCDRECORD (Z_PK INTEGER PRIMARY KEY, ZFIRSTNAME TEXT, ZLASTNAME TEXT,
+                          ZNICKNAME TEXT, ZORGANIZATION TEXT);
+CREATE TABLE ZABCDPHONENUMBER (ZOWNER INTEGER, ZFULLNUMBER TEXT);
+CREATE TABLE ZABCDEMAILADDRESS (ZOWNER INTEGER, ZADDRESS TEXT);
+"""
+
+
+@pytest.fixture
+def contacts_db(tmp_path):
+    path = tmp_path / "AddressBook-v22.abcddb"
+    db = sqlite3.connect(path)
+    db.executescript(CONTACTS_SCHEMA)
+    db.executemany(
+        "INSERT INTO ZABCDRECORD VALUES (?, ?, ?, ?, ?)",
+        [
+            (1, "Ann", "Lee", None, None),
+            (2, "Bob", None, None, None),
+            (3, None, None, None, "Pizza Place"),
+            (4, "Ann 2065550001", "Lee", None, None),
+            (5, "Ann", "Cell", None, None),
+        ],
+    )
+    db.executemany(
+        "INSERT INTO ZABCDPHONENUMBER VALUES (?, ?)",
+        [
+            (1, "+1 (206) 555-0001"),
+            (2, "206-555-0002"),
+            (3, "5550003"),
+            (4, "+12065550001"),
+            (5, "1 (206) 555-0001"),
+        ],
+    )
+    db.execute("INSERT INTO ZABCDEMAILADDRESS VALUES (2, 'Bob@Example.com')")
+    db.commit()
+    db.close()
+    return path
+
+
+def test_handle_key_matches_phone_formats():
+    assert handle_key("+12065550001") == handle_key("(206) 555-0001") == "2065550001"
+    assert handle_key("5550003") == "5550003"
+    assert handle_key("Bob@Example.com") == "bob@example.com"
+
+
+def test_read_contacts_maps_handles_to_names(contacts_db):
+    contacts = read_contacts([contacts_db])
+    assert contacts[handle_key("+12065550002")] == "Bob"
+    assert contacts[handle_key("bob@example.com")] == "Bob"
+    assert contacts[handle_key("5550003")] == "Pizza Place"
+
+
+def test_read_contacts_prefers_most_complete_name_without_digits(contacts_db):
+    assert read_contacts([contacts_db])[handle_key("+12065550001")] == "Ann Lee"
+
+
+def test_one_to_one_message_uses_contact_names(chat_db, contacts_db):
+    add_message(chat_db, 1, 10, datetime(2024, 1, 1), text="hi", handle_id=1)
+    [row] = read_messages(chat_db, read_contacts([contacts_db]))
+    assert row["to_phone"] == "Ann Lee"
+    assert row["chat_name"] == "Ann Lee"
+
+
+def test_unnamed_group_lists_participant_names(chat_db, contacts_db):
+    db = sqlite3.connect(chat_db)
+    db.execute("UPDATE chat SET display_name = '' WHERE ROWID = 20")
+    db.commit()
+    db.close()
+    add_message(chat_db, 1, 20, datetime(2024, 1, 1), text="yo", from_me=1)
+    [row] = read_messages(chat_db, read_contacts([contacts_db]))
+    assert row["chat_name"] == "Ann Lee, Bob"
+    assert row["to_phone"] == "chat123"
+
+
+def test_unnamed_group_without_contacts_lists_handles(chat_db):
+    db = sqlite3.connect(chat_db)
+    db.execute("UPDATE chat SET display_name = NULL WHERE ROWID = 20")
+    db.commit()
+    db.close()
+    add_message(chat_db, 1, 20, datetime(2024, 1, 1), text="yo", handle_id=2)
+    [row] = read_messages(chat_db)
+    assert row["chat_name"] == "+12065550001, +12065550002"
+
+
+def test_my_one_to_one_message_uses_contact_name(chat_db, contacts_db):
+    add_message(chat_db, 1, 10, datetime(2024, 1, 1), text="hi", from_me=1)
+    [row] = read_messages(chat_db, read_contacts([contacts_db]))
+    assert row["to_phone"] == "Ann Lee"
+
+
+def test_group_chat_id_never_matches_a_contact(chat_db, contacts_db):
+    db = sqlite3.connect(chat_db)
+    db.execute("UPDATE chat SET chat_identifier = 'chat2065550001' WHERE ROWID = 20")
+    db.commit()
+    db.close()
+    add_message(chat_db, 1, 20, datetime(2024, 1, 1), text="yo", from_me=1)
+    [row] = read_messages(chat_db, read_contacts([contacts_db]))
+    assert row["to_phone"] == "chat2065550001"
