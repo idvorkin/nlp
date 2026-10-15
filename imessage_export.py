@@ -10,6 +10,7 @@
 # ABOUTME: Decodes text stored only in attributedBody and shows Contacts names for numbers and groups.
 
 import csv
+import difflib
 import re
 import sqlite3
 from datetime import datetime
@@ -34,6 +35,8 @@ OBJECT_REPLACEMENT_CHAR = (
 )
 # Imported contacts sometimes carry the phone label as a last name, e.g. "Ann Cell"
 PHONE_LABEL_WORDS = {"cell", "mobile", "home", "work", "iphone", "main"}
+# A message line starts with its date; one known archive line lost the leading 2 of its year
+ARCHIVE_ROW_START = re.compile(r"^2?\d{3}-\d\d-\d\d \d\d:\d\d:\d\d\t")
 CONTACTS_DIR = Path.home() / "Library" / "Application Support" / "AddressBook"
 
 MESSAGES_QUERY = """
@@ -238,19 +241,97 @@ def escape_archive_text(text: str) -> str:
     )
 
 
-def export_archive_txt(
-    db_path, out_path, contacts: dict[str, str] | None = None
-) -> int:
-    """Write the tab-separated archive format: date, text, is_from_me, to_phone, chat."""
-    rows = read_messages(db_path, contacts)
+def to_archive_row(message: dict) -> dict:
+    return {
+        "date": message["date"],
+        "text": escape_archive_text(message["text"]) or OBJECT_REPLACEMENT_CHAR,
+        "is_from_me": str(message["is_from_me"]),
+        "to_phone": message["to_phone"],
+        "chat": escape_archive_text(message["chat_name"]),
+    }
+
+
+def read_archive_txt(path) -> list[dict]:
+    """Read a 4-column (date, text, is_from_me, to_phone) or 5-column (+ chat) archive txt."""
+    lines = Path(path).read_text(encoding="utf-8").split("\n")
+    n_cols = len(lines[0].split("\t"))
+    records: list[str] = []
+    for line in lines[1:]:
+        line = line.replace("\r", "")
+        if ARCHIVE_ROW_START.match(line):
+            records.append(line)
+        elif records and line:
+            records[-1] += "\\n" + line  # a raw line break inside a message
+    rows = []
+    for record in records:
+        date_and_text, *rest = record.rsplit("\t", n_cols - 2)
+        date, text = date_and_text.split("\t", 1)
+        is_from_me, to_phone, *chat = rest
+        rows.append(
+            {
+                "date": date if len(date) == 19 else "2" + date,
+                "text": text,
+                "is_from_me": is_from_me,
+                "to_phone": to_phone,
+                "chat": chat[0] if chat else "",
+            }
+        )
+    return rows
+
+
+def comparable_text(text: str) -> str:
+    """Text with escapes, attachment placeholders and spacing removed, for matching copies."""
+    text = text.replace("\\n", " ").replace("\\t", " ")
+    return " ".join(text.replace(OBJECT_REPLACEMENT_CHAR, "").split())
+
+
+def is_same_message(a: str, b: str) -> bool:
+    """Same text, or one copy carries extra preview text or differs slightly."""
+    return (
+        a == b
+        or bool(a and b and (a in b or b in a))
+        or difflib.SequenceMatcher(None, a, b).ratio() >= 0.8
+    )
+
+
+def merge_archive(
+    archive: list[dict], export: list[dict], contacts: dict[str, str] | None = None
+) -> list[dict]:
+    """Keep every exported row, adding archive messages with text that the export lacks."""
+    contacts = contacts or {}
+    exported: dict[tuple[str, str], list[str]] = {}
+    for row in export:
+        exported.setdefault((row["date"], row["is_from_me"]), []).append(
+            comparable_text(row["text"])
+        )
+    missing = []
+    for row in archive:
+        text = comparable_text(row["text"])
+        if not text:
+            continue
+        same_second = exported.get((row["date"], row["is_from_me"]), [])
+        if any(is_same_message(text, other) for other in same_second):
+            continue
+        to_phone = contacts.get(handle_key(row["to_phone"]), row["to_phone"])
+        missing.append({**row, "to_phone": to_phone})
+    return sorted(export + missing, key=lambda row: row["date"])
+
+
+def write_archive_txt(rows: list[dict], out_path) -> None:
     with Path(out_path).open("w", newline="", encoding="utf-8") as f:
         f.write("\t".join(ARCHIVE_COLUMNS) + "\n")
         for row in rows:
-            text = escape_archive_text(row["text"]) or OBJECT_REPLACEMENT_CHAR
-            chat = escape_archive_text(row["chat_name"])
-            f.write(
-                f"{row['date']}\t{text}\t{row['is_from_me']}\t{row['to_phone']}\t{chat}\n"
-            )
+            f.write("\t".join(row[column] for column in ARCHIVE_COLUMNS) + "\n")
+
+
+def export_archive_txt(
+    db_path, out_path, contacts: dict[str, str] | None = None, merge_with=None
+) -> int:
+    """Write the tab-separated archive format, optionally keeping messages from an older archive."""
+    rows = [to_archive_row(message) for message in read_messages(db_path, contacts)]
+    if merge_with:
+        rows = merge_archive(read_archive_txt(merge_with), rows, contacts)
+    write_archive_txt(rows, out_path)
     return len(rows)
 
 
@@ -290,8 +371,14 @@ def _build_app():
         out: Annotated[Path, typer.Option(help="txt file to write")] = Path.home()
         / "imessage"
         / "messages.txt",
+        merge: Annotated[
+            Path | None,
+            typer.Option(help="Older archive txt whose missing messages are kept"),
+        ] = None,
     ):
-        count = export_archive_txt(db, out, read_contacts(find_contact_dbs()))
+        count = export_archive_txt(
+            db, out, read_contacts(find_contact_dbs()), merge_with=merge
+        )
         console.print(f"Wrote [bold]{count:,}[/] messages to [blue]{out}[/]")
 
     @app.command(help="Show version")
