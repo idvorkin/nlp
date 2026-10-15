@@ -14,6 +14,8 @@ from imessage_export import (
     export_archive_txt,
     export_csv,
     handle_key,
+    merge_archive,
+    read_archive_txt,
     read_contacts,
     read_messages,
 )
@@ -355,3 +357,122 @@ def test_group_chat_id_never_matches_a_contact(chat_db, contacts_db):
     add_message(chat_db, 1, 20, datetime(2024, 1, 1), text="yo", from_me=1)
     [row] = read_messages(chat_db, read_contacts([contacts_db]))
     assert row["to_phone"] == "chat2065550001"
+
+
+def write_lines(path, lines):
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def test_read_archive_txt_four_columns(tmp_path):
+    path = write_lines(
+        tmp_path / "big_dump.txt",
+        [
+            "date\ttext\tis_from_me\tto_phone",
+            "2016-01-01 10:00:00\thi\t1\t+12065550001",
+        ],
+    )
+    assert read_archive_txt(path) == [
+        {
+            "date": "2016-01-01 10:00:00",
+            "text": "hi",
+            "is_from_me": "1",
+            "to_phone": "+12065550001",
+            "chat": "",
+        }
+    ]
+
+
+def test_read_archive_txt_five_columns(tmp_path):
+    path = write_lines(
+        tmp_path / "big_dump.txt",
+        [
+            "date\ttext\tis_from_me\tto_phone\tchat",
+            "2016-01-01 10:00:00\thi\\nthere\t0\tAnn Lee\tFamily",
+        ],
+    )
+    [row] = read_archive_txt(path)
+    assert row["text"] == "hi\\nthere"
+    assert row["chat"] == "Family"
+
+
+def test_read_archive_txt_repairs_year_missing_leading_digit(tmp_path):
+    path = write_lines(
+        tmp_path / "big_dump.txt",
+        [
+            "date\ttext\tis_from_me\tto_phone",
+            "2022-12-06 05:05:27\tfirst\t1\t+12065550001",
+            "022-12-06 05:10:10\tsecond\t0\t+12065550001",
+        ],
+    )
+    assert [(r["date"], r["text"]) for r in read_archive_txt(path)] == [
+        ("2022-12-06 05:05:27", "first"),
+        ("2022-12-06 05:10:10", "second"),
+    ]
+
+
+def test_read_archive_txt_keeps_raw_line_breaks_inside_a_message(tmp_path):
+    path = write_lines(
+        tmp_path / "big_dump.txt",
+        [
+            "date\ttext\tis_from_me\tto_phone",
+            "2016-01-01 10:00:00\tline one\r",
+            "line two\t1\t+12065550001",
+        ],
+    )
+    [row] = read_archive_txt(path)
+    assert row["text"] == "line one\\nline two"
+    assert row["to_phone"] == "+12065550001"
+
+
+def archive_row(date, text, is_from_me="1", to_phone="+12065550001", chat=""):
+    return {
+        "date": date,
+        "text": text,
+        "is_from_me": is_from_me,
+        "to_phone": to_phone,
+        "chat": chat,
+    }
+
+
+def test_merge_archive_keeps_export_and_adds_only_messages_it_lacks():
+    export = [
+        archive_row("2016-01-01 10:00:00", "same", chat="Ann Lee"),
+        archive_row("2016-01-01 10:00:01", "photo caption", chat="Ann Lee"),
+        archive_row("2016-01-01 10:00:02", "ok", chat="Ann Lee"),
+    ]
+    archive = [
+        archive_row("2015-12-31 09:00:00", "deleted since"),
+        archive_row("2016-01-01 10:00:00", "same"),
+        archive_row("2016-01-01 10:00:01", "\ufffcphoto caption"),
+        archive_row("2016-01-01 10:00:02", "different message same second"),
+        archive_row("2016-01-01 10:00:03", "\\n\ufffc"),
+    ]
+    merged = merge_archive(archive, export, contacts={"2065550001": "Ann Lee"})
+    assert [(r["date"], r["text"], r["to_phone"]) for r in merged] == [
+        ("2015-12-31 09:00:00", "deleted since", "Ann Lee"),
+        ("2016-01-01 10:00:00", "same", "+12065550001"),
+        ("2016-01-01 10:00:01", "photo caption", "+12065550001"),
+        ("2016-01-01 10:00:02", "ok", "+12065550001"),
+        ("2016-01-01 10:00:02", "different message same second", "Ann Lee"),
+    ]
+
+
+def test_export_archive_txt_merges_existing_archive(chat_db, contacts_db, tmp_path):
+    add_message(chat_db, 1, 10, datetime(2024, 1, 1, 9, 0, 0), text="hi", handle_id=1)
+    old = write_lines(
+        tmp_path / "big_dump_full.txt",
+        [
+            "date\ttext\tis_from_me\tto_phone\tchat",
+            "2020-05-05 12:00:00\tdeleted since\t0\tAnn Lee\tAnn Lee",
+            "2024-01-01 09:00:00\thi\t0\tAnn Lee\tAnn Lee",
+        ],
+    )
+    count = export_archive_txt(
+        chat_db, old, read_contacts([contacts_db]), merge_with=old
+    )
+    assert count == 2
+    assert old.read_text(encoding="utf-8").split("\n")[1:3] == [
+        "2020-05-05 12:00:00\tdeleted since\t0\tAnn Lee\tAnn Lee",
+        "2024-01-01 09:00:00\thi\t0\tAnn Lee\tAnn Lee",
+    ]
