@@ -388,5 +388,9 @@ def _build_app():
     return app
 
 
-if __name__ == "__main__":
+def main():
     _build_app()()
+
+
+if __name__ == "__main__":
+    main()
